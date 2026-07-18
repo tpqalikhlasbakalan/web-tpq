@@ -148,7 +148,7 @@ export default function App() {
       const localSettings = safeGetLocalStorage('tpq_settings', INITIAL_DATA.settings);
       setSettings(localSettings);
 
-      if (localSettings.appsScriptUrl) {
+      if (localSettings.appsScriptUrl && localSettings.appsScriptUrl.trim() !== '') {
         const response = await fetch(`${localSettings.appsScriptUrl}?action=getAll`);
         if (!response.ok) throw new Error('Server Google Sheets bermasalah.');
         const payload = await response.json();
@@ -181,7 +181,11 @@ export default function App() {
       }
     } catch (error) {
       console.error(error);
-      showToast('Koneksi Google Sheets gagal. Menggunakan penyimpanan lokal.', 'error');
+      const localSettings = safeGetLocalStorage('tpq_settings', INITIAL_DATA.settings);
+      // Hanya tampilkan pesan error jika URL Apps Script memang sudah terisi namun gagal dihubungi
+      if (localSettings && localSettings.appsScriptUrl && localSettings.appsScriptUrl.trim() !== '') {
+        showToast('Koneksi Google Sheets gagal. Menggunakan penyimpanan lokal.', 'error');
+      }
       setUsers(safeGetLocalStorage('tpq_users', INITIAL_DATA.users));
       setProgress(safeGetLocalStorage('tpq_progress', INITIAL_DATA.progress));
       setTargets(safeGetLocalStorage('tpq_targets', INITIAL_DATA.targets));
@@ -220,7 +224,7 @@ export default function App() {
       if (table === 'targets') setTargets(updatedData);
       if (table === 'settings') setSettings(updatedData);
 
-      if (settings.appsScriptUrl) {
+      if (settings.appsScriptUrl && settings.appsScriptUrl.trim() !== '') {
         await fetch(settings.appsScriptUrl, {
           method: 'POST',
           mode: 'no-cors', 
@@ -276,7 +280,7 @@ export default function App() {
               )}
             </div>
             <h1 className="text-2xl font-bold text-gray-800">{settings.tpqName || 'Sistem Informasi TPQ'}</h1>
-            <p className="text-gray-500 text-sm mt-2">Portal masuk terintegrasi Google Sheets</p>
+            <p className="text-gray-500 text-sm mt-2">Aplication developed By Misbahul Munir</p>
           </div>
           
           <form onSubmit={(e) => {
@@ -301,17 +305,6 @@ export default function App() {
               Masuk Sistem
             </button>
           </form>
-          
-          <div className="mt-8 bg-blue-50/70 p-4 rounded-xl text-[11px] text-blue-800 border border-blue-100">
-            <p className="font-bold mb-2 flex items-center"><Info size={14} className="mr-1"/> Akun Akses Percobaan:</p>
-            <div className="grid grid-cols-2 gap-2">
-              <div>• Admin: <span className="font-mono font-bold text-blue-900">admin / 123</span></div>
-              <div>• Kepala: <span className="font-mono font-bold text-blue-900">kepala / 123</span></div>
-              <div>• Guru: <span className="font-mono font-bold text-blue-900">guru1 / 123</span></div>
-              <div>• Bendahara: <span className="font-mono font-bold text-blue-900">bendahara / 123</span></div>
-              <div className="col-span-2">• Santri: <span className="font-mono font-bold text-blue-900">santri1 / 123</span> atau <span className="font-mono font-bold text-blue-900">santri2 / 123</span></div>
-            </div>
-          </div>
         </div>
       </div>
     );
