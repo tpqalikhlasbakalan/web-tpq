@@ -171,15 +171,21 @@ export default function App() {
         
         if (payload.status === 'success' && payload.data) {
           const { users: sUsers, progress: sProgress, targets: sTargets, settings: sSettings } = payload.data;
-          setUsers(sUsers || []);
-          setProgress(sProgress || []);
-          setTargets(sTargets || []);
-          if (sSettings) setSettings(sSettings);
           
-          localStorage.setItem('tpq_users', JSON.stringify(sUsers || []));
-          localStorage.setItem('tpq_progress', JSON.stringify(sProgress || []));
-          localStorage.setItem('tpq_targets', JSON.stringify(sTargets || []));
-          localStorage.setItem('tpq_settings', JSON.stringify(sSettings || localSettings));
+          const finalUsers = (sUsers && sUsers.length > 0) ? sUsers : INITIAL_DATA.users;
+          const finalProgress = (sProgress && sProgress.length > 0) ? sProgress : INITIAL_DATA.progress;
+          const finalTargets = (sTargets && sTargets.length > 0) ? sTargets : INITIAL_DATA.targets;
+          const finalSettings = (sSettings && Object.keys(sSettings).length > 0) ? sSettings : localSettings;
+
+          setUsers(finalUsers);
+          setProgress(finalProgress);
+          setTargets(finalTargets);
+          if (finalSettings) setSettings(finalSettings);
+          
+          localStorage.setItem('tpq_users', JSON.stringify(finalUsers));
+          localStorage.setItem('tpq_progress', JSON.stringify(finalProgress));
+          localStorage.setItem('tpq_targets', JSON.stringify(finalTargets));
+          localStorage.setItem('tpq_settings', JSON.stringify(finalSettings));
           
           if (!isInitializing) showToast('Database Google Sheets berhasil disinkronkan!');
         } else {
