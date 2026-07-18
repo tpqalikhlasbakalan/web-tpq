@@ -8,6 +8,11 @@ import {
   ChevronDown, ChevronUp
 } from 'lucide-react';
 
+// -------------------------------------------------------------
+// MASUKKAN URL GOOGLE APPS SCRIPT ANDA DI SINI
+// -------------------------------------------------------------
+const HARDCODED_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwqbAPcV4Mz6hT-PneqAQoC-aZoRdgaGJzL23qAOwcSnClmDzRpf_fzbIsPymtyQYyn-w/exec";
+
 const JILID_LEVELS = [
   'Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6', 
   'PSQ 1-2 (Juz 1)', 'PSQ 3-4 (Juz 2-4)', 'PSQ 4-6 (Juz 5-11)', 'PSQ 7-8 (Juz 12-20)', 'PSQ 9-10 (Juz 21-30)', 'Lulus (Tamat)'
@@ -34,8 +39,7 @@ const INITIAL_DATA = {
   ],
   settings: { 
     tpqName: 'TPQ Al-Hikmah Modern', 
-    logoUrl: '',
-    appsScriptUrl: '' 
+    logoUrl: '' 
   }
 };
 
@@ -134,6 +138,8 @@ export default function App() {
   const [toast, setToast] = useState({ message: '', type: '' });
   const [activeTab, setActiveTab] = useState('dashboard');
   
+  const [isInitializing, setIsInitializing] = useState(true);
+  
   const [users, setUsers] = useState([]);
   const [progress, setProgress] = useState([]);
   const [targets, setTargets] = useState([]);
@@ -148,8 +154,8 @@ export default function App() {
       const localSettings = safeGetLocalStorage('tpq_settings', INITIAL_DATA.settings);
       setSettings(localSettings);
 
-      if (localSettings.appsScriptUrl && localSettings.appsScriptUrl.trim() !== '') {
-        const response = await fetch(`${localSettings.appsScriptUrl}?action=getAll`);
+      if (HARDCODED_APPS_SCRIPT_URL && HARDCODED_APPS_SCRIPT_URL.trim() !== '' && HARDCODED_APPS_SCRIPT_URL !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
+        const response = await fetch(`${HARDCODED_APPS_SCRIPT_URL}?action=getAll`);
         if (!response.ok) throw new Error('Server Google Sheets bermasalah.');
         const payload = await response.json();
         
@@ -164,7 +170,8 @@ export default function App() {
           localStorage.setItem('tpq_progress', JSON.stringify(sProgress || []));
           localStorage.setItem('tpq_targets', JSON.stringify(sTargets || []));
           localStorage.setItem('tpq_settings', JSON.stringify(sSettings || localSettings));
-          showToast('Database Google Sheets berhasil disinkronkan!');
+          
+          if (!isInitializing) showToast('Database Google Sheets berhasil disinkronkan!');
         } else {
           throw new Error(payload.message || 'Format data tidak sesuai.');
         }
@@ -181,9 +188,7 @@ export default function App() {
       }
     } catch (error) {
       console.error(error);
-      const localSettings = safeGetLocalStorage('tpq_settings', INITIAL_DATA.settings);
-      // Hanya tampilkan pesan error jika URL Apps Script memang sudah terisi namun gagal dihubungi
-      if (localSettings && localSettings.appsScriptUrl && localSettings.appsScriptUrl.trim() !== '') {
+      if (HARDCODED_APPS_SCRIPT_URL && HARDCODED_APPS_SCRIPT_URL.trim() !== '' && HARDCODED_APPS_SCRIPT_URL !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
         showToast('Koneksi Google Sheets gagal. Menggunakan penyimpanan lokal.', 'error');
       }
       setUsers(safeGetLocalStorage('tpq_users', INITIAL_DATA.users));
@@ -191,6 +196,7 @@ export default function App() {
       setTargets(safeGetLocalStorage('tpq_targets', INITIAL_DATA.targets));
     } finally {
       setIsSyncing(false);
+      setIsInitializing(false);
     }
   };
 
@@ -224,8 +230,8 @@ export default function App() {
       if (table === 'targets') setTargets(updatedData);
       if (table === 'settings') setSettings(updatedData);
 
-      if (settings.appsScriptUrl && settings.appsScriptUrl.trim() !== '') {
-        await fetch(settings.appsScriptUrl, {
+      if (HARDCODED_APPS_SCRIPT_URL && HARDCODED_APPS_SCRIPT_URL.trim() !== '' && HARDCODED_APPS_SCRIPT_URL !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
+        await fetch(HARDCODED_APPS_SCRIPT_URL, {
           method: 'POST',
           mode: 'no-cors', 
           headers: { 'Content-Type': 'application/json' },
@@ -266,21 +272,33 @@ export default function App() {
     setTimeout(() => setToast({ message: '', type: '' }), 3500);
   };
 
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-emerald-50/50 flex flex-col items-center justify-center p-4">
+        <RefreshCw className="w-12 h-12 text-emerald-600 animate-spin mb-4" />
+        <h2 className="text-xl font-bold text-gray-800">Menyinkronkan Data...</h2>
+        <p className="text-gray-500 text-sm mt-2 text-center max-w-xs">Memastikan Anda masuk dengan data sandi dan profil terbaru dari Google Sheets.</p>
+      </div>
+    );
+  }
+
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-emerald-50/50 flex items-center justify-center p-4">
         <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: '' })} />
         <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border-t-8 border-emerald-600">
           <div className="text-center mb-8">
-            <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden shadow-inner">
-              {settings.logoUrl ? (
-                <img src={settings.logoUrl} alt="Logo" className="w-full h-full object-cover" />
-              ) : (
+            {settings.logoUrl ? (
+              <div className="mx-auto mb-4 flex justify-center">
+                <img src={settings.logoUrl} alt="Logo" className="max-w-full h-24 object-contain" />
+              </div>
+            ) : (
+              <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden shadow-inner">
                 <BookOpen className="w-10 h-10 text-emerald-600" />
-              )}
-            </div>
+              </div>
+            )}
             <h1 className="text-2xl font-bold text-gray-800">{settings.tpqName || 'Sistem Informasi TPQ'}</h1>
-            <p className="text-gray-500 text-sm mt-2">Aplication developed By Misbahul Munir</p>
+            <p className="text-gray-500 text-sm mt-2">Portal masuk terintegrasi Google Sheets</p>
           </div>
           
           <form onSubmit={(e) => {
@@ -317,7 +335,7 @@ export default function App() {
       <header className="bg-emerald-800 text-white p-4 shadow-md flex justify-between items-center checked-bg sticky top-0 z-10">
         <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
           {settings.logoUrl ? (
-            <img src={settings.logoUrl} alt="Logo" className="w-10 h-10 rounded-full object-cover bg-white" />
+            <img src={settings.logoUrl} alt="Logo" className="w-auto h-10 object-contain" />
           ) : (
             <BookOpen className="w-8 h-8 text-emerald-300" />
           )}
@@ -1446,12 +1464,12 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
   const handleSaveSettings = (e) => {
     e.preventDefault();
     const updated = {
+      ...settings,
       tpqName: e.target.tpqName.value,
-      logoUrl: e.target.logoUrl.value,
-      appsScriptUrl: e.target.appsScriptUrl.value
+      logoUrl: e.target.logoUrl.value
     };
     updateTable('settings', updated);
-    showToast('Profil lembaga dan konfigurasi database berhasil diperbarui!');
+    showToast('Profil lembaga berhasil diperbarui!');
   };
 
   const codeScriptGoogle = `// CODE GOOGLE APPS SCRIPT UNTUK DATABASE GOOGLE SHEETS
@@ -1553,7 +1571,7 @@ function doPost(e) {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
             <div>
               <h2 className="text-lg font-bold flex items-center text-gray-700"><Settings className="mr-2"/> Pengaturan Lembaga & Database</h2>
-              <p className="text-xs text-gray-500 mt-1">Gunakan mode Google Sheets untuk mendapatkan penyimpanan tak terbatas dan sinkronisasi lintas perangkat.</p>
+              <p className="text-xs text-gray-500 mt-1">URL Google Apps Script Anda saat ini dikonfigurasi melalui kode sumber (Hardcoded) untuk keamanan.</p>
             </div>
             <button 
               onClick={() => setShowScriptModal(true)} 
@@ -1599,12 +1617,6 @@ function doPost(e) {
             <div>
               <label className="block text-xs font-bold mb-1 text-gray-500">URL Gambar Logo (Tautan Online)</label>
               <input type="url" name="logoUrl" defaultValue={settings?.logoUrl} className="w-full p-2.5 border rounded-xl outline-none focus:border-emerald-500 text-xs text-gray-800" placeholder="https://domain.com/logo-anda.png" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold mb-1 text-gray-500 flex items-center">
-                <span>Google Apps Script Web App URL (Kosongkan untuk Mode Simulasi Offline)</span>
-              </label>
-              <input type="url" name="appsScriptUrl" defaultValue={settings?.appsScriptUrl} className="w-full p-2.5 border rounded-xl outline-none focus:border-blue-500 text-xs font-mono text-gray-800" placeholder="https://script.google.com/macros/s/.../exec" />
             </div>
             <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-sm transition">Simpan Perubahan</button>
           </form>
