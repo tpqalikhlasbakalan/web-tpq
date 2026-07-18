@@ -253,8 +253,7 @@ export default function App() {
       if (HARDCODED_APPS_SCRIPT_URL && HARDCODED_APPS_SCRIPT_URL.trim() !== '' && HARDCODED_APPS_SCRIPT_URL !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
         await fetch(HARDCODED_APPS_SCRIPT_URL, {
           method: 'POST',
-          mode: 'no-cors', 
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'updateTable', table, data: updatedData })
         });
         showToast('Sinkronisasi Google Sheet berhasil diperbarui!');
@@ -270,7 +269,7 @@ export default function App() {
   };
 
   const handleLogin = (username, password) => {
-    const user = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password);
+    const user = users.find(u => String(u.username).toLowerCase() === String(username).toLowerCase() && String(u.password) === String(password));
     if (user) {
       setCurrentUser(user);
       sessionStorage.setItem('tpq_user', JSON.stringify(user));
@@ -1492,7 +1491,7 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
     showToast('Profil lembaga berhasil diperbarui!');
   };
 
-  const codeScriptGoogle = `// CODE GOOGLE APPS SCRIPT UNTUK DATABASE GOOGLE SHEETS
+  const codeScriptGoogle = `// CODE GOOGLE APPS SCRIPT UNTUK DATABASE GOOGLE SHEETS (V2 - FIX BUG KOLOM HILANG)
 function doGet(e) {
   var action = e.parameter.action;
   var sheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -1510,10 +1509,19 @@ function doGet(e) {
           data[sName] = values.slice(1).map(function(row) {
             var obj = {};
             headers.forEach(function(h, idx) {
+              var cellVal = row[idx];
+              if (cellVal === "") {
+                 obj[h] = cellVal;
+                 return;
+              }
               try {
-                obj[h] = JSON.parse(row[idx]);
+                if (typeof cellVal === 'string' && (cellVal === 'true' || cellVal === 'false' || cellVal.startsWith('[') || cellVal.startsWith('{'))) {
+                   obj[h] = JSON.parse(cellVal);
+                } else {
+                   obj[h] = cellVal;
+                }
               } catch(err) {
-                obj[h] = row[idx];
+                obj[h] = cellVal;
               }
             });
             return obj;
@@ -1526,7 +1534,7 @@ function doGet(e) {
     if (data.settings && data.settings.length > 0) {
       data.settings = data.settings[0];
     } else {
-      data.settings = { tpqName: "TPQ Al-Hikmah Modern", logoUrl: "", appsScriptUrl: "" };
+      data.settings = { tpqName: "TPQ Al-Hikmah Modern", logoUrl: "" };
     }
     return ContentService.createTextOutput(JSON.stringify({status: "success", data: data}))
       .setMimeType(ContentService.MimeType.JSON);
@@ -1545,20 +1553,35 @@ function doPost(e) {
   }
   s.clear();
   
-  if (table === "settings") {
+  if (table === "settings" && !Array.isArray(data)) {
     data = [data];
   }
   
   if (data.length > 0) {
-    var keys = Object.keys(data[0]);
-    s.appendRow(keys);
+    // 1. Kumpulkan semua kunci dari SELURUH baris (mencegah kolom hilang seperti guruId/hasAlarm)
+    var keySet = {};
     data.forEach(function(item) {
-      var row = keys.map(function(k) {
-        var val = item[k];
-        return (typeof val === "object" && val !== null) ? JSON.stringify(val) : val;
+      Object.keys(item).forEach(function(k) {
+        keySet[k] = true;
       });
-      s.appendRow(row);
     });
+    var keys = Object.keys(keySet);
+    
+    s.appendRow(keys);
+    
+    // 2. Masukkan data ke array untuk mempercepat proses write
+    var rows = data.map(function(item) {
+      return keys.map(function(k) {
+        var val = item[k];
+        if (val === undefined || val === null) return "";
+        return (typeof val === "object") ? JSON.stringify(val) : String(val);
+      });
+    });
+    
+    // 3. Simpan sekaligus
+    if (rows.length > 0) {
+      s.getRange(2, 1, rows.length, keys.length).setValues(rows);
+    }
   }
   return ContentService.createTextOutput(JSON.stringify({status: "success"}))
     .setMimeType(ContentService.MimeType.JSON);
