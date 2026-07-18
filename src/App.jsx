@@ -156,7 +156,17 @@ export default function App() {
 
       if (HARDCODED_APPS_SCRIPT_URL && HARDCODED_APPS_SCRIPT_URL.trim() !== '' && HARDCODED_APPS_SCRIPT_URL !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
         const response = await fetch(`${HARDCODED_APPS_SCRIPT_URL}?action=getAll`);
-        if (!response.ok) throw new Error('Server Google Sheets bermasalah.');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP Error: ${response.status}`);
+        }
+        
+        // Cek apakah balasan dari Google berupa HTML (biasanya ini peringatan akses ditolak/halaman login)
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("text/html")) {
+          throw new Error('Akses Ditolak! Pastikan setting "Who has access" diubah menjadi "Anyone".');
+        }
+
         const payload = await response.json();
         
         if (payload.status === 'success' && payload.data) {
@@ -173,7 +183,7 @@ export default function App() {
           
           if (!isInitializing) showToast('Database Google Sheets berhasil disinkronkan!');
         } else {
-          throw new Error(payload.message || 'Format data tidak sesuai.');
+          throw new Error(payload.message || 'Format data dari server tidak sesuai.');
         }
       } else {
         if (!localStorage.getItem('tpq_users')) {
@@ -187,9 +197,13 @@ export default function App() {
         setTargets(safeGetLocalStorage('tpq_targets', INITIAL_DATA.targets));
       }
     } catch (error) {
-      console.error(error);
+      console.error("Detail Error Sinkronisasi:", error);
       if (HARDCODED_APPS_SCRIPT_URL && HARDCODED_APPS_SCRIPT_URL.trim() !== '' && HARDCODED_APPS_SCRIPT_URL !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
-        showToast('Koneksi Google Sheets gagal. Menggunakan penyimpanan lokal.', 'error');
+        // Tampilkan pesan error yang lebih spesifik
+        const errorMsg = error.message.includes('Failed to fetch') 
+          ? 'Gagal menghubungi server. Periksa koneksi internet atau URL.' 
+          : error.message;
+        showToast(`Koneksi Gagal: ${errorMsg}`, 'error');
       }
       setUsers(safeGetLocalStorage('tpq_users', INITIAL_DATA.users));
       setProgress(safeGetLocalStorage('tpq_progress', INITIAL_DATA.progress));
