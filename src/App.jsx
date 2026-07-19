@@ -97,8 +97,8 @@ const normalizeUsers = (rawUsers) => {
     if (roleStr === 'santri') {
       if (u.jilid !== undefined && u.jilid !== null) {
         const jilidStr = String(u.jilid).trim();
-        if (jilidStr !== "" && jilidStr !== "null" && jilidStr !== "undefined") {
-          finalJilid = jilidStr;
+        if (jidStr !== "" && jidStr !== "null" && jidStr !== "undefined") {
+          finalJilid = jidStr;
         } else {
           finalJilid = 'Jilid 1';
         }
