@@ -641,7 +641,7 @@ export default function App() {
             setSimulatedWeekend={setSimulatedWeekend}
           />
         ) : null}
-        {currentUser.role === 'kepala_tpq' && (activeTab === 'dashboard' || activeTab === 'acc_kenaikan' || activeTab === 'target_jilid' || activeTab === 'kelola_santri' || activeTab === 'input_tabungan' || activeTab === 'otorisasi_tabungan' || activeTab === 'kelola_syahriah' || activeTab === 'hak_akses' || activeTab === 'pengaturan') && (
+        {currentUser.role === 'kepala_tpq' && (activeTab === 'dashboard' || activeTab === 'acc_kenaikan' || activeTab === 'target_jilid' || activeTab === 'input_tabungan' || activeTab === 'otorisasi_tabungan' || activeTab === 'kelola_syahriah' || activeTab === 'hak_akses' || activeTab === 'pengaturan') && (
           <KepalaView 
             activeTab={activeTab} 
             setActiveTab={setActiveTab} 
@@ -1311,9 +1311,9 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
 
   const handleEditSantri = async (santriId, updatedFields) => {
     try {
+      const jilidChanged = updatedFields.jilid !== undefined;
       const updatedUsers = users.map(u => {
         if (String(u.id) === String(santriId)) {
-          const jilidChanged = updatedFields.jilid !== undefined && u.jilid !== updatedFields.jilid;
           return {
             ...u,
             ...updatedFields,
@@ -1366,7 +1366,6 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
   const menus = [
     { id: 'acc_kenaikan', label: 'ACC Kenaikan Tingkat', icon: Award, color: 'bg-orange-100 text-orange-600', desc: 'Uji & ACC pengajuan naik jilid/kelompok juz dari guru.' },
     { id: 'target_jilid', label: 'Kurikulum Target TPQ', icon: Book, color: 'bg-blue-100 text-blue-600', desc: 'Atur kurikulum target tiap jilid, Al-Quran, hingga hafalan per juz.' },
-    { id: 'kelola_santri', label: 'Kelola Data Santri', icon: Users, color: 'bg-teal-100 text-teal-600', desc: 'Ubah nama, wali kelas, dan jilid santri secara manual dengan tombol simpan.' },
     { id: 'guru_progres', label: 'Input Progres Harian (Guru)', icon: ClipboardList, color: 'bg-emerald-100 text-emerald-600', desc: 'Masuk mode pengajar untuk menginput setoran mengaji harian.' },
     { id: 'guru_target', label: 'Penilaian Kompetensi (Guru)', icon: CheckSquare, color: 'bg-purple-100 text-purple-700', desc: 'Masuk mode pengajar untuk mencentang kompetensi jilid santri sesuai target kurikulum.' },
     { id: 'guru_kenaikan', label: 'Ajukan Kenaikan Jilid (Guru)', icon: Award, color: 'bg-orange-100 text-orange-600', desc: 'Masuk mode pengajar untuk mengajukan kenaikan jilid bimbingan Anda.' },
@@ -1449,119 +1448,6 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
                 </label>
               );
             })}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (activeTab === 'kelola_santri') {
-    const santriList = users.filter(u => u.role === 'santri');
-    const filteredSantri = santriList.filter(s => 
-      s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      (s.jilid && s.jilid.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-    const guruList = users.filter(u => u.role === 'guru' || u.role === 'kepala_tpq');
-
-    return (
-      <div className="animate-fade-in">
-        <BackButton onClick={() => setActiveTab('dashboard')} />
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-bold flex items-center text-teal-850"><Users className="mr-2 text-teal-600"/> Kelola Data & Tingkat Mengaji Santri</h2>
-              <p className="text-xs text-gray-500 mt-1">Sistem akan otomatis menyimpan perubahan nama (tekan Enter/klik luar), Wali Kelas, dan Tingkat Jilid secara instan ke Google Sheets.</p>
-            </div>
-            <div className="relative w-full md:w-64">
-              <input 
-                type="text" 
-                placeholder="Cari nama atau jilid..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="p-2.5 pl-4 border rounded-xl outline-none text-xs bg-gray-50 focus:bg-white focus:border-teal-500 w-full font-medium"
-              />
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-teal-50 text-teal-900 text-xs font-bold uppercase border-b border-teal-100">
-                  <th className="p-4 rounded-tl-xl">Nama Santri (Auto-Save)</th>
-                  <th className="p-4">Wali Kelas / Guru (Instant Save)</th>
-                  <th className="p-4">Tingkat / Jilid Mengaji (Instant Save)</th>
-                  <th className="p-4 text-center rounded-tr-xl">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredSantri.length === 0 ? (
-                  <tr>
-                    <td colSpan="4" className="p-8 text-center text-gray-500 text-sm">Tidak ada data santri yang cocok dengan pencarian.</td>
-                  </tr>
-                ) : (
-                  filteredSantri.map(santri => {
-                    const currentName = tempNames[santri.id] !== undefined ? tempNames[santri.id] : santri.name;
-                    return (
-                      <tr key={santri.id} className="border-b hover:bg-gray-50 text-xs transition">
-                        <td className="p-4 font-bold text-gray-800">
-                          <input 
-                            type="text"
-                            value={currentName}
-                            disabled={isSyncing}
-                            onChange={(e) => setTempNames({ ...tempNames, [santri.id]: e.target.value })}
-                            onBlur={(e) => {
-                              if (e.target.value.trim() !== santri.name) {
-                                handleEditSantri(santri.id, { name: e.target.value.trim() });
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                handleEditSantri(santri.id, { name: e.target.value.trim() });
-                                e.target.blur();
-                              }
-                            }}
-                            className="p-2 border rounded-xl bg-white font-semibold outline-none focus:border-teal-500 text-xs text-gray-850 w-full min-w-[150px] disabled:opacity-50"
-                          />
-                        </td>
-                        <td className="p-4 text-gray-600">
-                          <select 
-                            value={santri.guruId || ''}
-                            disabled={isSyncing}
-                            onChange={(e) => handleEditSantri(santri.id, { guruId: e.target.value !== "" ? String(e.target.value) : null })}
-                            className="p-2 border rounded-xl bg-white font-medium outline-none focus:border-teal-500 text-xs text-gray-750 w-full min-w-[150px] disabled:opacity-50"
-                          >
-                            <option value="">-- Belum Ditugaskan --</option>
-                            {guruList.map(g => (
-                              <option key={g.id} value={g.id}>{g.name}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="p-4">
-                          <select 
-                            value={santri.jilid || 'Jilid 1'}
-                            disabled={isSyncing}
-                            onChange={(e) => handleEditSantri(santri.id, { jilid: e.target.value })}
-                            className="p-2 border rounded-xl bg-white font-bold outline-none focus:border-teal-500 text-xs text-gray-750 w-full min-w-[150px] disabled:opacity-50"
-                          >
-                            {JILID_LEVELS.map(j => <option key={j} value={j}>{j}</option>)}
-                          </select>
-                        </td>
-                        <td className="p-4 text-center">
-                          {isSyncing ? (
-                            <span className="inline-flex items-center text-[10px] text-teal-600 font-medium animate-pulse">
-                              <RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin text-teal-600" /> Menyimpan...
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center bg-emerald-50 text-emerald-700 border border-emerald-100 px-2.5 py-1 rounded-full text-[10px] font-bold">
-                              <CheckCircle size={12} className="mr-1 text-emerald-600" /> Tersinkron
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
           </div>
         </div>
       </div>
@@ -1899,6 +1785,7 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
   const [newPasswordVal, setNewPasswordVal] = useState('');
   const [deletingUser, setDeletingUser] = useState(null);
   const [showScriptModal, setShowScriptModal] = useState(false);
+  const [selectedFormRole, setSelectedFormRole] = useState('santri');
 
   const togglePasswordVisibility = (id) => {
     setShowPasswordMap(prev => ({ ...prev, [id] : !prev[id] }));
@@ -1934,6 +1821,7 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
   const handleAddUser = async (e) => {
     e.preventDefault();
     const role = e.target.role.value;
+    const initialJilid = role === 'santri' ? e.target.jilid.value : undefined;
 
     const newUser = {
       id: Date.now().toString(),
@@ -1942,7 +1830,7 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
       role: role,
       name: e.target.name.value,
       guruId: null,
-      jilid: role === 'santri' ? 'Jilid 1' : undefined,
+      jilid: initialJilid,
       hasAlarm: false,
       lastAccDate: '',
       completedTargets: [],
@@ -1959,6 +1847,7 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
     await updateTable('users', updated);
     showToast('Akun pengguna baru berhasil ditambahkan!');
     e.target.reset();
+    setSelectedFormRole('santri'); // reset form role select state to default
   };
 
   const handleSaveSettings = async (e) => {
@@ -2240,7 +2129,7 @@ function doPost(e) {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h2 className="text-lg font-bold mb-4 flex items-center text-purple-800"><UserPlus className="mr-2"/> Daftarkan Akun Pengguna Baru</h2>
           <form onSubmit={handleAddUser} className="bg-gray-50 p-5 rounded-2xl border border-gray-200">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
               <div>
                 <label className="block text-[11px] font-bold text-gray-600 mb-1">Nama Lengkap</label>
                 <input type="text" name="name" placeholder="Ahmad Zaki" required className="p-2.5 w-full border rounded-xl focus:border-purple-500 outline-none text-xs bg-white font-bold text-gray-800" />
@@ -2255,7 +2144,13 @@ function doPost(e) {
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-gray-600 mb-1">Hak Akses Peran (Role)</label>
-                <select name="role" required className="p-2.5 w-full border rounded-xl focus:border-purple-500 outline-none font-bold text-gray-700 text-xs bg-white">
+                <select 
+                  name="role" 
+                  value={selectedFormRole}
+                  onChange={(e) => setSelectedFormRole(e.target.value)}
+                  required 
+                  className="p-2.5 w-full border rounded-xl focus:border-purple-500 outline-none font-bold text-gray-700 text-xs bg-white"
+                >
                   <option value="santri">Santri / Wali</option>
                   <option value="guru">Guru Ngaji</option>
                   <option value="bendahara">Bendahara</option>
@@ -2263,6 +2158,20 @@ function doPost(e) {
                   <option value="admin">Admin</option>
                 </select>
               </div>
+              {selectedFormRole === 'santri' ? (
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-600 mb-1">Tingkatan / Jilid Awal</label>
+                  <select 
+                    name="jilid" 
+                    required 
+                    className="p-2.5 w-full border rounded-xl focus:border-purple-500 outline-none font-bold text-gray-700 text-xs bg-white"
+                  >
+                    {JILID_LEVELS.map(j => <option key={j} value={j}>{j}</option>)}
+                  </select>
+                </div>
+              ) : (
+                <div className="hidden lg:block"></div>
+              )}
             </div>
             <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl shadow-sm text-xs transition duration-200">
                Buat Akun
@@ -2295,6 +2204,11 @@ function doPost(e) {
                     }`}>
                       {u.role ? u.role.replace('_', ' ') : ''}
                     </span>
+                    {u.role === 'santri' && u.jilid && (
+                      <span className="mt-1 ml-1.5 inline-block px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border bg-teal-50 text-teal-700 border-teal-200">
+                        {u.jilid}
+                      </span>
+                    )}
                   </td>
                   <td className="p-4 font-mono font-bold text-gray-600">{u.username}</td>
                   <td className="p-4">
