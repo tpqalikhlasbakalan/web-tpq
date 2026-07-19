@@ -1643,6 +1643,8 @@ function BendaharaView({ activeTab, setActiveTab, users, savings, settings, upda
 
 function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
   const [tempJilids, setTempJilids] = useState({});
+  const [tempGurus, setTempGurus] = useState({});
+  const [tempNames, setTempNames] = useState({});
 
   const handleAccKenaikan = async (progressId, santriId) => {
     const santri = users.find(u => String(u.id) === String(santriId));
@@ -1660,15 +1662,31 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
     showToast(`Ujian disetujui! Santri berhasil naik ke tingkat ${nextJid}`);
   };
 
-  const handleEditJilid = async (santriId, newJilid) => {
-    const updatedUsers = users.map(u => 
-      String(u.id) === String(santriId) ? { ...u, jilid: newJid, completedTargets: [] } : u
-    );
+  const handleEditSantri = async (santriId, newName, newJilid, newGuruId) => {
+    if (!newName || !newName.trim()) {
+      showToast('Nama santri tidak boleh kosong!', 'error');
+      return;
+    }
+
+    const updatedUsers = users.map(u => {
+      if (String(u.id) === String(santriId)) {
+        const jilidChanged = u.jilid !== newJilid;
+        return { 
+          ...u, 
+          name: newName.trim(),
+          jilid: newJilid,
+          guruId: newGuruId !== "" ? String(newGuruId) : null,
+          completedTargets: jilidChanged ? [] : (u.completedTargets || [])
+        };
+      }
+      return u;
+    });
+
     const success = await updateTable('users', updatedUsers);
     if (success) {
-      showToast(`Berhasil! Tingkat mengaji santri berhasil diperbarui menjadi ${newJilid}.`, 'success');
+      showToast(`Berhasil memperbarui data santri!`, 'success');
     } else {
-      showToast('Gagal memperbarui tingkatan santri ke server Sheets.', 'error');
+      showToast('Gagal memperbarui data santri ke server Sheets.', 'error');
     }
   };
 
@@ -1706,7 +1724,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
   const menus = [
     { id: 'acc_kenaikan', label: 'ACC Kenaikan Tingkat', icon: Award, color: 'bg-orange-100 text-orange-600', desc: 'Uji & ACC pengajuan naik jilid/kelompok juz dari guru.' },
     { id: 'target_jilid', label: 'Kurikulum Target TPQ', icon: Book, color: 'bg-blue-100 text-blue-600', desc: 'Atur kurikulum target tiap jilid, Al-Quran, hingga hafalan per juz.' },
-    { id: 'kelola_santri', label: 'Kelola Data Santri', icon: Users, color: 'bg-teal-100 text-teal-600', desc: 'Ubah tingkat jilid/PSQ santri secara manual dengan tombol simpan.' },
+    { id: 'kelola_santri', label: 'Kelola Data Santri', icon: Users, color: 'bg-teal-100 text-teal-600', desc: 'Ubah nama, wali kelas, dan jilid santri secara manual dengan tombol simpan.' },
     { id: 'guru_progres', label: 'Input Progres Harian (Guru)', icon: ClipboardList, color: 'bg-emerald-100 text-emerald-600', desc: 'Masuk mode pengajar untuk menginput setoran mengaji harian.' },
     { id: 'guru_target', label: 'Penilaian Kompetensi (Guru)', icon: CheckSquare, color: 'bg-purple-100 text-purple-700', desc: 'Masuk mode pengajar untuk mencentang kompetensi jilid santri sesuai target kurikulum.' },
     { id: 'guru_kenaikan', label: 'Ajukan Kenaikan Jilid (Guru)', icon: Award, color: 'bg-orange-100 text-orange-600', desc: 'Masuk mode pengajar untuk mengajukan kenaikan jilid bimbingan Anda.' },
@@ -1797,53 +1815,74 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
 
   if (activeTab === 'kelola_santri') {
     const santriList = users.filter(u => u.role === 'santri');
+    const guruList = users.filter(u => u.role === 'guru');
     return (
       <div className="animate-fade-in animate-duration-300">
         <BackButton onClick={() => setActiveTab('dashboard')} />
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="mb-6">
-            <h2 className="text-lg font-bold flex items-center text-teal-800"><Users className="mr-2"/> Kelola Jilid & Tingkat Mengaji Santri</h2>
-            <p className="text-xs text-gray-500 mt-1">Pilih jilid baru lalu klik tombol **Simpan** untuk meng-update jilid santri. Target kompetensi penilaian pada menu guru akan otomatis menyesuaikan.</p>
+            <h2 className="text-lg font-bold flex items-center text-teal-800"><Users className="mr-2"/> Kelola Data & Tingkat Mengaji Santri</h2>
+            <p className="text-xs text-gray-500 mt-1">Sesuaikan Nama, pilih Wali Kelas (Guru bimbingan), dan tentukan Jilid santri secara manual. Klik tombol **Simpan** untuk menerapkan perubahan.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-teal-50 text-teal-900 text-xs font-bold uppercase border-b border-teal-100">
                   <th className="p-4 rounded-tl-xl">Nama Santri</th>
-                  <th className="p-4">Wali Kelas</th>
-                  <th className="p-4 rounded-tr-xl">Tingkat / Jilid Mengaji</th>
+                  <th className="p-4">Wali Kelas / Guru</th>
+                  <th className="p-4">Tingkat / Jilid Mengaji</th>
+                  <th className="p-4 text-center rounded-tr-xl">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {santriList.length === 0 ? (
                   <tr>
-                    <td colSpan="3" className="p-8 text-center text-gray-500 text-sm">Belum ada data santri.</td>
+                    <td colSpan="4" className="p-8 text-center text-gray-500 text-sm">Belum ada data santri.</td>
                   </tr>
                 ) : (
                   santriList.map(santri => {
-                    const guru = users.find(u => u.id !== null && String(u.id) === String(santri.guruId));
+                    const selectedName = tempNames[santri.id] !== undefined ? tempNames[santri.id] : santri.name;
+                    const selectedGuruId = tempGurus[santri.id] !== undefined ? tempGurus[santri.id] : (santri.guruId || '');
                     const selectedJilid = tempJilids[santri.id] !== undefined ? tempJilids[santri.id] : (santri.jilid || 'Jilid 1');
                     
                     return (
                       <tr key={santri.id} className="border-b hover:bg-gray-50 text-xs transition">
-                        <td className="p-4 font-bold text-gray-800">{santri.name}</td>
-                        <td className="p-4 text-gray-600">{guru ? guru.name : 'Belum Ditugaskan'}</td>
+                        <td className="p-4 font-bold text-gray-800">
+                          <input 
+                            type="text"
+                            value={selectedName}
+                            onChange={(e) => setTempNames({ ...tempNames, [santri.id]: e.target.value })}
+                            className="p-2 border rounded-xl bg-white font-semibold outline-none focus:border-teal-500 text-xs text-gray-800 w-full min-w-[150px]"
+                          />
+                        </td>
+                        <td className="p-4 text-gray-600">
+                          <select 
+                            value={selectedGuruId}
+                            onChange={(e) => setTempGurus({ ...tempGurus, [santri.id]: e.target.value })}
+                            className="p-2 border rounded-xl bg-white font-medium outline-none focus:border-teal-500 text-xs text-gray-700 w-full min-w-[150px]"
+                          >
+                            <option value="">-- Belum Ditugaskan --</option>
+                            {guruList.map(g => (
+                              <option key={g.id} value={g.id}>{g.name}</option>
+                            ))}
+                          </select>
+                        </td>
                         <td className="p-4">
-                          <div className="flex items-center space-x-3">
-                            <select 
-                              value={selectedJilid}
-                              onChange={(e) => setTempJilids({ ...tempJilids, [santri.id]: e.target.value })}
-                              className="p-2.5 border rounded-xl bg-white font-bold outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-200 text-xs text-gray-700 shadow-sm min-w-[200px]"
-                            >
-                              {JILID_LEVELS.map(j => <option key={j} value={j}>{j}</option>)}
-                            </select>
-                            <button
-                              onClick={() => handleEditJilid(santri.id, selectedJilid)}
-                              className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center transition-all duration-200 shadow-sm gap-1.5"
-                            >
-                              <CheckCircle size={14} /> Simpan
-                            </button>
-                          </div>
+                          <select 
+                            value={selectedJilid}
+                            onChange={(e) => setTempJilids({ ...tempJilids, [santri.id]: e.target.value })}
+                            className="p-2 border rounded-xl bg-white font-bold outline-none focus:border-teal-500 text-xs text-gray-700 w-full min-w-[150px]"
+                          >
+                            {JILID_LEVELS.map(j => <option key={j} value={j}>{j}</option>)}
+                          </select>
+                        </td>
+                        <td className="p-4 text-center">
+                          <button
+                            onClick={() => handleEditSantri(santri.id, selectedName, selectedJilid, selectedGuruId)}
+                            className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center transition-all duration-200 shadow-sm gap-1.5 mx-auto"
+                          >
+                            <CheckCircle size={14} /> Simpan
+                          </button>
                         </td>
                       </tr>
                     );
