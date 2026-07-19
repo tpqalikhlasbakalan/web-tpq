@@ -43,6 +43,76 @@ const INITIAL_DATA = {
   }
 };
 
+// Fungsi normalisasi untuk mengembalikan konsistensi data dari Google Sheets (mencegah auto-coercion angka)
+const normalizeUsers = (rawUsers) => {
+  if (!Array.isArray(rawUsers)) return [];
+  return rawUsers.map(u => {
+    let completed = [];
+    try {
+      if (Array.isArray(u.completedTargets)) {
+        completed = u.completedTargets.map(String);
+      } else if (typeof u.completedTargets === 'string' && u.completedTargets.trim() !== '') {
+        const parsed = JSON.parse(u.completedTargets);
+        completed = Array.isArray(parsed) ? parsed.map(String) : [];
+      }
+    } catch (e) {
+      console.error("Error parsing completedTargets", e);
+    }
+
+    let history = [];
+    try {
+      if (Array.isArray(u.historyBayar)) {
+        history = u.historyBayar.map(String);
+      } else if (typeof u.historyBayar === 'string' && u.historyBayar.trim() !== '') {
+        const parsed = JSON.parse(u.historyBayar);
+        history = Array.isArray(parsed) ? parsed.map(String) : [];
+      }
+    } catch (e) {
+      console.error("Error parsing historyBayar", e);
+    }
+
+    return {
+      ...u,
+      id: u.id !== undefined && u.id !== null ? String(u.id) : '',
+      username: u.username !== undefined && u.username !== null ? String(u.username) : '',
+      password: u.password !== undefined && u.password !== null ? String(u.password) : '',
+      role: u.role !== undefined && u.role !== null ? String(u.role) : '',
+      name: u.name !== undefined && u.name !== null ? String(u.name) : '',
+      guruId: u.guruId !== undefined && u.guruId !== null && String(u.guruId).trim() !== "" ? String(u.guruId) : null,
+      jilid: u.jilid !== undefined && u.jilid !== null ? String(u.jilid) : undefined,
+      hasAlarm: u.hasAlarm === true || u.hasAlarm === 'true' || u.hasAlarm === 1,
+      lastAccDate: u.lastAccDate !== undefined && u.lastAccDate !== null ? String(u.lastAccDate) : '',
+      completedTargets: completed,
+      historyBayar: history
+    };
+  });
+};
+
+const normalizeProgress = (rawProgress) => {
+  if (!Array.isArray(rawProgress)) return [];
+  return rawProgress.map(p => ({
+    ...p,
+    id: p.id !== undefined && p.id !== null ? String(p.id) : '',
+    santriId: p.santriId !== undefined && p.santriId !== null ? String(p.santriId) : '',
+    date: p.date !== undefined && p.date !== null ? String(p.date) : '',
+    surah: p.surah !== undefined && p.surah !== null ? String(p.surah) : '',
+    ayat: p.ayat !== undefined && p.ayat !== null ? String(p.ayat) : '',
+    nilai: p.nilai !== undefined && p.nilai !== null ? String(p.nilai) : '',
+    status: p.status !== undefined && p.status !== null ? String(p.status) : '',
+    type: p.type !== undefined && p.type !== null ? String(p.type) : ''
+  }));
+};
+
+const normalizeTargets = (rawTargets) => {
+  if (!Array.isArray(rawTargets)) return [];
+  return rawTargets.map(t => ({
+    ...t,
+    id: t.id !== undefined && t.id !== null ? String(t.id) : '',
+    level: t.level !== undefined && t.level !== null ? String(t.level) : '',
+    description: t.description !== undefined && t.description !== null ? String(t.description) : ''
+  }));
+};
+
 const safeGetLocalStorage = (key, fallback) => {
   try {
     const item = localStorage.getItem(key);
@@ -120,7 +190,7 @@ const MenuGrid = ({ menus, onSelect }) => (
       <button 
         key={menu.id} 
         onClick={() => onSelect(menu.id)}
-        className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-emerald-200 flex flex-col items-center justify-center text-center transition-all duration-300 group relative overflow-hidden w-full text-left sm:text-center"
+        className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-emerald-200 flex flex-col items-center justify-center text-center transition-all duration-300 group relative overflow-hidden w-full text-left sm:text-center animate-fade-in"
       >
         <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-50 rounded-full -mr-8 -mt-8 transition-all group-hover:scale-150 opacity-40"></div>
         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 shadow-sm ${menu.color}`}>
@@ -161,10 +231,9 @@ export default function App() {
           throw new Error(`HTTP Error: ${response.status}`);
         }
         
-        // Cek apakah balasan dari Google berupa HTML (biasanya ini peringatan akses ditolak/halaman login)
         const contentType = response.headers.get("content-type");
         if (contentType && contentType.includes("text/html")) {
-          throw new Error('Akses Ditolak! Pastikan setting "Who has access" diubah menjadi "Anyone".');
+          throw new Error('Akses Ditolak! Pastikan setting "Who has access" di Google Apps Script dideploy sebagai "Anyone".');
         }
 
         const payload = await response.json();
@@ -172,9 +241,10 @@ export default function App() {
         if (payload.status === 'success' && payload.data) {
           const { users: sUsers, progress: sProgress, targets: sTargets, settings: sSettings } = payload.data;
           
-          const finalUsers = (sUsers && sUsers.length > 0) ? sUsers : INITIAL_DATA.users;
-          const finalProgress = (sProgress && sProgress.length > 0) ? sProgress : INITIAL_DATA.progress;
-          const finalTargets = (sTargets && sTargets.length > 0) ? sTargets : INITIAL_DATA.targets;
+          // Memastikan tipe data selalu dikonversi menjadi string dan boolean murni sebelum dimasukkan ke dalam State
+          const finalUsers = normalizeUsers((sUsers && sUsers.length > 0) ? sUsers : INITIAL_DATA.users);
+          const finalProgress = normalizeProgress((sProgress && sProgress.length > 0) ? sProgress : INITIAL_DATA.progress);
+          const finalTargets = normalizeTargets((sTargets && sTargets.length > 0) ? sTargets : INITIAL_DATA.targets);
           const finalSettings = (sSettings && Object.keys(sSettings).length > 0) ? sSettings : localSettings;
 
           setUsers(finalUsers);
@@ -198,9 +268,9 @@ export default function App() {
           localStorage.setItem('tpq_targets', JSON.stringify(INITIAL_DATA.targets));
           localStorage.setItem('tpq_settings', JSON.stringify(INITIAL_DATA.settings));
         }
-        setUsers(safeGetLocalStorage('tpq_users', INITIAL_DATA.users));
-        setProgress(safeGetLocalStorage('tpq_progress', INITIAL_DATA.progress));
-        setTargets(safeGetLocalStorage('tpq_targets', INITIAL_DATA.targets));
+        setUsers(normalizeUsers(safeGetLocalStorage('tpq_users', INITIAL_DATA.users)));
+        setProgress(normalizeProgress(safeGetLocalStorage('tpq_progress', INITIAL_DATA.progress)));
+        setTargets(normalizeTargets(safeGetLocalStorage('tpq_targets', INITIAL_DATA.targets)));
       }
     } catch (error) {
       console.error("Detail Error Sinkronisasi:", error);
@@ -210,9 +280,9 @@ export default function App() {
           : error.message;
         showToast(`Koneksi Gagal: ${errorMsg}`, 'error');
       }
-      setUsers(safeGetLocalStorage('tpq_users', INITIAL_DATA.users));
-      setProgress(safeGetLocalStorage('tpq_progress', INITIAL_DATA.progress));
-      setTargets(safeGetLocalStorage('tpq_targets', INITIAL_DATA.targets));
+      setUsers(normalizeUsers(safeGetLocalStorage('tpq_users', INITIAL_DATA.users)));
+      setProgress(normalizeProgress(safeGetLocalStorage('tpq_progress', INITIAL_DATA.progress)));
+      setTargets(normalizeTargets(safeGetLocalStorage('tpq_targets', INITIAL_DATA.targets)));
     } finally {
       setIsSyncing(false);
       setIsInitializing(false);
@@ -223,7 +293,12 @@ export default function App() {
     loadDatabase();
     try {
       const savedUser = sessionStorage.getItem('tpq_user');
-      if (savedUser) setCurrentUser(JSON.parse(savedUser));
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        // Memaksa format currentUser agar ID-nya adalah string untuk kompatibilitas filter
+        parsed.id = String(parsed.id);
+        setCurrentUser(parsed);
+      }
     } catch (e) {
       console.error("Session restoration error:", e);
     }
@@ -231,7 +306,7 @@ export default function App() {
 
   useEffect(() => {
     if (currentUser && users.length > 0) {
-      const fresh = users.find(u => u.id === currentUser.id);
+      const fresh = users.find(u => String(u.id) === String(currentUser.id));
       if (fresh && JSON.stringify(fresh) !== JSON.stringify(currentUser)) {
         setCurrentUser(fresh);
         sessionStorage.setItem('tpq_user', JSON.stringify(fresh));
@@ -242,24 +317,50 @@ export default function App() {
   const updateTable = async (table, updatedData) => {
     setIsSyncing(true);
     try {
-      // Simpan di LocalStorage agar performa UI tetap responsif
-      localStorage.setItem(`tpq_${table}`, JSON.stringify(updatedData));
-      
-      if (table === 'users') setUsers(updatedData);
-      if (table === 'progress') setProgress(updatedData);
-      if (table === 'targets') setTargets(updatedData);
-      if (table === 'settings') setSettings(updatedData);
+      // Selalu lakukan normalisasi sebelum menyimpan ke LocalStorage dan state React
+      let normalizedData = updatedData;
+      if (table === 'users') {
+        normalizedData = normalizeUsers(updatedData);
+        setUsers(normalizedData);
+      } else if (table === 'progress') {
+        normalizedData = normalizeProgress(updatedData);
+        setProgress(normalizedData);
+      } else if (table === 'targets') {
+        normalizedData = normalizeTargets(updatedData);
+        setTargets(normalizedData);
+      } else if (table === 'settings') {
+        setSettings(normalizedData);
+      }
+
+      localStorage.setItem(`tpq_${table}`, JSON.stringify(normalizedData));
 
       if (HARDCODED_APPS_SCRIPT_URL && HARDCODED_APPS_SCRIPT_URL.trim() !== '' && HARDCODED_APPS_SCRIPT_URL !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
-        // Menggunakan fetch standard dengan tipe text/plain bypass CORS dengan aman ke Google Apps Script
         const response = await fetch(HARDCODED_APPS_SCRIPT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'updateTable', table, data: updatedData })
+          body: JSON.stringify({ action: 'updateTable', table, data: normalizedData })
         });
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
+        }
+
+        // Cek apakah respons berupa HTML (berarti gagal login Google / butuh izin "Anyone")
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("text/html")) {
+          throw new Error('Akses Google Sheets Ditolak! Harap deploy ulang Web App Anda dengan setelan "Who has access" diset ke "Anyone".');
+        }
+
+        const resultText = await response.text();
+        try {
+          const resultJson = JSON.parse(resultText);
+          if (resultJson.status !== 'success') {
+            throw new Error(resultJson.message || 'Respons server gagal menyimpan data.');
+          }
+        } catch (jsonErr) {
+          if (resultText.includes("Error") || resultText.includes("Exception")) {
+            throw new Error(`Google Apps Script Error: ${resultText.substring(0, 150)}`);
+          }
         }
 
         showToast('Sinkronisasi Google Sheet berhasil diperbarui!');
@@ -315,7 +416,7 @@ export default function App() {
           <div className="text-center mb-8">
             {settings.logoUrl ? (
               <div className="mx-auto mb-4 flex justify-center">
-                <img src={settings.logoUrl} alt="Logo" className="max-w-full h-24 object-contain animate-pulse" />
+                <img src={settings.logoUrl} alt="Logo" className="max-w-full h-24 object-contain" />
               </div>
             ) : (
               <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden shadow-inner">
@@ -460,15 +561,15 @@ export default function App() {
 }
 
 function SantriView({ activeTab, setActiveTab, user, users, progress, targets, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
-  const currentUser = users.find(u => u.id === user.id) || user;
+  const currentUser = users.find(u => String(u.id) === String(user.id)) || user;
 
   const handleAccMingguan = async () => {
-    const updatedUsers = users.map(u => u.id === user.id ? { ...u, lastAccDate: new Date().toISOString() } : u);
+    const updatedUsers = users.map(u => String(u.id) === String(user.id) ? { ...u, lastAccDate: new Date().toISOString() } : u);
     await updateTable('users', updatedUsers);
     showToast('Alhamdulillah! Progres mingguan berhasil di-ACC orang tua.');
   };
 
-  const myProgress = progress.filter(p => p.santriId === user.id).reverse();
+  const myProgress = progress.filter(p => String(p.santriId) === String(user.id)).reverse();
   const myTargets = targets.filter(t => t.level === currentUser.jilid);
 
   const menus = [
@@ -587,7 +688,7 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, u
               {myTargets.length > 0 ? (
                  <ul className="space-y-3">
                    {myTargets.map(t => {
-                     const isCompleted = currentUser.completedTargets?.includes(t.id);
+                     const isCompleted = currentUser.completedTargets?.includes(String(t.id));
                      return (
                        <li key={t.id} className="flex items-start text-gray-700 text-sm">
                          <CheckSquare className={`w-5 h-5 mr-3 mt-0.5 flex-shrink-0 ${isCompleted ? 'text-emerald-600' : 'text-gray-300'}`} />
@@ -612,7 +713,7 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, u
           ) : (
              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                {currentUser.historyBayar.map((date, idx) => (
-                 <div key={idx} className="bg-emerald-50 text-emerald-900 border border-emerald-100 p-4 rounded-xl flex justify-between items-center shadow-sm">
+                 <div key={idx} className="bg-emerald-50 text-emerald-900 border border-emerald-100 p-4 rounded-xl flex justify-between items-center shadow-sm animate-fade-in">
                    <div className="flex items-center">
                      <CheckCircle size={20} className="mr-2.5 text-emerald-600"/>
                      <div>
@@ -632,7 +733,6 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, u
 }
 
 function GuruView({ activeTab, setActiveTab, user, users, progress, targets, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
-
   const [expandedSantriId, setExpandedSantriId] = useState(null);
 
   const toggleSantriExpand = (santriId) => {
@@ -640,41 +740,43 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, upd
   };
 
   const handleKlaim = async (santriId) => {
-    const updatedUsers = users.map(u => u.id === santriId ? { ...u, guruId: user.id } : u);
+    // Memastikan relasi ID disimpan dalam format string murni agar tidak tercoerces secara otomatis
+    const updatedUsers = users.map(u => String(u.id) === String(santriId) ? { ...u, guruId: String(user.id) } : u);
     await updateTable('users', updatedUsers);
     showToast('Berhasil mengklaim bimbingan santri!');
   };
 
   const handleLepasKlaim = async (santriId) => {
-    const updatedUsers = users.map(u => u.id === santriId ? { ...u, guruId: null } : u);
+    const updatedUsers = users.map(u => String(u.id) === String(santriId) ? { ...u, guruId: null } : u);
     await updateTable('users', updatedUsers);
     showToast('Klaim bimbingan dilepaskan.');
   };
 
   const handleCeklisTarget = async (santriId, targetId, currentChecked) => {
-    const targetSantri = users.find(u => u.id === santriId);
+    const targetSantri = users.find(u => String(u.id) === String(santriId));
     if (!targetSantri) return;
 
     let completed = targetSantri.completedTargets || [];
+    const tIdString = String(targetId);
     if (currentChecked) {
-      completed = completed.filter(id => id !== targetId);
+      completed = completed.filter(id => String(id) !== tIdString);
     } else {
-      completed = [...completed, targetId];
+      completed = [...completed, tIdString];
     }
 
-    const updatedUsers = users.map(u => u.id === santriId ? { ...u, completedTargets: completed } : u);
+    const updatedUsers = users.map(u => String(u.id) === String(santriId) ? { ...u, completedTargets: completed } : u);
     await updateTable('users', updatedUsers);
     showToast('Target pencapaian santri diperbarui!');
   };
 
   const submitProgress = async (e, santriId, type) => {
     e.preventDefault();
-    const targetSantri = users.find(u => u.id === santriId);
+    const targetSantri = users.find(u => String(u.id) === String(santriId));
     if (!targetSantri) return;
     
     if (type === 'kenaikan') {
       const levelTargets = targets.filter(t => t.level === targetSantri.jilid);
-      const completedCount = levelTargets.filter(t => targetSantri.completedTargets?.includes(t.id)).length;
+      const completedCount = levelTargets.filter(t => targetSantri.completedTargets?.includes(String(t.id))).length;
       if (levelTargets.length > 0 && completedCount < levelTargets.length) {
         showToast('Gagal! Santri belum menguasai seluruh kompetensi jilid saat ini.', 'error');
         return;
@@ -683,7 +785,7 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, upd
 
     const newProgress = {
       id: Date.now().toString(),
-      santriId,
+      santriId: String(santriId),
       date: e.target.date.value,
       surah: e.target.surah.value,
       ayat: e.target.ayat.value,
@@ -706,7 +808,8 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, upd
     { id: 'klaim_santri', label: 'Klaim & Kelola Santri', icon: UserPlus, color: 'bg-blue-100 text-blue-600', desc: 'Ambil alokasi bimbingan santri baru atau lepaskan bimbingan.' },
   ];
 
-  const mySantri = users.filter(u => u.role === 'santri' && u.guruId === user.id);
+  // Gunakan pencocokan ID aman (String comparison) untuk filter klaim bimbingan
+  const mySantri = users.filter(u => u.role === 'santri' && u.guruId !== null && String(u.guruId) === String(user.id));
 
   if (activeTab === 'dashboard') {
     return (
@@ -741,16 +844,16 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, upd
           <h2 className="text-lg font-bold mb-6 flex items-center text-blue-800"><UserPlus className="mr-2"/> Kelola Alokasi Pengajaran Santri</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="border border-gray-100 rounded-2xl p-4 bg-gray-50/50">
-              <h3 className="font-bold text-sm text-gray-700 mb-4 border-b pb-2 flex items-center"><Unlock size={16} className="mr-1.5 text-blue-600"/> Tersedia ({users.filter(u => u.role === 'santri' && !u.guruId).length})</h3>
+              <h3 className="font-bold text-sm text-gray-700 mb-4 border-b pb-2 flex items-center"><Unlock size={16} className="mr-1.5 text-blue-600"/> Tersedia ({users.filter(u => u.role === 'santri' && (u.guruId === null || u.guruId === '')).length})</h3>
               <div className="space-y-3">
-                {users.filter(u => u.role === 'santri' && !u.guruId).length === 0 && <p className="text-gray-400 text-xs italic text-center py-4">Semua santri memiliki pengajar.</p>}
-                {users.filter(u => u.role === 'santri' && !u.guruId).map(s => (
-                  <div key={s.id} className="bg-white p-3 rounded-xl border flex justify-between items-center shadow-sm">
+                {users.filter(u => u.role === 'santri' && (u.guruId === null || u.guruId === '')).length === 0 && <p className="text-gray-400 text-xs italic text-center py-4">Semua santri memiliki pengajar.</p>}
+                {users.filter(u => u.role === 'santri' && (u.guruId === null || u.guruId === '')).map(s => (
+                  <div key={s.id} className="bg-white p-3 rounded-xl border flex justify-between items-center shadow-sm animate-fade-in">
                     <div>
                       <p className="font-bold text-gray-800 text-xs">{s.name}</p>
                       <span className="bg-blue-50 text-blue-700 font-semibold px-2 py-0.5 rounded text-[10px] border border-blue-100">{s.jilid}</span>
                     </div>
-                    <button onClick={() => handleKlaim(s.id)} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold transition">Klaim</button>
+                    <button onClick={() => handleKlaim(s.id)} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold transition shadow-xs">Klaim</button>
                   </div>
                 ))}
               </div>
@@ -761,25 +864,25 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, upd
               <div className="space-y-3">
                 {mySantri.length === 0 && <p className="text-emerald-600/60 text-xs italic text-center py-4">Belum ada santri diklaim.</p>}
                 {mySantri.map(s => (
-                  <div key={s.id} className="bg-white p-3 rounded-xl border flex justify-between items-center shadow-sm">
+                  <div key={s.id} className="bg-white p-3 rounded-xl border flex justify-between items-center shadow-sm animate-fade-in">
                     <div>
                       <p className="font-bold text-gray-800 text-xs">{s.name}</p>
                       <span className="bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded text-[10px] border border-emerald-100">{s.jilid}</span>
                     </div>
-                    <button onClick={() => handleLepasKlaim(s.id)} className="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-[11px] font-bold transition">Lepas</button>
+                    <button onClick={() => handleLepasKlaim(s.id)} className="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-[11px] font-bold transition shadow-xs">Lepas</button>
                   </div>
                 ))}
               </div>
             </div>
 
             <div className="border border-red-100 rounded-2xl p-4 bg-red-50/10">
-              <h3 className="font-bold text-sm text-red-800 mb-4 border-b pb-2 flex items-center"><Lock size={16} className="mr-1.5 text-red-600"/> Pengajar Lain ({users.filter(u => u.role === 'santri' && u.guruId && u.guruId !== user.id).length})</h3>
+              <h3 className="font-bold text-sm text-red-800 mb-4 border-b pb-2 flex items-center"><Lock size={16} className="mr-1.5 text-red-600"/> Pengajar Lain ({users.filter(u => u.role === 'santri' && u.guruId !== null && u.guruId !== '' && String(u.guruId) !== String(user.id)).length})</h3>
               <div className="space-y-3">
-                {users.filter(u => u.role === 'santri' && u.guruId && u.guruId !== user.id).length === 0 && <p className="text-red-600/40 text-xs italic text-center py-4">Kosong.</p>}
-                {users.filter(u => u.role === 'santri' && u.guruId && u.guruId !== user.id).map(s => {
-                  const sGuru = users.find(u => u.id === s.guruId);
+                {users.filter(u => u.role === 'santri' && u.guruId !== null && u.guruId !== '' && String(u.guruId) !== String(user.id)).length === 0 && <p className="text-red-600/40 text-xs italic text-center py-4">Kosong.</p>}
+                {users.filter(u => u.role === 'santri' && u.guruId !== null && u.guruId !== '' && String(u.guruId) !== String(user.id)).map(s => {
+                  const sGuru = users.find(u => String(u.id) === String(s.guruId));
                   return (
-                    <div key={s.id} className="bg-white p-3 rounded-xl border flex flex-col gap-1.5 shadow-sm opacity-95">
+                    <div key={s.id} className="bg-white p-3 rounded-xl border flex flex-col gap-1.5 shadow-sm opacity-95 animate-fade-in">
                       <div className="flex justify-between items-center">
                         <p className="font-bold text-gray-800 text-xs">{s.name}</p>
                         <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-[10px] font-semibold">{s.jilid}</span>
@@ -797,7 +900,7 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, upd
       {activeTab === 'isi_progres' && (
         <div className="space-y-6">
           <h2 className="text-lg font-bold flex items-center text-emerald-800"><ClipboardList className="mr-2"/> Input Capaian Nilai Mengaji Harian</h2>
-          {mySantri.length === 0 && <div className="bg-blue-50 p-6 rounded-2xl text-blue-800 text-center border border-blue-100 text-sm font-semibold">Silakan lakukan klaim santri terlebih dahulu untuk menginput progres.</div>}
+          {mySantri.length === 0 && <div className="bg-blue-50 p-6 rounded-2xl text-blue-800 text-center border border-blue-100 text-sm font-semibold shadow-xs">Silakan lakukan klaim santri terlebih dahulu untuk menginput progres.</div>}
           
           <div className="space-y-4">
             {mySantri.map(santri => {
@@ -806,7 +909,7 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, upd
               const santriNeedsAcc = isAccNeeded(santri.lastAccDate, simulatedWeekend || isActualSaturdayNight);
               const isExpanded = expandedSantriId === santri.id;
               
-              const riwayatSantri = progress.filter(p => p.santriId === santri.id).reverse();
+              const riwayatSantri = progress.filter(p => String(p.santriId) === String(santri.id)).reverse();
 
               return (
                 <div key={santri.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col transition-all duration-300">
@@ -884,16 +987,16 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, upd
                             <form onSubmit={(e) => submitProgress(e, santri.id, 'harian')} className="space-y-4">
                               <div>
                                 <label className="block text-[11px] font-bold text-gray-500 mb-1">Tanggal Kegiatan</label>
-                                <input type="date" name="date" required defaultValue={new Date().toISOString().split('T')[0]} className="w-full p-2.5 border rounded-xl text-xs bg-gray-50 outline-none focus:border-emerald-500" />
+                                <input type="date" name="date" required defaultValue={new Date().toISOString().split('T')[0]} className="w-full p-2.5 border rounded-xl text-xs bg-gray-50 outline-none focus:border-emerald-500 font-medium" />
                               </div>
                               <div className="flex flex-col sm:flex-row gap-3">
                                 <div className="w-full sm:w-1/2">
                                   <label className="block text-[11px] font-bold text-gray-500 mb-1">Surah / Hal Buku</label>
-                                  <input type="text" name="surah" placeholder="An-Naba / Hal 12" required className="w-full p-2.5 border rounded-xl text-xs bg-gray-50 outline-none focus:border-emerald-500" />
+                                  <input type="text" name="surah" placeholder="An-Naba / Hal 12" required className="w-full p-2.5 border rounded-xl text-xs bg-gray-50 outline-none focus:border-emerald-500 font-semibold" />
                                 </div>
                                 <div className="w-full sm:w-1/2">
                                   <label className="block text-[11px] font-bold text-gray-500 mb-1">Rentang Ayat / Baris</label>
-                                  <input type="text" name="ayat" placeholder="Ayat 1-15 / Baris 1-6" required className="w-full p-2.5 border rounded-xl text-xs bg-gray-50 outline-none focus:border-emerald-500" />
+                                  <input type="text" name="ayat" placeholder="Ayat 1-15 / Baris 1-6" required className="w-full p-2.5 border rounded-xl text-xs bg-gray-50 outline-none focus:border-emerald-500 font-semibold" />
                                 </div>
                               </div>
                               <div>
@@ -934,17 +1037,17 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, upd
                {mySantri.map(s => {
                  const levelTargets = targets.filter(t => t.level === s.jilid);
                  return (
-                   <div key={s.id} className="border border-purple-100 rounded-2xl p-4 bg-purple-50/20 shadow-xs">
+                   <div key={s.id} className="border border-purple-100 rounded-2xl p-4 bg-purple-50/20 shadow-xs animate-fade-in">
                      <h3 className="font-bold text-gray-800 border-b pb-2 mb-3 flex justify-between items-center text-sm">
                        <span>{s.name} <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded border ml-1.5 font-bold">{s.jilid}</span></span>
-                       <span className="text-[11px] text-gray-500 font-bold">{levelTargets.filter(t => s.completedTargets?.includes(t.id)).length} dari {levelTargets.length} Selesai</span>
+                       <span className="text-[11px] text-gray-500 font-bold">{levelTargets.filter(t => s.completedTargets?.includes(String(t.id))).length} dari {levelTargets.length} Selesai</span>
                      </h3>
                      {levelTargets.length === 0 ? (
                        <p className="text-xs text-gray-400 italic">Target kurikulum belum dibuat oleh Kepala TPQ untuk tingkatan {s.jilid}.</p>
                      ) : (
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                          {levelTargets.map(t => {
-                           const isCompleted = s.completedTargets?.includes(t.id);
+                           const isCompleted = s.completedTargets?.includes(String(t.id));
                            return (
                              <label key={t.id} className="flex items-start bg-white p-3 rounded-xl border shadow-xs cursor-pointer hover:bg-purple-50/50 transition duration-200">
                                <input 
@@ -973,11 +1076,11 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, upd
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {mySantri.map(santri => {
               const levelTargets = targets.filter(t => t.level === santri.jilid);
-              const completedCount = levelTargets.filter(t => santri.completedTargets?.includes(t.id)).length;
+              const completedCount = levelTargets.filter(t => santri.completedTargets?.includes(String(t.id))).length;
               const isEligible = levelTargets.length > 0 && completedCount === levelTargets.length;
 
               return (
-                <div key={santri.id} className="bg-white rounded-2xl shadow-sm border border-orange-100 overflow-hidden">
+                <div key={santri.id} className="bg-white rounded-2xl shadow-sm border border-orange-100 overflow-hidden animate-fade-in">
                   <div className="bg-orange-50/60 p-4 border-b border-orange-100">
                     <h3 className="font-bold text-orange-950 text-sm">{santri.name}</h3>
                     <p className="text-[11px] font-bold text-orange-700">Tingkat Saat Ini: {santri.jilid}</p>
@@ -1000,7 +1103,7 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, upd
                     <form onSubmit={(e) => submitProgress(e, santri.id, 'kenaikan')} className="space-y-4">
                       <div>
                         <label className="block text-[11px] font-bold text-gray-500 mb-1">Tanggal Pengajuan Ujian</label>
-                        <input type="date" name="date" required defaultValue={new Date().toISOString().split('T')[0]} className="w-full p-2.5 border rounded-xl text-xs bg-orange-50/10 focus:border-orange-500 outline-none" />
+                        <input type="date" name="date" required defaultValue={new Date().toISOString().split('T')[0]} className="w-full p-2.5 border rounded-xl text-xs bg-orange-50/10 focus:border-orange-500 outline-none font-medium" />
                       </div>
                       <div className="flex space-x-3">
                         <div className="w-1/2">
@@ -1033,9 +1136,8 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, upd
 }
 
 function BendaharaView({ activeTab, setActiveTab, users, updateTable, showToast }) {
-
   const toggleAlarm = async (santriId, currentStatus) => {
-    const updatedUsers = users.map(u => u.id === santriId ? { ...u, hasAlarm: !currentStatus } : u);
+    const updatedUsers = users.map(u => String(u.id) === String(santriId) ? { ...u, hasAlarm: !currentStatus } : u);
     await updateTable('users', updatedUsers);
     showToast(currentStatus ? 'Alarm peringatan dinonaktifkan.' : 'Alarm tagihan dikirim ke dashboard santri!');
   };
@@ -1045,7 +1147,7 @@ function BendaharaView({ activeTab, setActiveTab, users, updateTable, showToast 
     const payDate = e.target.tanggal.value;
     
     const updatedUsers = users.map(u => {
-      if (u.id === santriId) {
+      if (String(u.id) === String(santriId)) {
         const history = u.historyBayar || [];
         return { 
           ...u, 
@@ -1118,10 +1220,10 @@ function BendaharaView({ activeTab, setActiveTab, users, updateTable, showToast 
   const guruList = users.filter(u => u.role === 'guru' || u.role === 'kepala_tpq');
   const groupedSantri = guruList.map(guru => ({
     guruName: guru.name,
-    santris: santriList.filter(s => s.guruId === guru.id)
+    santris: santriList.filter(s => s.guruId !== null && String(s.guruId) === String(guru.id))
   })).filter(g => g.santris.length > 0);
 
-  const unassignedSantri = santriList.filter(s => !s.guruId);
+  const unassignedSantri = santriList.filter(s => s.guruId === null || s.guruId === '');
   if (unassignedSantri.length > 0) {
     groupedSantri.push({ guruName: 'Belum Memiliki Guru Kelas', santris: unassignedSantri });
   }
@@ -1140,7 +1242,7 @@ function BendaharaView({ activeTab, setActiveTab, users, updateTable, showToast 
 
         <div className="space-y-8">
           {groupedSantri.map((group, idx) => (
-            <div key={idx} className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+            <div key={idx} className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm animate-fade-in">
               <div className="bg-emerald-50/50 border-b px-4 py-3 font-bold text-emerald-950 flex items-center justify-between text-xs sm:text-sm">
                 <span className="flex items-center"><Users size={16} className="mr-2 text-emerald-600"/> Wali Kelas: {group.guruName}</span>
                 <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full font-bold">{group.santris.length} Santri</span>
@@ -1176,7 +1278,7 @@ function BendaharaView({ activeTab, setActiveTab, users, updateTable, showToast 
                           <td className="p-4">
                             <form onSubmit={(e) => handleBayar(e, santri.id)} className="flex items-center justify-center space-x-2">
                               <input type="date" name="tanggal" required defaultValue={new Date().toISOString().split('T')[0]} className="p-1.5 border rounded-lg text-[11px] bg-gray-50 outline-none w-28 focus:border-emerald-500 font-medium text-gray-800" />
-                              <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold transition">Bayar</button>
+                              <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold transition shadow-xs">Bayar</button>
                             </form>
                           </td>
                           <td className="p-4 text-center">
@@ -1202,19 +1304,17 @@ function BendaharaView({ activeTab, setActiveTab, users, updateTable, showToast 
 }
 
 function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
-
   const handleAccKenaikan = async (progressId, santriId) => {
-    const santri = users.find(u => u.id === santriId);
+    const santri = users.find(u => String(u.id) === String(santriId));
     if (!santri) return;
 
-    // Lakukan update secara bertahap / sequential menggunakan await untuk mencegah race condition pada database Sheets
-    const updatedProgress = progress.map(p => p.id === progressId ? { ...p, status: 'acc_kepala' } : p);
+    const updatedProgress = progress.map(p => String(p.id) === String(progressId) ? { ...p, status: 'acc_kepala' } : p);
     await updateTable('progress', updatedProgress);
     
     const currentJilidIdx = JILID_LEVELS.indexOf(santri.jilid);
     const nextJid = JILID_LEVELS[currentJilidIdx + 1] || 'Lulus (Tamat)';
     
-    const updatedUsers = users.map(u => u.id === santriId ? { ...u, jilid: nextJid, completedTargets: [] } : u);
+    const updatedUsers = users.map(u => String(u.id) === String(santriId) ? { ...u, jilid: nextJid, completedTargets: [] } : u);
     await updateTable('users', updatedUsers);
     
     showToast(`Ujian disetujui! Santri berhasil naik ke tingkat ${nextJid}`);
@@ -1222,7 +1322,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
 
   const handleEditJilid = async (santriId, newJilid) => {
     const updatedUsers = users.map(u => 
-      u.id === santriId ? { ...u, jilid: newJid, completedTargets: [] } : u
+      String(u.id) === String(santriId) ? { ...u, jilid: newJid, completedTargets: [] } : u
     );
     await updateTable('users', updatedUsers);
     showToast(`Tingkat/Jilid santri berhasil diubah secara manual menjadi ${newJilid}`);
@@ -1242,7 +1342,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
   };
 
   const deleteTarget = async (id) => {
-    const updated = targets.filter(t => t.id !== id);
+    const updated = targets.filter(t => String(t.id) !== String(id));
     await updateTable('targets', updated);
     showToast('Target kurikulum berhasil dihapus!');
   };
@@ -1307,7 +1407,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
                   </tr>
                 ) : (
                   santriList.map(santri => {
-                    const guru = users.find(u => u.id === santri.guruId);
+                    const guru = users.find(u => u.id !== null && String(u.id) === String(santri.guruId));
                     return (
                       <tr key={santri.id} className="border-b hover:bg-gray-50 text-xs transition">
                         <td className="p-4 font-bold text-gray-800">{santri.name}</td>
@@ -1347,8 +1447,8 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
           ) : (
             <div className="space-y-4">
               {pendingRequests.map(req => {
-                const s = users.find(u => u.id === req.santriId);
-                const g = users.find(u => u.id === s?.guruId);
+                const s = users.find(u => String(u.id) === String(req.santriId));
+                const g = users.find(u => u.id !== null && String(u.id) === String(s?.guruId));
                 return (
                   <div key={req.id} className="border border-orange-200 bg-orange-50/50 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center shadow-sm animate-fade-in">
                     <div>
@@ -1397,7 +1497,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
               const levelTargets = targets.filter(t => t.level === level);
               if(levelTargets.length === 0) return null;
               return (
-                <div key={level} className="border border-blue-50 p-4 rounded-2xl bg-blue-50/10">
+                <div key={level} className="border border-blue-50 p-4 rounded-2xl bg-blue-50/10 animate-fade-in">
                   <h3 className="font-extrabold text-xs text-blue-900 border-b pb-2 mb-3 tracking-wide">{level}</h3>
                   <ul className="space-y-2">
                     {levelTargets.map(t => (
@@ -1440,7 +1540,7 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
       showToast('Sandi baru tidak boleh kosong!', 'error');
       return;
     }
-    const updated = users.map(user => user.id === resettingUser.id ? { ...user, password: newPasswordVal.trim() } : user);
+    const updated = users.map(user => String(user.id) === String(resettingUser.id) ? { ...user, password: newPasswordVal.trim() } : user);
     await updateTable('users', updated);
     showToast(`Password untuk ${resettingUser.name} berhasil diubah.`);
     setResettingUser(null);
@@ -1451,7 +1551,7 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
   };
 
   const confirmDeleteUser = async () => {
-    const updated = users.filter(u => u.id !== deletingUser.id);
+    const updated = users.filter(u => String(u.id) !== String(deletingUser.id));
     await updateTable('users', updated);
     showToast('Akun telah berhasil dihapus secara permanen.');
     setDeletingUser(null);
@@ -1475,7 +1575,7 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
       historyBayar: []
     };
 
-    const isExist = users.some(u => u.username === newUser.username);
+    const isExist = users.some(u => String(u.username).toLowerCase() === String(newUser.username).toLowerCase());
     if (isExist) {
       showToast('Username sudah dipakai! Silakan pilih username unik.', 'error');
       return;
@@ -1566,7 +1666,6 @@ function doPost(e) {
   }
   
   if (data.length > 0) {
-    // 1. Kumpulkan semua kunci secara dinamis agar parameter santri tidak hilang terbuang
     var keySet = {};
     data.forEach(function(item) {
       Object.keys(item).forEach(function(k) {
@@ -1577,7 +1676,6 @@ function doPost(e) {
     
     s.appendRow(keys);
     
-    // 2. Susun baris array
     var rows = data.map(function(item) {
       return keys.map(function(k) {
         var val = item[k];
@@ -1586,7 +1684,6 @@ function doPost(e) {
       });
     });
     
-    // 3. Simpan sekaligus ke Google Sheet
     if (rows.length > 0) {
       s.getRange(2, 1, rows.length, keys.length).setValues(rows);
     }
@@ -1715,7 +1812,7 @@ function doPost(e) {
           </div>
         )}
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 animate-fade-in">
           <h2 className="text-lg font-bold mb-4 flex items-center text-purple-800"><UserPlus className="mr-2"/> Daftarkan Akun Pengguna Baru</h2>
           <form onSubmit={handleAddUser} className="bg-gray-50 p-5 rounded-2xl border border-gray-200">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
@@ -1761,7 +1858,7 @@ function doPost(e) {
             </thead>
             <tbody>
               {users.map(u => (
-                <tr key={u.id} className="border-b hover:bg-gray-50 text-xs transition">
+                <tr key={u.id} className="border-b hover:bg-gray-50 text-xs transition animate-fade-in">
                   <td className="p-4">
                     <p className="font-bold text-gray-800">{u.name}</p>
                     <span className={`mt-1 inline-block px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider border ${
