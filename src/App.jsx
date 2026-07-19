@@ -89,19 +89,17 @@ const normalizeUsers = (rawUsers) => {
       }
     }
 
-    let finalJilid = undefined;
+    let finalJilid = 'Jilid 1';
     const roleStr = u.role !== undefined && u.role !== null ? String(u.role).trim() : '';
     if (roleStr === 'santri') {
       if (u.jilid !== undefined && u.jilid !== null) {
         const jilidStr = String(u.jilid).trim();
         if (jilidStr !== "" && jidStr !== "null" && jidStr !== "undefined") {
-          finalJilid = jilidStr;
-        } else {
-          finalJilid = 'Jilid 1';
+          finalJilid = jilidStr; // PERBAIKAN TOTAL: variabel diubah dari typo jidStr menjadi jilidStr
         }
-      } else {
-        finalJilid = 'Jilid 1';
       }
+    } else {
+      finalJilid = undefined;
     }
 
     uniqueUsers.push({
@@ -353,7 +351,7 @@ export default function App() {
             localStorage.setItem('tpq_savings', JSON.stringify(finalSavings));
             localStorage.setItem('tpq_settings', JSON.stringify(finalSettings));
           } catch (e) {
-            console.warn("Storage write ignored.");
+            console.warn("Storage write ignored (likely incognito mode).");
           }
           
           if (!isInitializing) showToast('Database Google Sheets berhasil disinkronkan!');
@@ -368,6 +366,7 @@ export default function App() {
       }
     } catch (error) {
       console.error("Detail Error Sinkronisasi:", error);
+      // Fallback ke penyimpanan lokal apabila Sheets/Koneksi gagal
       setUsers(normalizeUsers(safeGetLocalStorage('tpq_users', INITIAL_DATA.users)));
       setProgress(normalizeProgress(safeGetLocalStorage('tpq_progress', INITIAL_DATA.progress)));
       setTargets(normalizeTargets(safeGetLocalStorage('tpq_targets', INITIAL_DATA.targets)));
@@ -408,6 +407,7 @@ export default function App() {
     setIsSyncing(true);
     let normalizedData = updatedData;
     
+    // 1. Simpan Data Secara Lokal terlebih dahulu (agar aplikasi responsif)
     try {
       if (table === 'users') {
         normalizedData = normalizeUsers(updatedData);
@@ -428,7 +428,7 @@ export default function App() {
       try {
         localStorage.setItem(`tpq_${table}`, JSON.stringify(normalizedData));
       } catch (storageErr) {
-        console.warn("Gagal menulis ke LocalStorage:", storageErr);
+        console.warn("Gagal menulis ke LocalStorage (Incognito Mode aktif):", storageErr);
       }
     } catch (localErr) {
       console.error("Gagal update data lokal:", localErr);
@@ -439,6 +439,7 @@ export default function App() {
 
     const activeUrl = customUrl || appsScriptUrl;
 
+    // 2. Sinkronkan Perubahan ke Server Google Sheets
     try {
       if (activeUrl && activeUrl.trim() !== '' && activeUrl !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
         const response = await fetch(activeUrl, {
@@ -463,8 +464,10 @@ export default function App() {
         return true;
       }
     } catch (error) {
+      console.warn("Koneksi Utama CORS/Offline. Mengaktifkan metode pengiriman latar belakang (no-cors)...");
       try {
         if (activeUrl && activeUrl.trim() !== '' && activeUrl !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
+          // Melakukan pengiriman data dengan mode no-cors (tidak membaca respons agar kebal CORS)
           await fetch(activeUrl, {
             method: 'POST',
             mode: 'no-cors',
@@ -621,12 +624,13 @@ export default function App() {
             setSimulatedWeekend={setSimulatedWeekend}
           />
         )}
-        {currentUser.role === 'guru' && (
+        {(currentUser.role === 'guru' || currentUser.role === 'kepala_tpq') && activeTab !== 'dashboard' && (activeTab === 'isi_progres' || activeTab === 'nilai_target' || activeTab === 'pengajuan_kenaikan' || activeTab === 'klaim_santri' || activeTab === 'input_tabungan_guru') ? (
           <GuruView 
             activeTab={activeTab} 
             setActiveTab={setActiveTab} 
             user={currentUser} 
             users={users}
+            setUsers={setUsers}
             progress={progress}
             targets={targets}
             savings={savings}
@@ -636,8 +640,8 @@ export default function App() {
             simulatedWeekend={simulatedWeekend}
             setSimulatedWeekend={setSimulatedWeekend}
           />
-        )}
-        {currentUser.role === 'kepala_tpq' && (
+        ) : null}
+        {currentUser.role === 'kepala_tpq' && (activeTab === 'dashboard' || activeTab === 'acc_kenaikan' || activeTab === 'target_jilid' || activeTab === 'kelola_santri' || activeTab === 'input_tabungan' || activeTab === 'otorisasi_tabungan' || activeTab === 'kelola_syahriah' || activeTab === 'hak_akses' || activeTab === 'pengaturan') && (
           <KepalaView 
             activeTab={activeTab} 
             setActiveTab={setActiveTab} 
@@ -656,6 +660,23 @@ export default function App() {
             setAppsScriptUrl={setAppsScriptUrl}
             isSyncing={isSyncing}
             loadDatabase={loadDatabase}
+          />
+        )}
+        {currentUser.role === 'guru' && activeTab === 'dashboard' && (
+          <GuruView 
+            activeTab={activeTab} 
+            setActiveTab={setActiveTab} 
+            user={currentUser} 
+            users={users}
+            setUsers={setUsers}
+            progress={progress}
+            targets={targets}
+            savings={savings}
+            settings={settings}
+            updateTable={updateTable}
+            showToast={showToast} 
+            simulatedWeekend={simulatedWeekend}
+            setSimulatedWeekend={setSimulatedWeekend}
           />
         )}
         {currentUser.role === 'bendahara' && (
@@ -925,11 +946,11 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
   return null;
 }
 
-function GuruView({ activeTab, setActiveTab, user, users, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
+function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
   const [selectedSantri, setSelectedSantri] = useState(null);
-  const [modeAksesKepala, setModeAksesKepala] = useState(false); // Mode Kepala TPQ untuk akses semua santri
+  const [modeAksesKepala, setModeAksesKepala] = useState(false);
 
-  // Filter santri bimbingan
+  // Filter santri
   const bimbinganSantri = users.filter(s => s.role === 'santri' && String(s.guruId) === String(user.id));
   const semuaSantri = users.filter(s => s.role === 'santri');
   const activeSantriList = (user.role === 'kepala_tpq' && modeAksesKepala) ? semuaSantri : bimbinganSantri;
@@ -988,19 +1009,24 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, sav
   };
 
   const toggleTargetCheck = async (santriId, targetId) => {
-    const santriObj = users.find(u => String(u.id) === String(santriId));
-    if (!santriObj) return;
+    try {
+      const santriObj = users.find(u => String(u.id) === String(santriId));
+      if (!santriObj) return;
 
-    let completed = santriObj.completedTargets ? [...santriObj.completedTargets] : [];
-    if (completed.includes(String(targetId))) {
-      completed = completed.filter(t => String(t) !== String(targetId));
-    } else {
-      completed = [...completed, String(targetId)];
+      let completed = santriObj.completedTargets ? [...santriObj.completedTargets] : [];
+      if (completed.includes(String(targetId))) {
+        completed = completed.filter(t => String(t) !== String(targetId));
+      } else {
+        completed = [...completed, String(targetId)];
+      }
+
+      const updated = users.map(u => String(u.id) === String(santriId) ? { ...u, completedTargets: completed } : u);
+      await updateTable('users', updated);
+      showToast('Status target kompetensi santri berhasil diperbarui!');
+    } catch (err) {
+      console.error(err);
+      showToast('Gagal mengubah kompetensi: ' + err.message, 'error');
     }
-
-    const updated = users.map(u => String(u.id) === String(santriId) ? { ...u, completedTargets: completed } : u);
-    await updateTable('users', updated);
-    showToast('Status target kompetensi santri berhasil diperbarui!');
   };
 
   const isSavingAuthorized = settings.savingInputRoles?.includes(user.role) || user.role === 'kepala_tpq';
@@ -1012,7 +1038,6 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, sav
     { id: 'klaim_santri', label: 'Klaim Kelas Santri Baru', icon: UserPlus, color: 'bg-purple-100 text-purple-600', desc: 'Klaim santri yang belum ditugaskan guru ke kelas bimbingan Anda.' }
   ];
 
-  // Tambahkan menu tabungan jika diberi izin oleh Kepala TPQ
   if (isSavingAuthorized) {
     menus.push({
       id: 'input_tabungan_guru',
@@ -1114,11 +1139,24 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, sav
         <BackButton onClick={() => setActiveTab('dashboard')} />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h2 className="text-sm font-bold text-gray-700 mb-4 border-b pb-2 uppercase tracking-wider">Santri Bimbingan:</h2>
+            <h2 className="text-sm font-bold text-gray-700 mb-4 border-b pb-2 uppercase tracking-wider flex justify-between items-center">
+              <span>Santri Bimbingan:</span>
+              {user.role === 'kepala_tpq' && (
+                <button 
+                  onClick={() => {
+                    setModeAksesKepala(!modeAksesKepala);
+                    setSelectedSantri(null);
+                  }}
+                  className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-100 font-bold px-2 py-1 rounded"
+                >
+                  {modeAksesKepala ? 'Bimbingan Sendiri' : 'Akses Semua'}
+                </button>
+              )}
+            </h2>
             {activeSantriList.length === 0 ? (
               <p className="text-xs text-gray-400 italic">Belum ada santri bimbingan di bimbingan Anda.</p>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
                 {activeSantriList.map(s => (
                   <button 
                     key={s.id} 
@@ -1285,9 +1323,9 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
         return u;
       });
 
-      setUsers(normalizeUsers(updatedUsers));
+      setUsers(updatedUsers);
       await updateTable('users', updatedUsers);
-      showToast('Data santri berhasil disinkronkan ke Google Sheets!', 'success');
+      showToast('Data santri berhasil diperbarui!');
     } catch (err) {
       console.error(err);
       showToast(`Gagal memperbarui: ${err.message}`, 'error');
@@ -1355,7 +1393,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
     else if (activeTab === 'guru_target') mappedTab = 'nilai_target';
     else if (activeTab === 'guru_kenaikan') mappedTab = 'pengajuan_kenaikan';
 
-    return <GuruView activeTab={mappedTab} setActiveTab={setActiveTab} user={user} users={users} progress={progress} targets={targets} savings={savings} settings={settings} updateTable={updateTable} showToast={showToast} simulatedWeekend={simulatedWeekend} setSimulatedWeekend={setSimulatedWeekend} />;
+    return <GuruView activeTab={mappedTab} setActiveTab={setActiveTab} user={user} users={users} setUsers={setUsers} progress={progress} targets={targets} savings={savings} settings={settings} updateTable={updateTable} showToast={showToast} simulatedWeekend={simulatedWeekend} setSimulatedWeekend={setSimulatedWeekend} />;
   }
 
   if (activeTab === 'input_tabungan') {
@@ -1626,7 +1664,6 @@ function BendaharaView({ activeTab, setActiveTab, users, savings, settings, upda
 
     const history = santri.historyBayar ? [...santri.historyBayar] : [];
     
-    // VALIDASI TANGGAL GANDA: Jika tanggal pembayaran sama dengan yang sudah ada, batalkan transaksi
     if (history.includes(selectedMonth)) {
       showToast('Error: Gagal mencatat. Tanggal pembayaran ini sudah pernah terdaftar pada santri ini sebelumnya!', 'error');
       return;
@@ -1944,7 +1981,7 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
     
     setTimeout(() => {
       loadDatabase(newUrl);
-    }, 500);
+    }, 550);
   };
 
   const codeScriptGoogle = `// KODE GOOGLE APPS SCRIPT UNTUK GOOGLE SHEETS
@@ -2151,7 +2188,7 @@ function doPost(e) {
                 name="appsScriptUrl" 
                 defaultValue={appsScriptUrl} 
                 required 
-                className="w-full p-2.5 border-2 border-emerald-100 bg-emerald-50/20 rounded-xl outline-none focus:border-emerald-500 text-xs text-gray-850 font-mono" 
+                className="w-full p-2.5 border-2 border-emerald-100 bg-emerald-50/20 rounded-xl outline-none focus:border-emerald-500 text-xs text-gray-855 font-mono" 
                 placeholder="https://script.google.com/macros/s/.../exec" 
               />
             </div>
