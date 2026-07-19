@@ -289,7 +289,6 @@ export default function App() {
         if (payload.status === 'success' && payload.data) {
           const { users: sUsers, progress: sProgress, targets: sTargets, settings: sSettings } = payload.data;
           
-          // Memastikan tipe data selalu dikonversi menjadi string dan boolean murni sebelum dimasukkan ke dalam State
           const finalUsers = normalizeUsers((sUsers && sUsers.length > 0) ? sUsers : INITIAL_DATA.users);
           const finalProgress = normalizeProgress((sProgress && sProgress.length > 0) ? sProgress : INITIAL_DATA.progress);
           const finalTargets = normalizeTargets((sTargets && sTargets.length > 0) ? sTargets : INITIAL_DATA.targets);
@@ -343,7 +342,6 @@ export default function App() {
       const savedUser = sessionStorage.getItem('tpq_user');
       if (savedUser) {
         const parsed = JSON.parse(savedUser);
-        // Memaksa format currentUser agar ID-nya adalah string untuk kompatibilitas filter
         parsed.id = String(parsed.id);
         setCurrentUser(parsed);
       }
@@ -365,7 +363,6 @@ export default function App() {
   const updateTable = async (table, updatedData) => {
     setIsSyncing(true);
     try {
-      // Selalu lakukan normalisasi sebelum menyimpan ke LocalStorage dan state React
       let normalizedData = updatedData;
       if (table === 'users') {
         normalizedData = normalizeUsers(updatedData);
@@ -393,7 +390,6 @@ export default function App() {
           throw new Error(`HTTP ${response.status}`);
         }
 
-        // Cek apakah respons berupa HTML (berarti gagal login Google / butuh izin "Anyone")
         const contentType = response.headers.get("content-type");
         if (contentType && contentType.includes("text/html")) {
           throw new Error('Akses Google Sheets Ditolak! Harap deploy ulang Web App Anda dengan setelan "Who has access" diset ke "Anyone".');
@@ -788,7 +784,6 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, upd
   };
 
   const handleKlaim = async (santriId) => {
-    // Memastikan relasi ID disimpan dalam format string murni agar tidak tercoerces secara otomatis
     const updatedUsers = users.map(u => String(u.id) === String(santriId) ? { ...u, guruId: String(user.id) } : u);
     await updateTable('users', updatedUsers);
     showToast('Berhasil mengklaim bimbingan santri!');
@@ -856,7 +851,6 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, upd
     { id: 'klaim_santri', label: 'Klaim & Kelola Santri', icon: UserPlus, color: 'bg-blue-100 text-blue-600', desc: 'Ambil alokasi bimbingan santri baru atau lepaskan bimbingan.' },
   ];
 
-  // Gunakan pencocokan ID aman (String comparison) untuk filter klaim bimbingan
   const mySantri = users.filter(u => u.role === 'santri' && u.guruId !== null && String(u.guruId) === String(user.id));
 
   if (activeTab === 'dashboard') {
@@ -989,7 +983,6 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, upd
                   {isExpanded && (
                     <div className="p-5 flex-1 bg-white animate-fade-in border-t border-emerald-100 flex flex-col md:flex-row gap-6">
                       
-                      {/* Riwayat Ngaji Section */}
                       <div className="w-full md:w-1/2 flex flex-col">
                         <h4 className="font-bold text-gray-700 text-sm mb-3 flex items-center"><ClipboardList size={16} className="mr-2 text-emerald-600"/> Riwayat Mengaji</h4>
                         <div className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden flex-1 min-h-[200px] max-h-[350px] overflow-y-auto">
@@ -1021,7 +1014,6 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, upd
                         </div>
                       </div>
 
-                      {/* Input Form Section */}
                       <div className="w-full md:w-1/2 flex flex-col">
                         <h4 className="font-bold text-emerald-800 text-sm mb-3 flex items-center"><Plus size={16} className="mr-2"/> Tambah Progres Baru</h4>
                         {santriNeedsAcc ? (
@@ -1352,6 +1344,9 @@ function BendaharaView({ activeTab, setActiveTab, users, updateTable, showToast 
 }
 
 function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
+  // State lokal untuk menyimpan perubahan tingkat jilid santri sebelum di-commit / simpan
+  const [tempJilids, setTempJilids] = useState({});
+
   const handleAccKenaikan = async (progressId, santriId) => {
     const santri = users.find(u => String(u.id) === String(santriId));
     if (!santri) return;
@@ -1368,12 +1363,13 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
     showToast(`Ujian disetujui! Santri berhasil naik ke tingkat ${nextJid}`);
   };
 
+  // Fungsi untuk menyimpan perubahan tingkat jilid secara manual lewat tombol Simpan
   const handleEditJilid = async (santriId, newJilid) => {
     const updatedUsers = users.map(u => 
       String(u.id) === String(santriId) ? { ...u, jilid: newJid, completedTargets: [] } : u
     );
     await updateTable('users', updatedUsers);
-    showToast(`Tingkat/Jilid santri berhasil diubah secara manual menjadi ${newJilid}`);
+    showToast(`Tingkat/Jilid santri berhasil diubah secara manual menjadi ${newJilid}. Indikator penilaian kompetensi otomatis disesuaikan.`);
   };
 
   const handleAddTarget = async (e) => {
@@ -1398,7 +1394,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
   const menus = [
     { id: 'acc_kenaikan', label: 'ACC Kenaikan Tingkat', icon: Award, color: 'bg-orange-100 text-orange-600', desc: 'Uji & ACC pengajuan naik jilid/kelompok juz dari guru.' },
     { id: 'target_jilid', label: 'Kurikulum Target TPQ', icon: Book, color: 'bg-blue-100 text-blue-600', desc: 'Atur kurikulum target tiap jilid, Al-Quran, hingga hafalan per juz.' },
-    { id: 'kelola_santri', label: 'Kelola Data Santri', icon: Users, color: 'bg-teal-100 text-teal-600', desc: 'Ubah tingkat jilid/PSQ santri secara manual tanpa pengajuan.' },
+    { id: 'kelola_santri', label: 'Kelola Data Santri', icon: Users, color: 'bg-teal-100 text-teal-600', desc: 'Ubah tingkat jilid/PSQ santri secara manual dengan tombol simpan.' },
     { id: 'guru_progres', label: 'Input Progres Harian (Guru)', icon: ClipboardList, color: 'bg-emerald-100 text-emerald-600', desc: 'Masuk mode pengajar untuk menginput setoran mengaji harian.' },
     { id: 'guru_target', label: 'Penilaian Kompetensi (Guru)', icon: CheckSquare, color: 'bg-purple-100 text-purple-700', desc: 'Masuk mode pengajar untuk mencentang kompetensi jilid santri sesuai target kurikulum.' },
     { id: 'guru_kenaikan', label: 'Ajukan Kenaikan Jilid (Guru)', icon: Award, color: 'bg-orange-100 text-orange-600', desc: 'Masuk mode pengajar untuk mengajukan kenaikan jilid bimbingan Anda.' },
@@ -1444,14 +1440,17 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
       <div className="animate-fade-in animate-duration-300">
         <BackButton onClick={() => setActiveTab('dashboard')} />
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h2 className="text-lg font-bold mb-6 flex items-center text-teal-800"><Users className="mr-2"/> Kelola Jilid / Tingkat Santri Manual</h2>
+          <div className="mb-6">
+            <h2 className="text-lg font-bold flex items-center text-teal-800"><Users className="mr-2"/> Kelola Jilid & Tingkat Mengaji Santri</h2>
+            <p className="text-xs text-gray-500 mt-1">Pilih jilid baru lalu klik tombol **Simpan** untuk meng-update jilid santri. Target kompetensi penilaian pada menu guru akan otomatis menyesuaikan.</p>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-teal-50 text-teal-900 text-xs font-bold uppercase border-b border-teal-100">
                   <th className="p-4 rounded-tl-xl">Nama Santri</th>
                   <th className="p-4">Wali Kelas</th>
-                  <th className="p-4 rounded-tr-xl">Tingkat / Jilid Saat Ini</th>
+                  <th className="p-4 rounded-tr-xl">Tingkat / Jilid Mengaji</th>
                 </tr>
               </thead>
               <tbody>
@@ -1462,21 +1461,32 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
                 ) : (
                   santriList.map(santri => {
                     const guru = users.find(u => u.id !== null && String(u.id) === String(santri.guruId));
+                    // Dapatkan nilai jilid sementara dari state lokal atau fallback ke database
+                    const selectedJilid = tempJilids[santri.id] !== undefined ? tempJilids[santri.id] : (santri.jilid || 'Jilid 1');
+                    
                     return (
                       <tr key={santri.id} className="border-b hover:bg-gray-50 text-xs transition">
                         <td className="p-4 font-bold text-gray-800">{santri.name}</td>
-                        <td className="p-4 text-gray-600">{guru ? guru.name : '-'}</td>
+                        <td className="p-4 text-gray-600">{guru ? guru.name : 'Belum Ditugaskan'}</td>
                         <td className="p-4">
-                          <select 
-                            value={santri.jilid}
-                            onChange={(e) => handleEditJilid(santri.id, e.target.value)}
-                            className="p-2.5 border rounded-xl bg-white font-bold outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-200 text-xs text-gray-700 shadow-sm min-w-[200px]"
-                          >
-                            {JILID_LEVELS.map(j => <option key={j} value={j}>{j}</option>)}
-                          </select>
+                          <div className="flex items-center space-x-3">
+                            <select 
+                              value={selectedJilid}
+                              onChange={(e) => setTempJilids({ ...tempJilids, [santri.id]: e.target.value })}
+                              className="p-2.5 border rounded-xl bg-white font-bold outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-200 text-xs text-gray-700 shadow-sm min-w-[200px]"
+                            >
+                              {JILID_LEVELS.map(j => <option key={j} value={j}>{j}</option>)}
+                            </select>
+                            <button
+                              onClick={() => handleEditJilid(santri.id, selectedJilid)}
+                              className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center transition-all duration-200 shadow-sm gap-1.5"
+                            >
+                              <CheckCircle size={14} /> Simpan
+                            </button>
+                          </div>
                         </td>
                       </tr>
-                    )
+                    );
                   })
                 )}
               </tbody>
