@@ -8,9 +8,6 @@ import {
   ChevronDown, ChevronUp, TrendingUp, TrendingDown
 } from 'lucide-react';
 
-// -------------------------------------------------------------
-// MASUKKAN URL GOOGLE APPS SCRIPT ANDA DI SINI (HARDCODED FALLBACK)
-// -------------------------------------------------------------
 const HARDCODED_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwqbAPcV4Mz6hT-PneqAQoC-aZoRdgaGJzL23qAOwcSnClmDzRpf_fzbIsPymtyQYyn-w/exec";
 
 const JILID_LEVELS = [
@@ -97,7 +94,7 @@ const normalizeUsers = (rawUsers) => {
     if (roleStr === 'santri') {
       if (u.jilid !== undefined && u.jilid !== null) {
         const jilidStr = String(u.jilid).trim();
-        if (jilidStr !== "" && jidStr !== "null" && jidStr !== "undefined") {
+        if (jilidStr !== "" && jilidStr !== "null" && jilidStr !== "undefined") {
           finalJilid = jilidStr;
         } else {
           finalJilid = 'Jilid 1';
@@ -305,7 +302,6 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [simulatedWeekend, setSimulatedWeekend] = useState(false);
 
-  // Menyimpan URL secara dinamis agar pengguna bisa mengganti lewat Pengaturan di UI
   const [appsScriptUrl, setAppsScriptUrl] = useState(() => {
     return localStorage.getItem('tpq_apps_script_url') || HARDCODED_APPS_SCRIPT_URL;
   });
@@ -313,7 +309,6 @@ export default function App() {
   const loadDatabase = async (targetUrl = appsScriptUrl) => {
     setIsSyncing(true);
     try {
-      // Muat data lokal terlebih dahulu untuk digunakan sebagai fallback utama
       const localUsers = safeGetLocalStorage('tpq_users', INITIAL_DATA.users);
       const localProgress = safeGetLocalStorage('tpq_progress', INITIAL_DATA.progress);
       const localTargets = safeGetLocalStorage('tpq_targets', INITIAL_DATA.targets);
@@ -351,11 +346,15 @@ export default function App() {
           setSavings(finalSavings);
           if (finalSettings) setSettings(finalSettings);
           
-          localStorage.setItem('tpq_users', JSON.stringify(finalUsers));
-          localStorage.setItem('tpq_progress', JSON.stringify(finalProgress));
-          localStorage.setItem('tpq_targets', JSON.stringify(finalTargets));
-          localStorage.setItem('tpq_savings', JSON.stringify(finalSavings));
-          localStorage.setItem('tpq_settings', JSON.stringify(finalSettings));
+          try {
+            localStorage.setItem('tpq_users', JSON.stringify(finalUsers));
+            localStorage.setItem('tpq_progress', JSON.stringify(finalProgress));
+            localStorage.setItem('tpq_targets', JSON.stringify(finalTargets));
+            localStorage.setItem('tpq_savings', JSON.stringify(finalSavings));
+            localStorage.setItem('tpq_settings', JSON.stringify(finalSettings));
+          } catch (e) {
+            console.warn("Storage write ignored in incognito/restricted environment.");
+          }
           
           if (!isInitializing) showToast('Database Google Sheets berhasil disinkronkan!');
         } else {
@@ -363,11 +362,13 @@ export default function App() {
         }
       } else {
         if (!localStorage.getItem('tpq_users')) {
-          localStorage.setItem('tpq_users', JSON.stringify(INITIAL_DATA.users));
-          localStorage.setItem('tpq_progress', JSON.stringify(INITIAL_DATA.progress));
-          localStorage.setItem('tpq_targets', JSON.stringify(INITIAL_DATA.targets));
-          localStorage.setItem('tpq_savings', JSON.stringify(INITIAL_DATA.savings));
-          localStorage.setItem('tpq_settings', JSON.stringify(INITIAL_DATA.settings));
+          try {
+            localStorage.setItem('tpq_users', JSON.stringify(INITIAL_DATA.users));
+            localStorage.setItem('tpq_progress', JSON.stringify(INITIAL_DATA.progress));
+            localStorage.setItem('tpq_targets', JSON.stringify(INITIAL_DATA.targets));
+            localStorage.setItem('tpq_savings', JSON.stringify(INITIAL_DATA.savings));
+            localStorage.setItem('tpq_settings', JSON.stringify(INITIAL_DATA.settings));
+          } catch(e) {}
         }
         setUsers(normalizeUsers(safeGetLocalStorage('tpq_users', INITIAL_DATA.users)));
         setProgress(normalizeProgress(safeGetLocalStorage('tpq_progress', INITIAL_DATA.progress)));
@@ -411,17 +412,17 @@ export default function App() {
       const fresh = users.find(u => String(u.id) === String(currentUser.id));
       if (fresh && JSON.stringify(fresh) !== JSON.stringify(currentUser)) {
         setCurrentUser(fresh);
-        sessionStorage.setItem('tpq_user', JSON.stringify(fresh));
+        try {
+          sessionStorage.setItem('tpq_user', JSON.stringify(fresh));
+        } catch(e){}
       }
     }
   }, [users, currentUser]);
 
-  // Fungsi updateTable yang super andal dengan fallback no-cors jika terblokir
   const updateTable = async (table, updatedData, customUrl = appsScriptUrl) => {
     setIsSyncing(true);
     let normalizedData = updatedData;
     
-    // 1. Amankan ke state aplikasi di memory terlebih dahulu agar UI terupdate instan
     try {
       if (table === 'users') {
         normalizedData = normalizeUsers(updatedData);
@@ -439,23 +440,20 @@ export default function App() {
         setSettings(normalizedData);
       }
 
-      // Coba simpan ke LocalStorage secara terpisah (Non-Blocking).
-      // Jika gagal karena mode Incognito/Samaran (seperti di image_5f3b99.png), biarkan sistem tetap melanjutkan ke Google Sheets!
       try {
         localStorage.setItem(`tpq_${table}`, JSON.stringify(normalizedData));
       } catch (storageErr) {
-        console.warn("Gagal menulis ke LocalStorage (Mode Samaran aktif):", storageErr);
+        console.warn("Gagal menulis ke LocalStorage (Incognito Mode):", storageErr);
       }
     } catch (localErr) {
       console.error("Gagal update data lokal:", localErr);
-      showToast('Gagal memproses perubahan data di memori!', 'error');
+      showToast('Gagal memproses data lokal: ' + localErr.message, 'error');
       setIsSyncing(false);
       return false;
     }
 
     const activeUrl = customUrl || appsScriptUrl;
 
-    // 2. Coba kirim data & sinkronkan langsung ke Google Sheets
     try {
       if (activeUrl && activeUrl.trim() !== '' && activeUrl !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
         const response = await fetch(activeUrl, {
@@ -493,7 +491,6 @@ export default function App() {
     } catch (error) {
       console.warn("Standard CORS fetch failed, attempting robust no-cors fallback save...", error);
       
-      // Fallback Latar Belakang (No-CORS): Menjamin data tetap tertulis ke Google Sheets meskipun browser melarang membaca responsnya!
       try {
         if (activeUrl && activeUrl.trim() !== '' && activeUrl !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
           await fetch(activeUrl, {
@@ -520,7 +517,9 @@ export default function App() {
     const user = users.find(u => String(u.username).toLowerCase() === String(username).toLowerCase() && String(u.password) === String(password));
     if (user) {
       setCurrentUser(user);
-      sessionStorage.setItem('tpq_user', JSON.stringify(user));
+      try {
+        sessionStorage.setItem('tpq_user', JSON.stringify(user));
+      } catch(e){}
       setActiveTab('dashboard');
       showToast(`Selamat datang kembali, ${user.name}!`);
     } else {
@@ -530,7 +529,9 @@ export default function App() {
 
   const handleLogout = () => {
     setCurrentUser(null);
-    sessionStorage.removeItem('tpq_user');
+    try {
+      sessionStorage.removeItem('tpq_user');
+    } catch(e){}
     setActiveTab('dashboard');
   };
 
@@ -633,6 +634,7 @@ export default function App() {
         </div>
       </header>
 
+      {}
       <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
         {currentUser.role === 'santri' && (
           <SantriView 
@@ -861,6 +863,7 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
         </div>
       )}
 
+      {}
       {activeTab === 'riwayat_bayar' && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h2 className="text-lg font-bold mb-4 flex items-center text-yellow-600">Riwayat Pembayaran Syahriah</h2>
@@ -887,6 +890,7 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
         </div>
       )}
 
+      {}
       {activeTab === 'riwayat_tabungan' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1062,6 +1066,7 @@ function SavingsInputView({ users, savings, updateTable, showToast, recorderId }
         </form>
       </div>
 
+      {}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-4 border-b bg-gray-50">
           <h3 className="font-bold text-sm text-gray-800">Transaksi Terakhir Yang Anda Catat</h3>
@@ -1282,6 +1287,7 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, sav
         </div>
       )}
 
+      {}
       {activeTab === 'isi_progres' && (
         <div className="space-y-6">
           <h2 className="text-lg font-bold flex items-center text-emerald-800"><ClipboardList className="mr-2"/> Input Capaian Nilai Mengaji Harian</h2>
@@ -1432,6 +1438,7 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, sav
         </div>
       )}
 
+      {}
       {activeTab === 'nilai_target' && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
            <h2 className="text-lg font-bold mb-3 flex items-center text-purple-800"><CheckSquare className="mr-2"/> Penilaian Target Kompetensi Jilid Santri</h2>
@@ -1500,6 +1507,7 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, sav
         </div>
       )}
 
+      {}
       {activeTab === 'pengajuan_kenaikan' && (
         <div className="space-y-6">
           <h2 className="text-lg font-bold flex items-center text-orange-800"><Award className="mr-2"/> Pengajuan Kenaikan Jilid / Kelompok Juz</h2>
@@ -1794,7 +1802,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
     await updateTable('progress', updatedProgress);
     
     const currentJilidIdx = JILID_LEVELS.indexOf(santri.jilid);
-    const nextJid = JILID_LEVELS[currentJidIdx + 1] || 'Lulus (Tamat)';
+    const nextJid = JILID_LEVELS[currentJilidIdx + 1] || 'Lulus (Tamat)';
     
     const updatedUsers = users.map(u => String(u.id) === String(santriId) ? { ...u, jilid: nextJid, completedTargets: [] } : u);
     await updateTable('users', updatedUsers);
@@ -1802,76 +1810,30 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
     showToast(`Ujian disetujui! Santri berhasil naik ke tingkat ${nextJid}`);
   };
 
-  const handleDirectUpdateJilid = async (santriId, newJilid) => {
+  const handleEditSantri = async (santriId, updatedFields) => {
     try {
+      const targetSantri = users.find(u => String(u.id) === String(santriId));
+      if (!targetSantri) return;
+
       const updatedUsers = users.map(u => {
         if (String(u.id) === String(santriId)) {
-          const jilidChanged = u.jilid !== newJilid;
-          return { 
-            ...u, 
-            jilid: newJilid, 
+          const jilidChanged = updatedFields.jilid !== undefined && u.jilid !== updatedFields.jilid;
+          return {
+            ...u,
+            ...updatedFields,
             completedTargets: jilidChanged ? [] : (u.completedTargets || [])
           };
         }
         return u;
       });
-      const success = await updateTable('users', updatedUsers);
-      if (success) {
-        showToast(`Tingkat mengaji santri berhasil diperbarui ke ${newJilid}!`, 'success');
-      }
-    } catch (err) {
-      showToast(`Gagal memperbarui jilid: ${err.message}`, 'error');
-    }
-  };
 
-  const handleDirectUpdateGuru = async (santriId, newGuruId) => {
-    try {
-      const updatedUsers = users.map(u => {
-        if (String(u.id) === String(santriId)) {
-          return { 
-            ...u, 
-            guruId: newGuruId !== "" ? String(newGuruId) : null
-          };
-        }
-        return u;
-      });
       const success = await updateTable('users', updatedUsers);
       if (success) {
-        const targetGuru = users.find(g => String(g.id) === String(newGuruId));
-        const guruName = targetGuru ? targetGuru.name : 'Belum Ditugaskan';
-        showToast(`Wali kelas berhasil dipindahkan ke ${guruName}!`, 'success');
+        showToast('Data santri berhasil disinkronkan ke Google Sheets!', 'success');
       }
     } catch (err) {
-      showToast(`Gagal memindahkan wali kelas: ${err.message}`, 'error');
-    }
-  };
-
-  const handleDirectUpdateName = async (santriId, newName) => {
-    try {
-      if (!newName || !newName.trim()) {
-        showToast('Nama santri tidak boleh kosong!', 'error');
-        return;
-      }
-      const updatedUsers = users.map(u => {
-        if (String(u.id) === String(santriId)) {
-          return { 
-            ...u, 
-            name: newName.trim()
-          };
-        }
-        return u;
-      });
-      const success = await updateTable('users', updatedUsers);
-      if (success) {
-        showToast(`Nama santri berhasil diubah menjadi ${newName.trim()}!`, 'success');
-        setTempNames(prev => {
-          const copy = { ...prev };
-          delete copy[santriId];
-          return copy;
-        });
-      }
-    } catch (err) {
-      showToast(`Gagal mengubah nama: ${err.message}`, 'error');
+      console.error(err);
+      showToast(`Gagal memperbarui: ${err.message}`, 'error');
     }
   };
 
@@ -2053,12 +2015,12 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
                             onChange={(e) => setTempNames({ ...tempNames, [santri.id]: e.target.value })}
                             onBlur={(e) => {
                               if (e.target.value.trim() !== santri.name) {
-                                handleDirectUpdateName(santri.id, e.target.value);
+                                handleEditSantri(santri.id, { name: e.target.value.trim() });
                               }
                             }}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
-                                handleDirectUpdateName(santri.id, e.target.value);
+                                handleEditSantri(santri.id, { name: e.target.value.trim() });
                                 e.target.blur();
                               }
                             }}
@@ -2069,7 +2031,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
                           <select 
                             value={santri.guruId || ''}
                             disabled={isSyncing}
-                            onChange={(e) => handleDirectUpdateGuru(santri.id, e.target.value)}
+                            onChange={(e) => handleEditSantri(santri.id, { guruId: e.target.value !== "" ? String(e.target.value) : null })}
                             className="p-2 border rounded-xl bg-white font-medium outline-none focus:border-teal-500 text-xs text-gray-700 w-full min-w-[150px] disabled:opacity-50"
                           >
                             <option value="">-- Belum Ditugaskan --</option>
@@ -2082,7 +2044,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
                           <select 
                             value={santri.jilid || 'Jilid 1'}
                             disabled={isSyncing}
-                            onChange={(e) => handleDirectUpdateJilid(santri.id, e.target.value)}
+                            onChange={(e) => handleEditSantri(santri.id, { jidChanged: true, jilid: e.target.value })}
                             className="p-2 border rounded-xl bg-white font-bold outline-none focus:border-teal-500 text-xs text-gray-700 w-full min-w-[150px] disabled:opacity-50"
                           >
                             {JILID_LEVELS.map(j => <option key={j} value={j}>{j}</option>)}
@@ -2269,9 +2231,10 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
     e.preventDefault();
     const newUrl = e.target.appsScriptUrl.value.trim();
     
-    // Simpan secara dinamis ke state dan localStorage
     setAppsScriptUrl(newUrl);
-    localStorage.setItem('tpq_apps_script_url', newUrl);
+    try {
+      localStorage.setItem('tpq_apps_script_url', newUrl);
+    } catch(err){}
 
     const updated = {
       ...settings,
@@ -2279,7 +2242,6 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
       logoUrl: e.target.logoUrl.value
     };
 
-    // Sinkronisasikan settings ke tabel Sheets (lewat URL yang baru divalidasi)
     await updateTable('settings', updated, newUrl);
     showToast('Profil lembaga & Database Sheets berhasil diperbarui!');
   };
