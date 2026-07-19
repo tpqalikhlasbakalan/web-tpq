@@ -308,7 +308,13 @@ export default function App() {
   const loadDatabase = async () => {
     setIsSyncing(true);
     try {
+      // Load data lokal terlebih dahulu untuk digunakan sebagai fallback utama
+      const localUsers = safeGetLocalStorage('tpq_users', INITIAL_DATA.users);
+      const localProgress = safeGetLocalStorage('tpq_progress', INITIAL_DATA.progress);
+      const localTargets = safeGetLocalStorage('tpq_targets', INITIAL_DATA.targets);
+      const localSavings = safeGetLocalStorage('tpq_savings', INITIAL_DATA.savings);
       const localSettings = safeGetLocalStorage('tpq_settings', INITIAL_DATA.settings);
+      
       setSettings(localSettings);
 
       if (HARDCODED_APPS_SCRIPT_URL && HARDCODED_APPS_SCRIPT_URL.trim() !== '' && HARDCODED_APPS_SCRIPT_URL !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
@@ -328,10 +334,11 @@ export default function App() {
         if (payload.status === 'success' && payload.data) {
           const { users: sUsers, progress: sProgress, targets: sTargets, savings: sSavings, settings: sSettings } = payload.data;
           
-          const finalUsers = normalizeUsers((sUsers && sUsers.length > 0) ? sUsers : INITIAL_DATA.users);
-          const finalProgress = normalizeProgress((sProgress && sProgress.length > 0) ? sProgress : INITIAL_DATA.progress);
-          const finalTargets = normalizeTargets((sTargets && sTargets.length > 0) ? sTargets : INITIAL_DATA.targets);
-          const finalSavings = normalizeSavings((sSavings && sSavings.length > 0) ? sSavings : INITIAL_DATA.savings);
+          // PERBAIKAN UTAMA: Jika data dari Google Sheets kosong, gunakan data lokal terbaru (localUsers dll) agar data tidak ter-reset ke data awal bawaan
+          const finalUsers = normalizeUsers((sUsers && sUsers.length > 0) ? sUsers : localUsers);
+          const finalProgress = normalizeProgress((sProgress && sProgress.length > 0) ? sProgress : localProgress);
+          const finalTargets = normalizeTargets((sTargets && sTargets.length > 0) ? sTargets : localTargets);
+          const finalSavings = normalizeSavings((sSavings && sSavings.length > 0) ? sSavings : localSavings);
           const finalSettings = (sSettings && Object.keys(sSettings).length > 0) ? sSettings : localSettings;
 
           setUsers(finalUsers);
