@@ -1039,6 +1039,7 @@ function SavingsInputView({ users, savings, updateTable, showToast, recorderId }
 
 function GuruView({ activeTab, setActiveTab, user, users, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
   const [expandedSantriId, setExpandedSantriId] = useState(null);
+  const [viewFilter, setViewFilter] = useState('saya'); // 'saya' atau 'semua'
 
   const toggleSantriExpand = (santriId) => {
     setExpandedSantriId(prev => prev === santriId ? null : santriId);
@@ -1106,6 +1107,9 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, sav
   };
 
   const mySantri = users.filter(u => u.role === 'santri' && u.guruId !== null && String(u.guruId) === String(user.id));
+  const displayedSantri = (user.role === 'kepala_tpq' && viewFilter === 'semua')
+    ? users.filter(u => u.role === 'santri')
+    : mySantri;
   
   // Deteksi hak akses menu tabungan santri yang diatur oleh Kepala
   const canInputSavings = settings.savingInputRoles?.includes('guru');
@@ -1214,10 +1218,35 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, sav
       {activeTab === 'isi_progres' && (
         <div className="space-y-6">
           <h2 className="text-lg font-bold flex items-center text-emerald-800"><ClipboardList className="mr-2"/> Input Capaian Nilai Mengaji Harian</h2>
-          {mySantri.length === 0 && <div className="bg-blue-50 p-6 rounded-2xl text-blue-800 text-center border border-blue-100 text-sm font-semibold shadow-xs">Silakan lakukan klaim santri terlebih dahulu untuk menginput progres.</div>}
+          
+          {}
+          {user.role === 'kepala_tpq' && (
+            <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div>
+                <p className="text-xs font-bold text-emerald-800">Mode Akses Kepala TPQ</p>
+                <p className="text-[11px] text-emerald-600">Anda dapat memfilter tampilan antara bimbingan pribadi Anda atau seluruh santri lembaga.</p>
+              </div>
+              <div className="flex bg-white border rounded-xl overflow-hidden shadow-sm">
+                <button 
+                  onClick={() => setViewFilter('saya')} 
+                  className={`px-4 py-2 text-xs font-bold transition-all ${viewFilter === 'saya' ? 'bg-emerald-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                >
+                  Bimbingan Saya ({mySantri.length})
+                </button>
+                <button 
+                  onClick={() => setViewFilter('semua')} 
+                  className={`px-4 py-2 text-xs font-bold transition-all ${viewFilter === 'semua' ? 'bg-emerald-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                >
+                  Semua Santri ({users.filter(u => u.role === 'santri').length})
+                </button>
+              </div>
+            </div>
+          )}
+
+          {displayedSantri.length === 0 && <div className="bg-blue-50 p-6 rounded-2xl text-blue-800 text-center border border-blue-100 text-sm font-semibold shadow-xs">Silakan lakukan klaim santri terlebih dahulu untuk menginput progres.</div>}
           
           <div className="space-y-4">
-            {mySantri.map(santri => {
+            {displayedSantri.map(santri => {
               const now = new Date();
               const isActualSaturdayNight = (now.getDay() === 6 && now.getHours() >= 18) || (now.getDay() === 0);
               const santriNeedsAcc = isAccNeeded(santri.lastAccDate, simulatedWeekend || isActualSaturdayNight);
@@ -1342,11 +1371,35 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, sav
            <h2 className="text-lg font-bold mb-3 flex items-center text-purple-800"><CheckSquare className="mr-2"/> Penilaian Target Kompetensi Jilid Santri</h2>
            <p className="text-xs text-gray-500 mb-6 leading-relaxed">Centang target kompetensi yang diatur oleh Kepala TPQ apabila santri bersangkutan telah menguasainya secara utuh.</p>
            
-           {mySantri.length === 0 ? (
+           {}
+           {user.role === 'kepala_tpq' && (
+            <div className="mb-6 bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div>
+                <p className="text-xs font-bold text-emerald-800">Mode Akses Kepala TPQ</p>
+                <p className="text-[11px] text-emerald-600">Anda dapat memfilter tampilan antara bimbingan pribadi Anda atau seluruh santri lembaga.</p>
+              </div>
+              <div className="flex bg-white border rounded-xl overflow-hidden shadow-sm">
+                <button 
+                  onClick={() => setViewFilter('saya')} 
+                  className={`px-4 py-2 text-xs font-bold transition-all ${viewFilter === 'saya' ? 'bg-emerald-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                >
+                  Bimbingan Saya ({mySantri.length})
+                </button>
+                <button 
+                  onClick={() => setViewFilter('semua')} 
+                  className={`px-4 py-2 text-xs font-bold transition-all ${viewFilter === 'semua' ? 'bg-emerald-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                >
+                  Semua Santri ({users.filter(u => u.role === 'santri').length})
+                </button>
+              </div>
+            </div>
+          )}
+
+           {displayedSantri.length === 0 ? (
              <p className="text-xs text-gray-400 italic text-center py-6">Belum ada santri bimbingan.</p>
            ) : (
              <div className="space-y-6">
-               {mySantri.map(s => {
+               {displayedSantri.map(s => {
                  const levelTargets = targets.filter(t => t.level === s.jilid);
                  return (
                    <div key={s.id} className="border border-purple-100 rounded-2xl p-4 bg-purple-50/20 shadow-xs animate-fade-in">
@@ -1385,8 +1438,33 @@ function GuruView({ activeTab, setActiveTab, user, users, progress, targets, sav
       {activeTab === 'pengajuan_kenaikan' && (
         <div className="space-y-6">
           <h2 className="text-lg font-bold flex items-center text-orange-800"><Award className="mr-2"/> Pengajuan Kenaikan Jilid / Kelompok Juz</h2>
+          
+          {}
+          {user.role === 'kepala_tpq' && (
+            <div className="mb-6 bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div>
+                <p className="text-xs font-bold text-emerald-800">Mode Akses Kepala TPQ</p>
+                <p className="text-[11px] text-emerald-600">Anda dapat memfilter tampilan antara bimbingan pribadi Anda atau seluruh santri lembaga.</p>
+              </div>
+              <div className="flex bg-white border rounded-xl overflow-hidden shadow-sm">
+                <button 
+                  onClick={() => setViewFilter('saya')} 
+                  className={`px-4 py-2 text-xs font-bold transition-all ${viewFilter === 'saya' ? 'bg-emerald-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                >
+                  Bimbingan Saya ({mySantri.length})
+                </button>
+                <button 
+                  onClick={() => setViewFilter('semua')} 
+                  className={`px-4 py-2 text-xs font-bold transition-all ${viewFilter === 'semua' ? 'bg-emerald-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                >
+                  Semua Santri ({users.filter(u => u.role === 'santri').length})
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {mySantri.map(santri => {
+            {displayedSantri.map(santri => {
               const levelTargets = targets.filter(t => t.level === santri.jilid);
               const completedCount = levelTargets.filter(t => santri.completedTargets?.includes(String(t.id))).length;
               const isEligible = levelTargets.length > 0 && completedCount === levelTargets.length;
@@ -1815,7 +1893,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
 
   if (activeTab === 'kelola_santri') {
     const santriList = users.filter(u => u.role === 'santri');
-    const guruList = users.filter(u => u.role === 'guru');
+    const guruList = users.filter(u => u.role === 'guru' || u.role === 'kepala_tpq');
     return (
       <div className="animate-fade-in animate-duration-300">
         <BackButton onClick={() => setActiveTab('dashboard')} />
