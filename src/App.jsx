@@ -675,6 +675,7 @@ export default function App() {
             setSimulatedWeekend={setSimulatedWeekend}
             appsScriptUrl={appsScriptUrl}
             setAppsScriptUrl={setAppsScriptUrl}
+            isSyncing={isSyncing}
           />
         )}
         {currentUser.role === 'bendahara' && (
@@ -1775,10 +1776,9 @@ function BendaharaView({ activeTab, setActiveTab, users, savings, settings, upda
   );
 }
 
-function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend, appsScriptUrl, setAppsScriptUrl }) {
-  const [tempJilids, setTempJilids] = useState({});
-  const [tempGurus, setTempGurus] = useState({});
+function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend, appsScriptUrl, setAppsScriptUrl, isSyncing }) {
   const [tempNames, setTempNames] = useState({});
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleAccKenaikan = async (progressId, santriId) => {
     const santri = users.find(u => String(u.id) === String(santriId));
@@ -1796,51 +1796,76 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
     showToast(`Ujian disetujui! Santri berhasil naik ke tingkat ${nextJid}`);
   };
 
-  const handleEditSantri = async (santriId, newName, newJilid, newGuruId) => {
+  const handleDirectUpdateJilid = async (santriId, newJilid) => {
     try {
-      if (!newName || !newName.trim()) {
-        showToast('Nama santri tidak boleh kosong!', 'error');
-        return;
-      }
-
       const updatedUsers = users.map(u => {
         if (String(u.id) === String(santriId)) {
           const jilidChanged = u.jilid !== newJilid;
           return { 
             ...u, 
-            name: newName.trim(),
             jilid: newJilid, 
-            guruId: newGuruId !== "" ? String(newGuruId) : null,
             completedTargets: jilidChanged ? [] : (u.completedTargets || [])
           };
         }
         return u;
       });
-
       const success = await updateTable('users', updatedUsers);
       if (success) {
+        showToast(`Tingkat mengaji santri berhasil diperbarui ke ${newJilid}!`, 'success');
+      }
+    } catch (err) {
+      showToast(`Gagal memperbarui jilid: ${err.message}`, 'error');
+    }
+  };
+
+  const handleDirectUpdateGuru = async (santriId, newGuruId) => {
+    try {
+      const updatedUsers = users.map(u => {
+        if (String(u.id) === String(santriId)) {
+          return { 
+            ...u, 
+            guruId: newGuruId !== "" ? String(newGuruId) : null
+          };
+        }
+        return u;
+      });
+      const success = await updateTable('users', updatedUsers);
+      if (success) {
+        const targetGuru = users.find(g => String(g.id) === String(newGuruId));
+        const guruName = targetGuru ? targetGuru.name : 'Belum Ditugaskan';
+        showToast(`Wali kelas berhasil dipindahkan ke ${guruName}!`, 'success');
+      }
+    } catch (err) {
+      showToast(`Gagal memindahkan wali kelas: ${err.message}`, 'error');
+    }
+  };
+
+  const handleDirectUpdateName = async (santriId, newName) => {
+    try {
+      if (!newName || !newName.trim()) {
+        showToast('Nama santri tidak boleh kosong!', 'error');
+        return;
+      }
+      const updatedUsers = users.map(u => {
+        if (String(u.id) === String(santriId)) {
+          return { 
+            ...u, 
+            name: newName.trim()
+          };
+        }
+        return u;
+      });
+      const success = await updateTable('users', updatedUsers);
+      if (success) {
+        showToast(`Nama santri berhasil diubah menjadi ${newName.trim()}!`, 'success');
         setTempNames(prev => {
           const copy = { ...prev };
           delete copy[santriId];
           return copy;
         });
-        setTempGurus(prev => {
-          const copy = { ...prev };
-          delete copy[santriId];
-          return copy;
-        });
-        setTempJilids(prev => {
-          const copy = { ...prev };
-          delete copy[santriId];
-          return copy;
-        });
-        showToast(`Berhasil memperbarui data santri!`, 'success');
-      } else {
-        showToast('Gagal memperbarui data santri ke server Sheets.', 'error');
       }
     } catch (err) {
-      console.error("Error editing student:", err);
-      showToast(`Terjadi kesalahan: ${err.message}`, 'error');
+      showToast(`Gagal mengubah nama: ${err.message}`, 'error');
     }
   };
 
@@ -1969,51 +1994,77 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
 
   if (activeTab === 'kelola_santri') {
     const santriList = users.filter(u => u.role === 'santri');
+    const filteredSantri = santriList.filter(s => 
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (s.jilid && s.jilid.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
     const guruList = users.filter(u => u.role === 'guru' || u.role === 'kepala_tpq');
+
     return (
       <div className="animate-fade-in">
         <BackButton onClick={() => setActiveTab('dashboard')} />
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="mb-6">
-            <h2 className="text-lg font-bold flex items-center text-teal-800"><Users className="mr-2"/> Kelola Data & Tingkat Mengaji Santri</h2>
-            <p className="text-xs text-gray-500 mt-1">Sesuaikan Nama, pilih Wali Kelas (Guru bimbingan), dan tentukan Jilid santri secara manual. Klik tombol **Simpan** untuk menerapkan perubahan.</p>
+          <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold flex items-center text-teal-850"><Users className="mr-2 text-teal-600"/> Kelola Data & Tingkat Mengaji Santri</h2>
+              <p className="text-xs text-gray-500 mt-1">Sistem akan otomatis menyimpan perubahan nama (tekan Enter/klik luar), Wali Kelas, dan Tingkat Jilid secara instan ke Google Sheets.</p>
+            </div>
+            <div className="relative w-full md:w-64">
+              <input 
+                type="text" 
+                placeholder="Cari nama atau jilid..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="p-2.5 pl-4 border rounded-xl outline-none text-xs bg-gray-50 focus:bg-white focus:border-teal-500 w-full font-medium"
+              />
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-teal-50 text-teal-900 text-xs font-bold uppercase border-b border-teal-100">
-                  <th className="p-4 rounded-tl-xl">Nama Santri</th>
-                  <th className="p-4">Wali Kelas / Guru</th>
-                  <th className="p-4">Tingkat / Jilid Mengaji</th>
-                  <th className="p-4 text-center rounded-tr-xl">Aksi</th>
+                  <th className="p-4 rounded-tl-xl">Nama Santri (Auto-Save)</th>
+                  <th className="p-4">Wali Kelas / Guru (Instant Save)</th>
+                  <th className="p-4">Tingkat / Jilid Mengaji (Instant Save)</th>
+                  <th className="p-4 text-center rounded-tr-xl">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {santriList.length === 0 ? (
+                {filteredSantri.length === 0 ? (
                   <tr>
-                    <td colSpan="4" className="p-8 text-center text-gray-500 text-sm">Belum ada data santri.</td>
+                    <td colSpan="4" className="p-8 text-center text-gray-500 text-sm">Tidak ada data santri yang cocok dengan pencarian.</td>
                   </tr>
                 ) : (
-                  santriList.map(santri => {
-                    const selectedName = tempNames[santri.id] !== undefined ? tempNames[santri.id] : santri.name;
-                    const selectedGuruId = tempGurus[santri.id] !== undefined ? tempGurus[santri.id] : (santri.guruId || '');
-                    const selectedJilid = tempJilids[santri.id] !== undefined ? tempJilids[santri.id] : (santri.jilid || 'Jilid 1');
-                    
+                  filteredSantri.map(santri => {
+                    const currentName = tempNames[santri.id] !== undefined ? tempNames[santri.id] : santri.name;
                     return (
                       <tr key={santri.id} className="border-b hover:bg-gray-50 text-xs transition">
                         <td className="p-4 font-bold text-gray-800">
                           <input 
                             type="text"
-                            value={selectedName}
+                            value={currentName}
+                            disabled={isSyncing}
                             onChange={(e) => setTempNames({ ...tempNames, [santri.id]: e.target.value })}
-                            className="p-2 border rounded-xl bg-white font-semibold outline-none focus:border-teal-500 text-xs text-gray-800 w-full min-w-[150px]"
+                            onBlur={(e) => {
+                              if (e.target.value.trim() !== santri.name) {
+                                handleDirectUpdateName(santri.id, e.target.value);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleDirectUpdateName(santri.id, e.target.value);
+                                e.target.blur();
+                              }
+                            }}
+                            className="p-2 border rounded-xl bg-white font-semibold outline-none focus:border-teal-500 text-xs text-gray-800 w-full min-w-[150px] disabled:opacity-50"
                           />
                         </td>
                         <td className="p-4 text-gray-600">
                           <select 
-                            value={selectedGuruId}
-                            onChange={(e) => setTempGurus({ ...tempGurus, [santri.id]: e.target.value })}
-                            className="p-2 border rounded-xl bg-white font-medium outline-none focus:border-teal-500 text-xs text-gray-700 w-full min-w-[150px]"
+                            value={santri.guruId || ''}
+                            disabled={isSyncing}
+                            onChange={(e) => handleDirectUpdateGuru(santri.id, e.target.value)}
+                            className="p-2 border rounded-xl bg-white font-medium outline-none focus:border-teal-500 text-xs text-gray-700 w-full min-w-[150px] disabled:opacity-50"
                           >
                             <option value="">-- Belum Ditugaskan --</option>
                             {guruList.map(g => (
@@ -2023,20 +2074,24 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
                         </td>
                         <td className="p-4">
                           <select 
-                            value={selectedJilid}
-                            onChange={(e) => setTempJilids({ ...tempJilids, [santri.id]: e.target.value })}
-                            className="p-2 border rounded-xl bg-white font-bold outline-none focus:border-teal-500 text-xs text-gray-700 w-full min-w-[150px]"
+                            value={santri.jilid || 'Jilid 1'}
+                            disabled={isSyncing}
+                            onChange={(e) => handleDirectUpdateJilid(santri.id, e.target.value)}
+                            className="p-2 border rounded-xl bg-white font-bold outline-none focus:border-teal-500 text-xs text-gray-700 w-full min-w-[150px] disabled:opacity-50"
                           >
                             {JILID_LEVELS.map(j => <option key={j} value={j}>{j}</option>)}
                           </select>
                         </td>
                         <td className="p-4 text-center">
-                          <button
-                            onClick={() => handleEditSantri(santri.id, selectedName, selectedJilid, selectedGuruId)}
-                            className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center transition-all duration-200 shadow-sm gap-1.5 mx-auto"
-                          >
-                            <CheckCircle size={14} /> Simpan
-                          </button>
+                          {isSyncing ? (
+                            <span className="inline-flex items-center text-[10px] text-teal-600 font-medium animate-pulse">
+                              <RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin text-teal-600" /> Menyimpan...
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center bg-emerald-50 text-emerald-700 border border-emerald-100 px-2.5 py-1 rounded-full text-[10px] font-bold">
+                              <CheckCircle size={12} className="mr-1 text-emerald-600" /> Tersinkron
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );
