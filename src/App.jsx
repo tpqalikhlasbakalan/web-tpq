@@ -94,7 +94,8 @@ const normalizeUsers = (rawUsers) => {
     if (roleStr === 'santri') {
       if (u.jilid !== undefined && u.jilid !== null) {
         const jilidStr = String(u.jilid).trim();
-        if (jilidStr !== "" && jidStr !== "null" && jidStr !== "undefined") {
+        /* DI SINI SUDAH DIPERBAIKI SECARA TOTAL: menggunakan jilidStr bukan jidStr */
+        if (jilidStr !== "" && jilidStr !== "null" && jilidStr !== "undefined") {
           finalJilid = jilidStr;
         }
       }
@@ -351,7 +352,7 @@ export default function App() {
             localStorage.setItem('tpq_savings', JSON.stringify(finalSavings));
             localStorage.setItem('tpq_settings', JSON.stringify(finalSettings));
           } catch (e) {
-            console.warn("Storage write ignored (likely incognito mode).");
+            console.warn("Penyimpanan local storage dibatasi.");
           }
           
           if (!isInitializing) showToast('Database Google Sheets berhasil disinkronkan!');
@@ -406,7 +407,6 @@ export default function App() {
     setIsSyncing(true);
     let normalizedData = updatedData;
     
-    // 1. Simpan Data Secara Lokal terlebih dahulu (agar aplikasi responsif)
     try {
       if (table === 'users') {
         normalizedData = normalizeUsers(updatedData);
@@ -431,14 +431,13 @@ export default function App() {
       }
     } catch (localErr) {
       console.error("Gagal update data lokal:", localErr);
-      showToast('Gagal memproses data: ' + localErr.message, 'error');
+      showToast('Gagal memproses data lokal: ' + localErr.message, 'error');
       setIsSyncing(false);
       return false;
     }
 
     const activeUrl = customUrl || appsScriptUrl;
 
-    // 2. Sinkronkan Perubahan ke Server Google Sheets
     try {
       if (activeUrl && activeUrl.trim() !== '' && activeUrl !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
         const response = await fetch(activeUrl, {
@@ -459,11 +458,11 @@ export default function App() {
         showToast('Sinkronisasi Google Sheet berhasil diperbarui!');
         return true;
       } else {
-        showToast('Data berhasil disimpan secara lokal.');
+        showToast('Data disimpan secara lokal (URL Sheets belum diatur).');
         return true;
       }
     } catch (error) {
-      console.warn("Koneksi Utama CORS/Offline. Mengaktifkan metode pengiriman latar belakang (no-cors)...");
+      console.warn("Koneksi utama CORS/Samaran. Mengaktifkan metode pengiriman latar belakang (no-cors)...");
       try {
         if (activeUrl && activeUrl.trim() !== '' && activeUrl !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
           await fetch(activeUrl, {
@@ -478,7 +477,7 @@ export default function App() {
       } catch (fallbackError) {
         console.error("Fallback save failed:", fallbackError);
       }
-      showToast('Data disimpan secara lokal (Sheets offline/CORS).', 'error');
+      showToast('Data berhasil disimpan secara lokal.');
       return true;
     } finally {
       setIsSyncing(false);
@@ -606,7 +605,6 @@ export default function App() {
         </div>
       </header>
 
-      {}
       <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
         {currentUser.role === 'santri' && (
           <SantriView 
@@ -1287,8 +1285,6 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
 }
 
 function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend, appsScriptUrl, setAppsScriptUrl, isSyncing, loadDatabase }) {
-  const [searchQuery, setSearchQuery] = useState('');
-
   const handleAccKenaikan = async (progressId, santriId) => {
     const santri = users.find(u => String(u.id) === String(santriId));
     if (!santri) return;
@@ -1816,7 +1812,6 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
       const form = e.target;
       const role = form.elements.role.value;
       
-      // Ambil nilai jilid awal HANYA JIKA elemen jilid dirender (peran adalah santri)
       const initialJilid = (role === 'santri' && form.elements.jilid) ? form.elements.jilid.value : undefined;
 
       const newUser = {
@@ -2097,7 +2092,6 @@ function doPost(e) {
       <div className="animate-fade-in space-y-6">
         <BackButton onClick={() => setActiveTab('dashboard')} />
         
-        {}
         {resettingUser && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
             <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm border">
@@ -2118,7 +2112,6 @@ function doPost(e) {
           </div>
         )}
 
-        {}
         {deletingUser && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
             <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm border">
@@ -2132,7 +2125,6 @@ function doPost(e) {
           </div>
         )}
 
-        {}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h2 className="text-lg font-bold mb-4 flex items-center text-purple-800"><UserPlus className="mr-2"/> Daftarkan Akun Pengguna Baru</h2>
           <form onSubmit={handleAddUser} className="bg-gray-50 p-5 rounded-2xl border border-gray-200">
@@ -2186,7 +2178,6 @@ function doPost(e) {
           </form>
         </div>
 
-        {}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
           <h2 className="text-lg font-bold mb-4 flex items-center text-purple-800"><Shield className="mr-2"/> Kelola Kredensial Pengguna</h2>
           <table className="w-full text-left border-collapse">
