@@ -85,15 +85,40 @@ const normalizeUsers = (rawUsers) => {
       console.error("Error parsing historyBayar", e);
     }
 
+    // Normalisasi guruId agar tidak menghasilkan string "null" atau string kosong yang memutus link akun Guru
+    let finalGuruId = null;
+    if (u.guruId !== undefined && u.guruId !== null) {
+      const guruIdStr = String(u.guruId).trim();
+      if (guruIdStr !== "" && guruIdStr !== "null" && guruIdStr !== "undefined") {
+        finalGuruId = guruIdStr;
+      }
+    }
+
+    // Normalisasi jilid agar tidak bernilai string kosong, "null", atau "undefined" yang memutus dashboard Santri
+    let finalJilid = undefined;
+    const roleStr = u.role !== undefined && u.role !== null ? String(u.role).trim() : '';
+    if (roleStr === 'santri') {
+      if (u.jilid !== undefined && u.jilid !== null) {
+        const jilidStr = String(u.jilid).trim();
+        if (jilidStr !== "" && jilidStr !== "null" && jilidStr !== "undefined") {
+          finalJilid = jilidStr;
+        } else {
+          finalJilid = 'Jilid 1';
+        }
+      } else {
+        finalJilid = 'Jilid 1';
+      }
+    }
+
     uniqueUsers.push({
       ...u,
       id: idStr,
       username: u.username !== undefined && u.username !== null ? String(u.username).trim() : '',
       password: u.password !== undefined && u.password !== null ? String(u.password) : '',
-      role: u.role !== undefined && u.role !== null ? String(u.role) : '',
+      role: roleStr,
       name: u.name !== undefined && u.name !== null ? String(u.name).trim() : '',
-      guruId: u.guruId !== undefined && u.guruId !== null && String(u.guruId).trim() !== "" ? String(u.guruId).trim() : null,
-      jilid: u.jilid !== undefined && u.jilid !== null ? String(u.jilid) : undefined,
+      guruId: finalGuruId,
+      jilid: finalJilid,
       hasAlarm: u.hasAlarm === true || u.hasAlarm === 'true' || u.hasAlarm === 1,
       lastAccDate: u.lastAccDate !== undefined && u.lastAccDate !== null ? String(u.lastAccDate) : '',
       completedTargets: completed,
@@ -1732,7 +1757,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
     await updateTable('progress', updatedProgress);
     
     const currentJilidIdx = JILID_LEVELS.indexOf(santri.jilid);
-    const nextJid = JILID_LEVELS[currentJilidIdx + 1] || 'Lulus (Tamat)';
+    const nextJid = JILID_LEVELS[currentJidIdx + 1] || 'Lulus (Tamat)';
     
     const updatedUsers = users.map(u => String(u.id) === String(santriId) ? { ...u, jilid: nextJid, completedTargets: [] } : u);
     await updateTable('users', updatedUsers);
@@ -1762,6 +1787,22 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
 
     const success = await updateTable('users', updatedUsers);
     if (success) {
+      // Hapus data dari state edit temporer agar input dropdown beralih mengikuti data users global ter-update
+      setTempNames(prev => {
+        const copy = { ...prev };
+        delete copy[santriId];
+        return copy;
+      });
+      setTempGurus(prev => {
+        const copy = { ...prev };
+        delete copy[santriId];
+        return copy;
+      });
+      setTempJilids(prev => {
+        const copy = { ...prev };
+        delete copy[santriId];
+        return copy;
+      });
       showToast(`Berhasil memperbarui data santri!`, 'success');
     } else {
       showToast('Gagal memperbarui data santri ke server Sheets.', 'error');
