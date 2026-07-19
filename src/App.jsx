@@ -97,8 +97,8 @@ const normalizeUsers = (rawUsers) => {
     if (roleStr === 'santri') {
       if (u.jilid !== undefined && u.jilid !== null) {
         const jilidStr = String(u.jilid).trim();
-        if (jidStr !== "" && jidStr !== "null" && jidStr !== "undefined") {
-          finalJilid = jidStr;
+        if (jilidStr !== "" && jidStr !== "null" && jidStr !== "undefined") {
+          finalJilid = jilidStr;
         } else {
           finalJilid = 'Jilid 1';
         }
@@ -421,7 +421,7 @@ export default function App() {
     setIsSyncing(true);
     let normalizedData = updatedData;
     
-    // 1. Amankan ke state lokal & LocalStorage terlebih dahulu agar data pengguna TIDAK HILANG
+    // 1. Amankan ke state aplikasi di memory terlebih dahulu agar UI terupdate instan
     try {
       if (table === 'users') {
         normalizedData = normalizeUsers(updatedData);
@@ -439,17 +439,23 @@ export default function App() {
         setSettings(normalizedData);
       }
 
-      localStorage.setItem(`tpq_${table}`, JSON.stringify(normalizedData));
+      // Coba simpan ke LocalStorage secara terpisah (Non-Blocking).
+      // Jika gagal karena mode Incognito/Samaran (seperti di image_5f3b99.png), biarkan sistem tetap melanjutkan ke Google Sheets!
+      try {
+        localStorage.setItem(`tpq_${table}`, JSON.stringify(normalizedData));
+      } catch (storageErr) {
+        console.warn("Gagal menulis ke LocalStorage (Mode Samaran aktif):", storageErr);
+      }
     } catch (localErr) {
       console.error("Gagal update data lokal:", localErr);
-      showToast('Gagal menyimpan data ke sistem lokal!', 'error');
+      showToast('Gagal memproses perubahan data di memori!', 'error');
       setIsSyncing(false);
       return false;
     }
 
     const activeUrl = customUrl || appsScriptUrl;
 
-    // 2. Coba kirim data & sinkronkan ke Google Sheets
+    // 2. Coba kirim data & sinkronkan langsung ke Google Sheets
     try {
       if (activeUrl && activeUrl.trim() !== '' && activeUrl !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
         const response = await fetch(activeUrl, {
@@ -503,8 +509,8 @@ export default function App() {
         console.error("No-cors fallback save failed:", fallbackError);
       }
 
-      showToast(`Tersimpan Lokal! Gagal sync Sheets: ${error.message || 'Koneksi terganggu'}`, 'error');
-      return true; 
+      showToast(`Gagal sync Sheets: ${error.message || 'Koneksi terganggu'}`, 'error');
+      return false; 
     } finally {
       setIsSyncing(false);
     }
