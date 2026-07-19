@@ -1766,46 +1766,51 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
   };
 
   const handleEditSantri = async (santriId, newName, newJilid, newGuruId) => {
-    if (!newName || !newName.trim()) {
-      showToast('Nama santri tidak boleh kosong!', 'error');
-      return;
-    }
-
-    const updatedUsers = users.map(u => {
-      if (String(u.id) === String(santriId)) {
-        const jilidChanged = u.jilid !== newJilid;
-        return { 
-          ...u, 
-          name: newName.trim(),
-          jilid: newJilid,
-          guruId: newGuruId !== "" ? String(newGuruId) : null,
-          completedTargets: jilidChanged ? [] : (u.completedTargets || [])
-        };
+    try {
+      if (!newName || !newName.trim()) {
+        showToast('Nama santri tidak boleh kosong!', 'error');
+        return;
       }
-      return u;
-    });
 
-    const success = await updateTable('users', updatedUsers);
-    if (success) {
-      // Hapus data dari state edit temporer agar input dropdown beralih mengikuti data users global ter-update
-      setTempNames(prev => {
-        const copy = { ...prev };
-        delete copy[santriId];
-        return copy;
+      const updatedUsers = users.map(u => {
+        if (String(u.id) === String(santriId)) {
+          const jilidChanged = u.jilid !== newJilid;
+          return { 
+            ...u, 
+            name: newName.trim(),
+            jilid: newJilid, // Menggunakan variabel newJilid yang benar (sebelumnya salah ketik newJid)
+            guruId: newGuruId !== "" ? String(newGuruId) : null,
+            completedTargets: jilidChanged ? [] : (u.completedTargets || [])
+          };
+        }
+        return u;
       });
-      setTempGurus(prev => {
-        const copy = { ...prev };
-        delete copy[santriId];
-        return copy;
-      });
-      setTempJilids(prev => {
-        const copy = { ...prev };
-        delete copy[santriId];
-        return copy;
-      });
-      showToast(`Berhasil memperbarui data santri!`, 'success');
-    } else {
-      showToast('Gagal memperbarui data santri ke server Sheets.', 'error');
+
+      const success = await updateTable('users', updatedUsers);
+      if (success) {
+        // Hapus data dari state edit temporer agar input dropdown beralih mengikuti data users global ter-update
+        setTempNames(prev => {
+          const copy = { ...prev };
+          delete copy[santriId];
+          return copy;
+        });
+        setTempGurus(prev => {
+          const copy = { ...prev };
+          delete copy[santriId];
+          return copy;
+        });
+        setTempJilids(prev => {
+          const copy = { ...prev };
+          delete copy[santriId];
+          return copy;
+        });
+        showToast(`Berhasil memperbarui data santri!`, 'success');
+      } else {
+        showToast('Gagal memperbarui data santri ke server Sheets.', 'error');
+      }
+    } catch (err) {
+      console.error("Error editing student:", err);
+      showToast(`Terjadi kesalahan: ${err.message}`, 'error');
     }
   };
 
