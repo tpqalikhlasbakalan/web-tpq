@@ -95,7 +95,7 @@ const normalizeUsers = (rawUsers) => {
       if (u.jilid !== undefined && u.jilid !== null) {
         const jilidStr = String(u.jilid).trim();
         if (jilidStr !== "" && jidStr !== "null" && jidStr !== "undefined") {
-          finalJilid = jilidStr; // PERBAIKAN TOTAL: variabel diubah dari typo jidStr menjadi jilidStr
+          finalJilid = jilidStr;
         }
       }
     } else {
@@ -366,7 +366,6 @@ export default function App() {
       }
     } catch (error) {
       console.error("Detail Error Sinkronisasi:", error);
-      // Fallback ke penyimpanan lokal apabila Sheets/Koneksi gagal
       setUsers(normalizeUsers(safeGetLocalStorage('tpq_users', INITIAL_DATA.users)));
       setProgress(normalizeProgress(safeGetLocalStorage('tpq_progress', INITIAL_DATA.progress)));
       setTargets(normalizeTargets(safeGetLocalStorage('tpq_targets', INITIAL_DATA.targets)));
@@ -467,7 +466,6 @@ export default function App() {
       console.warn("Koneksi Utama CORS/Offline. Mengaktifkan metode pengiriman latar belakang (no-cors)...");
       try {
         if (activeUrl && activeUrl.trim() !== '' && activeUrl !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
-          // Melakukan pengiriman data dengan mode no-cors (tidak membaca respons agar kebal CORS)
           await fetch(activeUrl, {
             method: 'POST',
             mode: 'no-cors',
@@ -608,6 +606,7 @@ export default function App() {
         </div>
       </header>
 
+      {}
       <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
         {currentUser.role === 'santri' && (
           <SantriView 
@@ -950,7 +949,6 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
   const [selectedSantri, setSelectedSantri] = useState(null);
   const [modeAksesKepala, setModeAksesKepala] = useState(false);
 
-  // Filter santri
   const bimbinganSantri = users.filter(s => s.role === 'santri' && String(s.guruId) === String(user.id));
   const semuaSantri = users.filter(s => s.role === 'santri');
   const activeSantriList = (user.role === 'kepala_tpq' && modeAksesKepala) ? semuaSantri : bimbinganSantri;
@@ -1197,7 +1195,7 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
                       const isChecked = selectedSantri.completedTargets && selectedSantri.completedTargets.includes(String(t.id));
                       return (
                         <label key={t.id} className="flex justify-between items-center p-3.5 bg-gray-50 rounded-xl border border-gray-150 cursor-pointer hover:bg-gray-100/50 transition">
-                          <span className="text-xs text-gray-700 font-medium leading-relaxed pr-3">{t.description}</span>
+                          <span className="text-xs text-gray-750 leading-relaxed font-medium">{t.description}</span>
                           <input 
                             type="checkbox" 
                             checked={isChecked || false} 
@@ -1289,7 +1287,6 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
 }
 
 function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend, appsScriptUrl, setAppsScriptUrl, isSyncing, loadDatabase }) {
-  const [tempNames, setTempNames] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleAccKenaikan = async (progressId, santriId) => {
@@ -1307,29 +1304,6 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
     await updateTable('users', updatedUsers);
     
     showToast(`Ujian disetujui! Santri berhasil naik ke tingkat ${nextJid}`);
-  };
-
-  const handleEditSantri = async (santriId, updatedFields) => {
-    try {
-      const jilidChanged = updatedFields.jilid !== undefined;
-      const updatedUsers = users.map(u => {
-        if (String(u.id) === String(santriId)) {
-          return {
-            ...u,
-            ...updatedFields,
-            completedTargets: jilidChanged ? [] : (u.completedTargets || [])
-          };
-        }
-        return u;
-      });
-
-      setUsers(updatedUsers);
-      await updateTable('users', updatedUsers);
-      showToast('Data santri berhasil diperbarui!');
-    } catch (err) {
-      console.error(err);
-      showToast(`Gagal memperbarui: ${err.message}`, 'error');
-    }
   };
 
   const handleAddTarget = async (e) => {
@@ -1801,10 +1775,18 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
       showToast('Sandi baru tidak boleh kosong!', 'error');
       return;
     }
-    const updated = users.map(user => String(user.id) === String(resettingUser.id) ? { ...user, password: newPasswordVal.trim() } : user);
-    await updateTable('users', updated);
-    showToast(`Password untuk ${resettingUser.name} berhasil diubah.`);
-    setResettingUser(null);
+    try {
+      const updated = users.map(user => 
+        String(user.id).trim() === String(resettingUser.id).trim() 
+        ? { ...user, password: newPasswordVal.trim() } 
+        : user
+      );
+      await updateTable('users', updated);
+      showToast(`Password untuk ${resettingUser.name} berhasil diubah.`);
+      setResettingUser(null);
+    } catch (err) {
+      showToast('Gagal mereset sandi: ' + err.message, 'error');
+    }
   };
 
   const triggerDeleteDialog = (userObj) => {
@@ -1812,42 +1794,64 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
   };
 
   const confirmDeleteUser = async () => {
-    const updated = users.filter(u => String(u.id) !== String(deletingUser.id));
-    await updateTable('users', updated);
-    showToast('Akun telah berhasil dihapus secara permanen.');
-    setDeletingUser(null);
+    try {
+      const updated = users.filter(u => String(u.id).trim() !== String(deletingUser.id).trim());
+      const success = await updateTable('users', updated);
+      if (success) {
+        showToast('Akun telah berhasil dihapus secara permanen.');
+      } else {
+        showToast('Gagal menghapus akun pengguna.', 'error');
+      }
+      setDeletingUser(null);
+    } catch (err) {
+      console.error("Error deleting user:", err);
+      showToast('Gagal menghapus pengguna: ' + err.message, 'error');
+      setDeletingUser(null);
+    }
   };
 
   const handleAddUser = async (e) => {
     e.preventDefault();
-    const role = e.target.role.value;
-    const initialJilid = role === 'santri' ? e.target.jilid.value : undefined;
+    try {
+      const form = e.target;
+      const role = form.elements.role.value;
+      
+      // Ambil nilai jilid awal HANYA JIKA elemen jilid dirender (peran adalah santri)
+      const initialJilid = (role === 'santri' && form.elements.jilid) ? form.elements.jilid.value : undefined;
 
-    const newUser = {
-      id: Date.now().toString(),
-      username: e.target.username.value.trim().toLowerCase(),
-      password: e.target.password.value,
-      role: role,
-      name: e.target.name.value,
-      guruId: null,
-      jilid: initialJilid,
-      hasAlarm: false,
-      lastAccDate: '',
-      completedTargets: [],
-      historyBayar: []
-    };
+      const newUser = {
+        id: Date.now().toString(),
+        username: form.elements.username.value.trim().toLowerCase(),
+        password: form.elements.password.value,
+        role: role,
+        name: form.elements.name.value,
+        guruId: null,
+        jilid: initialJilid,
+        hasAlarm: false,
+        lastAccDate: '',
+        completedTargets: [],
+        historyBayar: []
+      };
 
-    const isExist = users.some(u => String(u.username).toLowerCase() === String(newUser.username).toLowerCase());
-    if (isExist) {
-      showToast('Username sudah dipakai! Silakan pilih username unik.', 'error');
-      return;
+      const isExist = users.some(u => String(u.username).toLowerCase() === String(newUser.username).toLowerCase());
+      if (isExist) {
+        showToast('Username sudah dipakai! Silakan pilih username unik.', 'error');
+        return;
+      }
+
+      const updated = [...users, newUser];
+      const success = await updateTable('users', updated);
+      if (success) {
+        showToast('Akun pengguna baru berhasil ditambahkan!');
+        form.reset();
+        setSelectedFormRole('santri');
+      } else {
+        showToast('Gagal mendaftarkan akun.', 'error');
+      }
+    } catch (err) {
+      console.error("Error adding user:", err);
+      showToast('Gagal memproses tambah akun: ' + err.message, 'error');
     }
-
-    const updated = [...users, newUser];
-    await updateTable('users', updated);
-    showToast('Akun pengguna baru berhasil ditambahkan!');
-    e.target.reset();
-    setSelectedFormRole('santri'); // reset form role select state to default
   };
 
   const handleSaveSettings = async (e) => {
@@ -2093,6 +2097,7 @@ function doPost(e) {
       <div className="animate-fade-in space-y-6">
         <BackButton onClick={() => setActiveTab('dashboard')} />
         
+        {}
         {resettingUser && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
             <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm border">
@@ -2113,6 +2118,7 @@ function doPost(e) {
           </div>
         )}
 
+        {}
         {deletingUser && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
             <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm border">
@@ -2126,6 +2132,7 @@ function doPost(e) {
           </div>
         )}
 
+        {}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h2 className="text-lg font-bold mb-4 flex items-center text-purple-800"><UserPlus className="mr-2"/> Daftarkan Akun Pengguna Baru</h2>
           <form onSubmit={handleAddUser} className="bg-gray-50 p-5 rounded-2xl border border-gray-200">
@@ -2179,6 +2186,7 @@ function doPost(e) {
           </form>
         </div>
 
+        {}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
           <h2 className="text-lg font-bold mb-4 flex items-center text-purple-800"><Shield className="mr-2"/> Kelola Kredensial Pengguna</h2>
           <table className="w-full text-left border-collapse">
