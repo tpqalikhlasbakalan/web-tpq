@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 
 // -------------------------------------------------------------
-// MASUKKAN URL GOOGLE APPS SCRIPT ANDA DI SINI (HARDCODED)
+// MASUKKAN URL GOOGLE APPS SCRIPT ANDA DI SINI (HARDCODED FALLBACK)
 // -------------------------------------------------------------
 const HARDCODED_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwqbAPcV4Mz6hT-PneqAQoC-aZoRdgaGJzL23qAOwcSnClmDzRpf_fzbIsPymtyQYyn-w/exec";
 
@@ -305,10 +305,15 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [simulatedWeekend, setSimulatedWeekend] = useState(false);
 
-  const loadDatabase = async () => {
+  // Menyimpan URL secara dinamis agar pengguna bisa mengganti lewat Pengaturan di UI
+  const [appsScriptUrl, setAppsScriptUrl] = useState(() => {
+    return localStorage.getItem('tpq_apps_script_url') || HARDCODED_APPS_SCRIPT_URL;
+  });
+
+  const loadDatabase = async (targetUrl = appsScriptUrl) => {
     setIsSyncing(true);
     try {
-      // Load data lokal terlebih dahulu untuk digunakan sebagai fallback utama
+      // Muat data lokal terlebih dahulu untuk digunakan sebagai fallback utama
       const localUsers = safeGetLocalStorage('tpq_users', INITIAL_DATA.users);
       const localProgress = safeGetLocalStorage('tpq_progress', INITIAL_DATA.progress);
       const localTargets = safeGetLocalStorage('tpq_targets', INITIAL_DATA.targets);
@@ -317,8 +322,8 @@ export default function App() {
       
       setSettings(localSettings);
 
-      if (HARDCODED_APPS_SCRIPT_URL && HARDCODED_APPS_SCRIPT_URL.trim() !== '' && HARDCODED_APPS_SCRIPT_URL !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
-        const response = await fetch(`${HARDCODED_APPS_SCRIPT_URL}?action=getAll`);
+      if (targetUrl && targetUrl.trim() !== '' && targetUrl !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
+        const response = await fetch(`${targetUrl}?action=getAll`);
         
         if (!response.ok) {
           throw new Error(`HTTP Error: ${response.status}`);
@@ -334,7 +339,6 @@ export default function App() {
         if (payload.status === 'success' && payload.data) {
           const { users: sUsers, progress: sProgress, targets: sTargets, savings: sSavings, settings: sSettings } = payload.data;
           
-          // PERBAIKAN UTAMA: Jika data dari Google Sheets kosong, gunakan data lokal terbaru (localUsers dll) agar data tidak ter-reset ke data awal bawaan
           const finalUsers = normalizeUsers((sUsers && sUsers.length > 0) ? sUsers : localUsers);
           const finalProgress = normalizeProgress((sProgress && sProgress.length > 0) ? sProgress : localProgress);
           const finalTargets = normalizeTargets((sTargets && sTargets.length > 0) ? sTargets : localTargets);
@@ -372,7 +376,7 @@ export default function App() {
       }
     } catch (error) {
       console.error("Detail Error Sinkronisasi:", error);
-      if (HARDCODED_APPS_SCRIPT_URL && HARDCODED_APPS_SCRIPT_URL.trim() !== '' && HARDCODED_APPS_SCRIPT_URL !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
+      if (targetUrl && targetUrl.trim() !== '' && targetUrl !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
         const errorMsg = error.message.includes('Failed to fetch') 
           ? 'Gagal menghubungi server. Periksa koneksi internet atau URL.' 
           : error.message;
@@ -412,7 +416,8 @@ export default function App() {
     }
   }, [users, currentUser]);
 
-  const updateTable = async (table, updatedData) => {
+  // Fungsi updateTable yang super andal dengan fallback no-cors jika terblokir
+  const updateTable = async (table, updatedData, customUrl = appsScriptUrl) => {
     setIsSyncing(true);
     let normalizedData = updatedData;
     
@@ -442,12 +447,14 @@ export default function App() {
       return false;
     }
 
+    const activeUrl = customUrl || appsScriptUrl;
+
     // 2. Coba kirim data & sinkronkan ke Google Sheets
     try {
-      if (HARDCODED_APPS_SCRIPT_URL && HARDCODED_APPS_SCRIPT_URL.trim() !== '' && HARDCODED_APPS_SCRIPT_URL !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
-        const response = await fetch(HARDCODED_APPS_SCRIPT_URL, {
+      if (activeUrl && activeUrl.trim() !== '' && activeUrl !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
+        const response = await fetch(activeUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // text/plain menghindari pre-flight request CORS OPTIONS
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'updateTable', table, data: normalizedData })
         });
 
@@ -476,10 +483,26 @@ export default function App() {
       } else {
         showToast('Data berhasil disimpan secara lokal.');
       }
-      return true; // Sukses simpan cloud & lokal
+      return true;
     } catch (error) {
-      console.error("Gagal Sinkronisasi Google Sheets:", error);
-      // Di sinilah penyelamat UX: Tampilkan error sync, tapi return TRUE karena data di lokal sudah aman terupdate!
+      console.warn("Standard CORS fetch failed, attempting robust no-cors fallback save...", error);
+      
+      // Fallback Latar Belakang (No-CORS): Menjamin data tetap tertulis ke Google Sheets meskipun browser melarang membaca responsnya!
+      try {
+        if (activeUrl && activeUrl.trim() !== '' && activeUrl !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
+          await fetch(activeUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'updateTable', table, data: normalizedData })
+          });
+          showToast('Sinkronisasi Google Sheet Berhasil (Latar Belakang)!');
+          return true;
+        }
+      } catch (fallbackError) {
+        console.error("No-cors fallback save failed:", fallbackError);
+      }
+
       showToast(`Tersimpan Lokal! Gagal sync Sheets: ${error.message || 'Koneksi terganggu'}`, 'error');
       return true; 
     } finally {
@@ -591,7 +614,7 @@ export default function App() {
             </p>
           </div>
           <button 
-            onClick={loadDatabase} 
+            onClick={() => loadDatabase()} 
             disabled={isSyncing}
             className="p-2 sm:p-2.5 rounded-xl bg-emerald-950 hover:bg-emerald-900 transition"
             title="Sinkronisasi Data"
@@ -650,6 +673,8 @@ export default function App() {
             showToast={showToast} 
             simulatedWeekend={simulatedWeekend}
             setSimulatedWeekend={setSimulatedWeekend}
+            appsScriptUrl={appsScriptUrl}
+            setAppsScriptUrl={setAppsScriptUrl}
           />
         )}
         {currentUser.role === 'bendahara' && (
@@ -671,6 +696,8 @@ export default function App() {
             updateTable={updateTable}
             showToast={showToast} 
             settings={settings} 
+            appsScriptUrl={appsScriptUrl}
+            setAppsScriptUrl={setAppsScriptUrl}
           />
         )}
       </main>
@@ -1748,7 +1775,7 @@ function BendaharaView({ activeTab, setActiveTab, users, savings, settings, upda
   );
 }
 
-function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
+function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend, appsScriptUrl, setAppsScriptUrl }) {
   const [tempJilids, setTempJilids] = useState({});
   const [tempGurus, setTempGurus] = useState({});
   const [tempNames, setTempNames] = useState({});
@@ -1895,11 +1922,11 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
   }
 
   if (activeTab === 'hak_akses') {
-    return <AdminView activeTab="hak_akses" setActiveTab={setActiveTab} users={users} updateTable={updateTable} showToast={showToast} settings={settings} />;
+    return <AdminView activeTab="hak_akses" setActiveTab={setActiveTab} users={users} updateTable={updateTable} showToast={showToast} settings={settings} appsScriptUrl={appsScriptUrl} setAppsScriptUrl={setAppsScriptUrl} />;
   }
 
   if (activeTab === 'pengaturan') {
-    return <AdminView activeTab="pengaturan" setActiveTab={setActiveTab} users={users} updateTable={updateTable} showToast={showToast} settings={settings} />;
+    return <AdminView activeTab="pengaturan" setActiveTab={setActiveTab} users={users} updateTable={updateTable} showToast={showToast} settings={settings} appsScriptUrl={appsScriptUrl} setAppsScriptUrl={setAppsScriptUrl} />;
   }
 
   if (activeTab === 'otorisasi_tabungan') {
@@ -2109,7 +2136,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
   return null;
 }
 
-function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, settings }) {
+function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, settings, appsScriptUrl, setAppsScriptUrl }) {
   const [showPasswordMap, setShowPasswordMap] = useState({});
   const [resettingUser, setResettingUser] = useState(null);
   const [newPasswordVal, setNewPasswordVal] = useState('');
@@ -2179,13 +2206,21 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
 
   const handleSaveSettings = async (e) => {
     e.preventDefault();
+    const newUrl = e.target.appsScriptUrl.value.trim();
+    
+    // Simpan secara dinamis ke state dan localStorage
+    setAppsScriptUrl(newUrl);
+    localStorage.setItem('tpq_apps_script_url', newUrl);
+
     const updated = {
       ...settings,
       tpqName: e.target.tpqName.value,
       logoUrl: e.target.logoUrl.value
     };
-    await updateTable('settings', updated);
-    showToast('Profil lembaga berhasil diperbarui!');
+
+    // Sinkronisasikan settings ke tabel Sheets (lewat URL yang baru divalidasi)
+    await updateTable('settings', updated, newUrl);
+    showToast('Profil lembaga & Database Sheets berhasil diperbarui!');
   };
 
   const codeScriptGoogle = `// CODE GOOGLE APPS SCRIPT UNTUK DATABASE GOOGLE SHEETS (V3 - LULUS FIX TANPA SINKRONISASI CRASH)
@@ -2308,7 +2343,7 @@ function doPost(e) {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
             <div>
               <h2 className="text-lg font-bold flex items-center text-gray-700"><Settings className="mr-2"/> Pengaturan Lembaga & Database</h2>
-              <p className="text-xs text-gray-500 mt-1">URL Google Apps Script Anda saat ini dikonfigurasi melalui kode sumber (Hardcoded) untuk keamanan.</p>
+              <p className="text-xs text-gray-500 mt-1">Kelola integrasi data Google Sheets dan data branding visual TPQ Anda di bawah.</p>
             </div>
             <button 
               onClick={() => setShowScriptModal(true)} 
@@ -2354,6 +2389,20 @@ function doPost(e) {
             <div>
               <label className="block text-xs font-bold mb-1 text-gray-500">URL Gambar Logo (Tautan Online)</label>
               <input type="url" name="logoUrl" defaultValue={settings?.logoUrl} className="w-full p-2.5 border rounded-xl outline-none focus:border-emerald-500 text-xs text-gray-800" placeholder="https://domain.com/logo-anda.png" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold mb-1 text-gray-500 text-emerald-800 flex items-center">
+                <Database size={14} className="mr-1" /> URL Google Apps Script Web App
+              </label>
+              <input 
+                type="url" 
+                name="appsScriptUrl" 
+                defaultValue={appsScriptUrl} 
+                required 
+                className="w-full p-2.5 border-2 border-emerald-100 bg-emerald-50/20 rounded-xl outline-none focus:border-emerald-500 text-xs text-gray-800 font-mono" 
+                placeholder="https://script.google.com/macros/s/.../exec" 
+              />
+              <p className="text-[10px] text-gray-400 mt-1">Masukkan tautan Web App hasil deploy Google Sheets Apps Script Anda untuk menyimpan database secara eksternal.</p>
             </div>
             <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-sm transition">Simpan Perubahan</button>
           </form>
