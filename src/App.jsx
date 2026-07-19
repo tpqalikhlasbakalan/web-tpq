@@ -115,7 +115,7 @@ const normalizeUsers = (rawUsers) => {
     if (roleStr === 'santri') {
       let rawJilid = getProp(u, ['jilid', 'Jilid', 'tingkatan', 'kelas']);
       if (rawJilid !== undefined && rawJilid !== null) {
-        const jilidStr = String(rawJilid).trim();
+        const jilidStr = String(rawJid).trim();
         if (jilidStr !== "" && jilidStr !== "null" && jilidStr !== "undefined") {
           finalJilid = jilidStr;
         }
@@ -365,12 +365,11 @@ export default function App() {
           let finalSavings = normalizeSavings((sSavings && sSavings.length > 0) ? sSavings : localSavings);
           let finalSettings = (sSettings && Object.keys(sSettings).length > 0) ? sSettings : localSettings;
 
-          // JAMINAN MUTLAK: Jika data hasil pemrosesan kosong, gunakan data sampel awal agar tidak kosong melompong
           if (finalUsers.filter(u => u.role === 'santri').length === 0) {
-            finalUsers = normalizeUsers(INITIAL_DATA.users);
+            finalUsers = normalizeUsers(localUsers.length > 0 ? localUsers : INITIAL_DATA.users);
           }
           if (finalTargets.length === 0) {
-            finalTargets = normalizeTargets(INITIAL_DATA.targets);
+            finalTargets = normalizeTargets(localTargets.length > 0 ? localTargets : INITIAL_DATA.targets);
           }
 
           setUsers(finalUsers);
@@ -394,7 +393,6 @@ export default function App() {
           throw new Error(payload.message || 'Format data dari server tidak sesuai.');
         }
       } else {
-        // Fallback lokal
         let fUsers = normalizeUsers(safeGetLocalStorage('tpq_users', INITIAL_DATA.users));
         if (fUsers.filter(u => u.role === 'santri').length === 0) {
           fUsers = normalizeUsers(INITIAL_DATA.users);
@@ -474,7 +472,7 @@ export default function App() {
       }
     } catch (localErr) {
       console.error("Gagal update data lokal:", localErr);
-      showToast('Gagal memproses data lokal: ' + localErr.message, 'error');
+      showToast('Gagal memproses data: ' + localErr.message, 'error');
       setIsSyncing(false);
       return false;
     }
@@ -767,8 +765,8 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
 
   if (activeTab === 'dashboard') {
     return (
-      <div className="space-y-6">
-        <div className="bg-emerald-600 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden animate-fade-in">
+      <div className="space-y-6 animate-fade-in">
+        <div className="bg-emerald-600 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
           <div className="absolute right-0 bottom-0 opacity-10 transform translate-x-6 translate-y-6">
             <BookOpen className="w-56 h-56" />
           </div>
@@ -879,7 +877,7 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
               <h3 className="font-extrabold text-base mt-1 flex items-center">
                 {user.hasAlarm ? (
                   <>
-                    <AlertTriangle className="text-red-500 w-5 h-5 mr-1.5 animate-pulse" />
+                    <AlertTriangle className="text-red-500 w-5 h-5 mr-1.5" />
                     <span className="text-red-600">Ada Tagihan Belum Dibayar</span>
                   </>
                 ) : (
@@ -988,11 +986,8 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
 
 function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
   const [selectedSantri, setSelectedSantri] = useState(null);
-  
-  // Set default modeAksesKepala = true agar Kepala TPQ langsung melihat seluruh santri secara default tanpa kosong
   const [modeAksesKepala, setModeAksesKepala] = useState(true);
 
-  // Filter bimbingan santri yang aman terhadap teks null/undefined atau string kosong
   const bimbinganSantri = users.filter(s => 
     s.role === 'santri' && 
     s.guruId && 
@@ -1100,7 +1095,7 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
 
   if (activeTab === 'dashboard') {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
         <h2 className="text-xl font-black text-gray-800">Panel Pengajar & Guru Ngaji: {user.name}</h2>
         
         {(user.role === 'kepala_tpq' || user.role === 'admin') && (
@@ -1420,8 +1415,8 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
 
   if (activeTab === 'dashboard') {
     return (
-      <div>
-        <h2 className="text-xl font-black text-gray-800 mb-6 animate-fade-in">Administrasi Kepala TPQ: {user.name}</h2>
+      <div className="animate-fade-in">
+        <h2 className="text-xl font-black text-gray-800 mb-6">Administrasi Kepala TPQ: {user.name}</h2>
         <MenuGrid menus={menus} onSelect={setActiveTab} />
       </div>
     );
@@ -1512,7 +1507,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
                 const s = users.find(u => String(u.id) === String(req.santriId));
                 const g = users.find(u => u.id !== null && String(u.id) === String(s?.guruId));
                 return (
-                  <div key={req.id} className="border border-orange-200 bg-orange-50/50 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center shadow-sm animate-fade-in">
+                  <div key={req.id} className="border border-orange-200 bg-orange-50/50 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center shadow-sm">
                     <div>
                       <h3 className="font-extrabold text-base text-orange-950">{s?.name}</h3>
                       <div className="flex flex-wrap gap-4 text-xs font-semibold text-gray-600 mt-1">
@@ -1559,11 +1554,11 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
               const levelTargets = targets.filter(t => t.level === level);
               if(levelTargets.length === 0) return null;
               return (
-                <div key={level} className="border border-blue-50 p-4 rounded-2xl bg-blue-50/10 animate-fade-in">
+                <div key={level} className="border border-blue-50 p-4 rounded-2xl bg-blue-50/10">
                   <h3 className="font-extrabold text-xs text-blue-900 border-b pb-2 mb-3 tracking-wide">{level}</h3>
                   <ul className="space-y-2">
                     {levelTargets.map(t => (
-                      <li key={t.id} className="flex justify-between items-start bg-white p-3 rounded-xl border shadow-sm gap-3">
+                      <li key={t.id} className="flex justify-between items-start bg-white p-3 rounded-xl border shadow-sm gap-3 animate-fade-in">
                         <span className="text-xs text-gray-750 leading-relaxed font-medium">{t.description}</span>
                         <button onClick={() => deleteTarget(t.id)} className="text-red-500 hover:text-red-700 p-1.5 bg-red-50 rounded-lg transition-all flex-shrink-0"><Trash2 size={13}/></button>
                       </li>
@@ -1629,7 +1624,7 @@ function BendaharaView({ activeTab, setActiveTab, users, savings, settings, upda
 
   if (activeTab === 'dashboard') {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
         <h2 className="text-xl font-black text-gray-800">Manajemen Bendahara & Keuangan</h2>
         <MenuGrid menus={menus} onSelect={(id) => {
           if (id === 'input_tabungan_bendahara') {
@@ -1774,7 +1769,7 @@ function SavingsInputView({ users, savings, updateTable, showToast, recorderId }
   };
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6 animate-fade-in">
       <div>
         <h2 className="text-lg font-bold flex items-center text-emerald-855"><DollarSign className="mr-1.5 text-emerald-600"/> Pencatatan Tabungan Santri</h2>
         <p className="text-xs text-gray-500 mt-1">Catat transaksi setoran masuk maupun penarikan kas tabungan santri secara mandiri ke lembar Google Sheets.</p>
@@ -2058,8 +2053,8 @@ function doPost(e) {
 
   if (activeTab === 'dashboard') {
     return (
-      <div>
-        <h2 className="text-xl font-black text-gray-800 mb-6 animate-fade-in">Control Panel Admin Utama</h2>
+      <div className="animate-fade-in">
+        <h2 className="text-xl font-black text-gray-800 mb-6">Control Panel Admin Utama</h2>
         <MenuGrid menus={menus} onSelect={setActiveTab} />
       </div>
     );
