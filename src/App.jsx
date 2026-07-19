@@ -1400,6 +1400,8 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
     { id: 'target_jilid', label: 'Kurikulum Target TPQ', icon: Book, color: 'bg-blue-100 text-blue-600', desc: 'Atur kurikulum target tiap jilid, Al-Quran, hingga hafalan per juz.' },
     { id: 'kelola_santri', label: 'Kelola Data Santri', icon: Users, color: 'bg-teal-100 text-teal-600', desc: 'Ubah tingkat jilid/PSQ santri secara manual tanpa pengajuan.' },
     { id: 'guru_progres', label: 'Input Progres Harian (Guru)', icon: ClipboardList, color: 'bg-emerald-100 text-emerald-600', desc: 'Masuk mode pengajar untuk menginput setoran mengaji harian.' },
+    { id: 'guru_target', label: 'Penilaian Kompetensi (Guru)', icon: CheckSquare, color: 'bg-purple-100 text-purple-700', desc: 'Masuk mode pengajar untuk mencentang kompetensi jilid santri sesuai target kurikulum.' },
+    { id: 'guru_kenaikan', label: 'Ajukan Kenaikan Jilid (Guru)', icon: Award, color: 'bg-orange-100 text-orange-600', desc: 'Masuk mode pengajar untuk mengajukan kenaikan jilid bimbingan Anda.' },
     { id: 'guru_klaim', label: 'Klaim Kelas Santri (Guru)', icon: UserPlus, color: 'bg-indigo-100 text-indigo-600', desc: 'Klaim & alokasikan santri bimbingan baru ke kelas Anda.' },
     { id: 'kelola_syahriah', label: 'Syahriah Keuangan', icon: CreditCard, color: 'bg-yellow-100 text-yellow-600', desc: 'Akses penuh untuk memantau iuran bulanan & membunyikan alarm tagihan.' },
     { id: 'hak_akses', label: 'Manajemen Hak Akses', icon: Shield, color: 'bg-purple-100 text-purple-800', desc: 'Atur kredensial, hapus akun, reset sandi, dan tambahkan akun baru.' },
@@ -1415,8 +1417,12 @@ function KepalaView({ activeTab, setActiveTab, user, users, progress, targets, s
     );
   }
 
-  if (activeTab === 'guru_progres' || activeTab === 'guru_klaim') {
-    const mappedTab = activeTab === 'guru_progres' ? 'isi_progres' : 'klaim_santri';
+  if (activeTab === 'guru_progres' || activeTab === 'guru_klaim' || activeTab === 'guru_target' || activeTab === 'guru_kenaikan') {
+    let mappedTab = 'isi_progres';
+    if (activeTab === 'guru_klaim') mappedTab = 'klaim_santri';
+    else if (activeTab === 'guru_target') mappedTab = 'nilai_target';
+    else if (activeTab === 'guru_kenaikan') mappedTab = 'pengajuan_kenaikan';
+
     return <GuruView activeTab={mappedTab} setActiveTab={setActiveTab} user={user} users={users} progress={progress} targets={targets} updateTable={updateTable} showToast={showToast} simulatedWeekend={simulatedWeekend} setSimulatedWeekend={setSimulatedWeekend} />;
   }
 
