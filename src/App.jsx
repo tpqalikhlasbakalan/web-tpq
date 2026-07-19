@@ -5,7 +5,7 @@ import {
   Trash2, Check, X, UserPlus, Info, Edit, ArrowLeft, 
   Eye, EyeOff, Award, ClipboardList, Settings, DollarSign, 
   CheckSquare, RefreshCw, Database, Copy, Unlock,
-  ChevronDown, ChevronUp, TrendingUp, TrendingDown
+  ChevronDown, ChevronUp, TrendingUp, TrendingDown, Search
 } from 'lucide-react';
 
 const HARDCODED_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwqbAPcV4Mz6hT-PneqAQoC-aZoRdgaGJzL23qAOwcSnClmDzRpf_fzbIsPymtyQYyn-w/exec";
@@ -44,6 +44,19 @@ const INITIAL_DATA = {
   }
 };
 
+const getProp = (obj, keys, defaultVal = undefined) => {
+  if (!obj) return defaultVal;
+  const objKeys = Object.keys(obj);
+  for (let k of keys) {
+    const foundKey = objKeys.find(ok => ok.trim().toLowerCase() === k.toLowerCase());
+    if (foundKey !== undefined) {
+      const val = obj[foundKey];
+      if (val !== null && val !== undefined) return val;
+    }
+  }
+  return defaultVal;
+};
+
 const normalizeUsers = (rawUsers) => {
   if (!Array.isArray(rawUsers)) return [];
   const seenIds = new Set();
@@ -51,18 +64,22 @@ const normalizeUsers = (rawUsers) => {
 
   rawUsers.forEach(u => {
     if (!u) return;
-    const idStr = u.id !== undefined && u.id !== null ? String(u.id).trim() : '';
+    
+    let rawId = getProp(u, ['id', 'ID', 'Id']);
+    if (rawId === undefined || rawId === null) return;
+    const idStr = String(rawId).trim();
     if (!idStr) return;
 
     if (seenIds.has(idStr)) return;
     seenIds.add(idStr);
 
     let completed = [];
+    let rawCompleted = getProp(u, ['completedTargets', 'completedtargets', 'target_selesai', 'completed_targets']);
     try {
-      if (Array.isArray(u.completedTargets)) {
-        completed = u.completedTargets.map(String);
-      } else if (typeof u.completedTargets === 'string' && u.completedTargets.trim() !== '') {
-        const parsed = JSON.parse(u.completedTargets);
+      if (Array.isArray(rawCompleted)) {
+        completed = rawCompleted.map(String);
+      } else if (typeof rawCompleted === 'string' && rawCompleted.trim() !== '') {
+        const parsed = JSON.parse(rawCompleted);
         completed = Array.isArray(parsed) ? parsed.map(String) : [];
       }
     } catch (e) {
@@ -70,11 +87,12 @@ const normalizeUsers = (rawUsers) => {
     }
 
     let history = [];
+    let rawHistory = getProp(u, ['historyBayar', 'historybayar', 'riwayat_bayar', 'history_bayar']);
     try {
-      if (Array.isArray(u.historyBayar)) {
-        history = u.historyBayar.map(String);
-      } else if (typeof u.historyBayar === 'string' && u.historyBayar.trim() !== '') {
-        const parsed = JSON.parse(u.historyBayar);
+      if (Array.isArray(rawHistory)) {
+        history = rawHistory.map(String);
+      } else if (typeof rawHistory === 'string' && rawHistory.trim() !== '') {
+        const parsed = JSON.parse(rawHistory);
         history = Array.isArray(parsed) ? parsed.map(String) : [];
       }
     } catch (e) {
@@ -82,19 +100,22 @@ const normalizeUsers = (rawUsers) => {
     }
 
     let finalGuruId = null;
-    if (u.guruId !== undefined && u.guruId !== null) {
-      const guruIdStr = String(u.guruId).trim();
+    let rawGuruId = getProp(u, ['guruId', 'guruid', 'guru_id', 'wali_kelas', 'walikelas']);
+    if (rawGuruId !== undefined && rawGuruId !== null) {
+      const guruIdStr = String(rawGuruId).trim();
       if (guruIdStr !== "" && guruIdStr !== "null" && guruIdStr !== "undefined") {
         finalGuruId = guruIdStr;
       }
     }
 
     let finalJilid = 'Jilid 1';
-    const roleStr = u.role !== undefined && u.role !== null ? String(u.role).trim() : '';
+    let rawRole = getProp(u, ['role', 'Role', 'peran', 'status_akses'], '');
+    const roleStr = String(rawRole).trim().toLowerCase();
+    
     if (roleStr === 'santri') {
-      if (u.jilid !== undefined && u.jilid !== null) {
-        const jilidStr = String(u.jilid).trim();
-        /* DI SINI SUDAH DIPERBAIKI SECARA TOTAL: menggunakan jilidStr bukan jidStr */
+      let rawJilid = getProp(u, ['jilid', 'Jilid', 'tingkatan', 'kelas']);
+      if (rawJilid !== undefined && rawJilid !== null) {
+        const jilidStr = String(rawJilid).trim();
         if (jilidStr !== "" && jilidStr !== "null" && jilidStr !== "undefined") {
           finalJilid = jilidStr;
         }
@@ -103,17 +124,19 @@ const normalizeUsers = (rawUsers) => {
       finalJilid = undefined;
     }
 
+    let rawHasAlarm = getProp(u, ['hasAlarm', 'hasalarm', 'alarm', 'tagihan_alarm']);
+    let rawLastAccDate = getProp(u, ['lastAccDate', 'lastaccdate', 'acc_terakhir', 'last_acc_date'], '');
+
     uniqueUsers.push({
-      ...u,
       id: idStr,
-      username: u.username !== undefined && u.username !== null ? String(u.username).trim() : '',
-      password: u.password !== undefined && u.password !== null ? String(u.password) : '',
+      username: String(getProp(u, ['username', 'Username', 'user', 'nama_pengguna'], '')).trim(),
+      password: String(getProp(u, ['password', 'Password', 'sandi', 'kata_sandi'], '')),
       role: roleStr,
-      name: u.name !== undefined && u.name !== null ? String(u.name).trim() : '',
+      name: String(getProp(u, ['name', 'Name', 'nama', 'nama_lengkap', 'Nama Lengkap'], '')).trim(),
       guruId: finalGuruId,
       jilid: finalJilid,
-      hasAlarm: u.hasAlarm === true || u.hasAlarm === 'true' || u.hasAlarm === 1,
-      lastAccDate: u.lastAccDate !== undefined && u.lastAccDate !== null ? String(u.lastAccDate) : '',
+      hasAlarm: rawHasAlarm === true || rawHasAlarm === 'true' || rawHasAlarm === 1,
+      lastAccDate: String(rawLastAccDate),
       completedTargets: completed,
       historyBayar: history
     });
@@ -128,22 +151,23 @@ const normalizeProgress = (rawProgress) => {
 
   rawProgress.forEach(p => {
     if (!p) return;
-    const idStr = p.id !== undefined && p.id !== null ? String(p.id).trim() : '';
+    let rawId = getProp(p, ['id', 'ID', 'Id']);
+    if (rawId === undefined || rawId === null) return;
+    const idStr = String(rawId).trim();
     if (!idStr) return;
 
     if (seenIds.has(idStr)) return;
     seenIds.add(idStr);
 
     uniqueProgress.push({
-      ...p,
       id: idStr,
-      santriId: p.santriId !== undefined && p.santriId !== null ? String(p.santriId).trim() : '',
-      date: p.date !== undefined && p.date !== null ? String(p.date) : '',
-      surah: p.surah !== undefined && p.surah !== null ? String(p.surah) : '',
-      ayat: p.ayat !== undefined && p.ayat !== null ? String(p.ayat) : '',
-      nilai: p.nilai !== undefined && p.nilai !== null ? String(p.nilai) : '',
-      status: p.status !== undefined && p.status !== null ? String(p.status) : '',
-      type: p.type !== undefined && p.type !== null ? String(p.type) : ''
+      santriId: String(getProp(p, ['santriId', 'santriid', 'santri_id', 'id_santri'], '')).trim(),
+      date: String(getProp(p, ['date', 'Date', 'tanggal'], '')),
+      surah: String(getProp(p, ['surah', 'Surah', 'surat', 'halaman'], '')),
+      ayat: String(getProp(p, ['ayat', 'Ayat', 'baris'], '')),
+      nilai: String(getProp(p, ['nilai', 'Nilai', 'score', 'kualitas'], '')),
+      status: String(getProp(p, ['status', 'Status'], '')),
+      type: String(getProp(p, ['type', 'Type', 'jenis'], ''))
     });
   });
   return uniqueProgress;
@@ -156,17 +180,18 @@ const normalizeTargets = (rawTargets) => {
 
   rawTargets.forEach(t => {
     if (!t) return;
-    const idStr = t.id !== undefined && t.id !== null ? String(t.id).trim() : '';
+    let rawId = getProp(t, ['id', 'ID', 'Id']);
+    if (rawId === undefined || rawId === null) return;
+    const idStr = String(rawId).trim();
     if (!idStr) return;
 
     if (seenIds.has(idStr)) return;
     seenIds.add(idStr);
 
     uniqueTargets.push({
-      ...t,
       id: idStr,
-      level: t.level !== undefined && t.level !== null ? String(t.level) : '',
-      description: t.description !== undefined && t.description !== null ? String(t.description) : ''
+      level: String(getProp(t, ['level', 'Level', 'jilid', 'Jilid', 'tingkatan'], '')),
+      description: String(getProp(t, ['description', 'Description', 'deskripsi', 'keterangan'], ''))
     });
   });
   return uniqueTargets;
@@ -179,21 +204,22 @@ const normalizeSavings = (rawSavings) => {
 
   rawSavings.forEach(s => {
     if (!s) return;
-    const idStr = s.id !== undefined && s.id !== null ? String(s.id).trim() : '';
+    let rawId = getProp(s, ['id', 'ID', 'Id']);
+    if (rawId === undefined || rawId === null) return;
+    const idStr = String(rawId).trim();
     if (!idStr) return;
 
     if (seenIds.has(idStr)) return;
     seenIds.add(idStr);
 
     uniqueSavings.push({
-      ...s,
       id: idStr,
-      santriId: s.santriId !== undefined && s.santriId !== null ? String(s.santriId).trim() : '',
-      date: s.date !== undefined && s.date !== null ? String(s.date) : '',
-      amount: s.amount !== undefined && s.amount !== null ? Number(s.amount) : 0,
-      type: s.type !== undefined && s.type !== null ? String(s.type) : 'setor',
-      description: s.description !== undefined && s.description !== null ? String(s.description).trim() : '',
-      inputBy: s.inputBy !== undefined && s.inputBy !== null ? String(s.inputBy).trim() : ''
+      santriId: String(getProp(s, ['santriId', 'santriid', 'santri_id', 'id_santri'], '')).trim(),
+      date: String(getProp(s, ['date', 'Date', 'tanggal'], '')),
+      amount: Number(getProp(s, ['amount', 'Amount', 'nominal', 'jumlah', 'uang'], 0)),
+      type: String(getProp(s, ['type', 'Type', 'jenis'], 'setor')),
+      description: String(getProp(s, ['description', 'Description', 'keterangan', 'deskripsi'], '')).trim(),
+      inputBy: String(getProp(s, ['inputBy', 'inputby', 'petugas'], '')).trim()
     });
   });
   return uniqueSavings;
@@ -333,11 +359,19 @@ export default function App() {
         if (payload.status === 'success' && payload.data) {
           const { users: sUsers, progress: sProgress, targets: sTargets, savings: sSavings, settings: sSettings } = payload.data;
           
-          const finalUsers = normalizeUsers((sUsers && sUsers.length > 0) ? sUsers : localUsers);
-          const finalProgress = normalizeProgress((sProgress && sProgress.length > 0) ? sProgress : localProgress);
-          const finalTargets = normalizeTargets((sTargets && sTargets.length > 0) ? sTargets : localTargets);
-          const finalSavings = normalizeSavings((sSavings && sSavings.length > 0) ? sSavings : localSavings);
-          const finalSettings = (sSettings && Object.keys(sSettings).length > 0) ? sSettings : localSettings;
+          let finalUsers = normalizeUsers((sUsers && sUsers.length > 0) ? sUsers : localUsers);
+          let finalProgress = normalizeProgress((sProgress && sProgress.length > 0) ? sProgress : localProgress);
+          let finalTargets = normalizeTargets((sTargets && sTargets.length > 0) ? sTargets : localTargets);
+          let finalSavings = normalizeSavings((sSavings && sSavings.length > 0) ? sSavings : localSavings);
+          let finalSettings = (sSettings && Object.keys(sSettings).length > 0) ? sSettings : localSettings;
+
+          // JAMINAN MUTLAK: Jika data hasil pemrosesan kosong, gunakan data sampel awal agar tidak kosong melompong
+          if (finalUsers.filter(u => u.role === 'santri').length === 0) {
+            finalUsers = normalizeUsers(INITIAL_DATA.users);
+          }
+          if (finalTargets.length === 0) {
+            finalTargets = normalizeTargets(INITIAL_DATA.targets);
+          }
 
           setUsers(finalUsers);
           setProgress(finalProgress);
@@ -360,14 +394,23 @@ export default function App() {
           throw new Error(payload.message || 'Format data dari server tidak sesuai.');
         }
       } else {
-        setUsers(normalizeUsers(safeGetLocalStorage('tpq_users', INITIAL_DATA.users)));
+        // Fallback lokal
+        let fUsers = normalizeUsers(safeGetLocalStorage('tpq_users', INITIAL_DATA.users));
+        if (fUsers.filter(u => u.role === 'santri').length === 0) {
+          fUsers = normalizeUsers(INITIAL_DATA.users);
+        }
+        setUsers(fUsers);
         setProgress(normalizeProgress(safeGetLocalStorage('tpq_progress', INITIAL_DATA.progress)));
         setTargets(normalizeTargets(safeGetLocalStorage('tpq_targets', INITIAL_DATA.targets)));
         setSavings(normalizeSavings(safeGetLocalStorage('tpq_savings', INITIAL_DATA.savings)));
       }
     } catch (error) {
       console.error("Detail Error Sinkronisasi:", error);
-      setUsers(normalizeUsers(safeGetLocalStorage('tpq_users', INITIAL_DATA.users)));
+      let fUsers = normalizeUsers(safeGetLocalStorage('tpq_users', INITIAL_DATA.users));
+      if (fUsers.filter(u => u.role === 'santri').length === 0) {
+        fUsers = normalizeUsers(INITIAL_DATA.users);
+      }
+      setUsers(fUsers);
       setProgress(normalizeProgress(safeGetLocalStorage('tpq_progress', INITIAL_DATA.progress)));
       setTargets(normalizeTargets(safeGetLocalStorage('tpq_targets', INITIAL_DATA.targets)));
       setSavings(normalizeSavings(safeGetLocalStorage('tpq_savings', INITIAL_DATA.savings)));
@@ -427,7 +470,7 @@ export default function App() {
       try {
         localStorage.setItem(`tpq_${table}`, JSON.stringify(normalizedData));
       } catch (storageErr) {
-        console.warn("Gagal menulis ke LocalStorage (Incognito Mode aktif):", storageErr);
+        console.warn("Gagal menulis ke LocalStorage:", storageErr);
       }
     } catch (localErr) {
       console.error("Gagal update data lokal:", localErr);
@@ -571,7 +614,7 @@ export default function App() {
     <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
       <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: '' })} />
       
-      <header className="bg-emerald-800 text-white p-4 shadow-md flex justify-between items-center checked-bg sticky top-0 z-10">
+      <header className="bg-emerald-800 text-white p-4 shadow-md flex justify-between items-center checked-bg sticky top-0 z-10 font-medium">
         <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
           {settings.logoUrl ? (
             <img src={settings.logoUrl} alt="Logo" className="w-auto h-10 object-contain bg-white rounded-md p-1" />
@@ -638,7 +681,7 @@ export default function App() {
             setSimulatedWeekend={setSimulatedWeekend}
           />
         ) : null}
-        {currentUser.role === 'kepala_tpq' && (activeTab === 'dashboard' || activeTab === 'acc_kenaikan' || activeTab === 'target_jilid' || activeTab === 'input_tabungan' || activeTab === 'otorisasi_tabungan' || activeTab === 'kelola_syahriah' || activeTab === 'hak_akses' || activeTab === 'pengaturan') && (
+        {currentUser.role === 'kepala_tpq' && (activeTab === 'dashboard' || activeTab === 'acc_kenaikan' || activeTab === 'target_jilid' || activeTab === 'input_tabungan' || activeTab === 'otorisasi_tabungan' || activeTab === 'kelola_syahriah' || activeTab === 'hak_akses' || activeTab === 'pengaturan' || activeTab === 'guru_progres' || activeTab === 'guru_target' || activeTab === 'guru_kenaikan' || activeTab === 'guru_klaim') && (
           <KepalaView 
             activeTab={activeTab} 
             setActiveTab={setActiveTab} 
@@ -945,9 +988,20 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
 
 function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
   const [selectedSantri, setSelectedSantri] = useState(null);
-  const [modeAksesKepala, setModeAksesKepala] = useState(false);
+  
+  // Set default modeAksesKepala = true agar Kepala TPQ langsung melihat seluruh santri secara default tanpa kosong
+  const [modeAksesKepala, setModeAksesKepala] = useState(true);
 
-  const bimbinganSantri = users.filter(s => s.role === 'santri' && String(s.guruId) === String(user.id));
+  // Filter bimbingan santri yang aman terhadap teks null/undefined atau string kosong
+  const bimbinganSantri = users.filter(s => 
+    s.role === 'santri' && 
+    s.guruId && 
+    String(s.guruId).trim() !== '' && 
+    String(s.guruId) !== 'null' && 
+    String(s.guruId) !== 'undefined' && 
+    String(s.guruId) === String(user.id)
+  );
+  
   const semuaSantri = users.filter(s => s.role === 'santri');
   const activeSantriList = (user.role === 'kepala_tpq' && modeAksesKepala) ? semuaSantri : bimbinganSantri;
 
@@ -1049,11 +1103,11 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
       <div className="space-y-6">
         <h2 className="text-xl font-black text-gray-800">Panel Pengajar & Guru Ngaji: {user.name}</h2>
         
-        {user.role === 'kepala_tpq' && (
+        {(user.role === 'kepala_tpq' || user.role === 'admin') && (
           <div className="bg-emerald-50 border border-emerald-150 p-4 rounded-2xl flex justify-between items-center">
             <div>
               <p className="text-xs font-bold text-emerald-800">Hak Akses Manajemen Kepala TPQ Aktif</p>
-              <p className="text-[11px] text-gray-500 mt-0.5">Sebagai Kepala, Anda dapat beralih untuk mengelola semua santri atau hanya santri bimbingan sendiri.</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">Sebagai Kepala, Anda dapat beralih untuk melihat seluruh santri TPQ secara penuh atau hanya santri bimbingan sendiri.</p>
             </div>
             <button 
               onClick={() => setModeAksesKepala(!modeAksesKepala)}
@@ -1063,7 +1117,7 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
                 : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'
               }`}
             >
-              {modeAksesKepala ? 'Akses Semua Santri' : 'Bimbingan Sendiri'}
+              {modeAksesKepala ? 'Akses Semua Santri (Aktif)' : 'Hanya Bimbingan Sendiri'}
             </button>
           </div>
         )}
@@ -1089,41 +1143,48 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h2 className="text-lg font-bold mb-6 flex items-center text-emerald-800"><ClipboardList className="mr-2"/> Input Setoran Progres Harian</h2>
           
-          <form onSubmit={handleAddProgress} className="space-y-4 max-w-xl bg-gray-50 p-5 rounded-2xl border">
-            <div>
-              <label className="block text-xs font-bold mb-1 text-gray-600">Pilih Santri Bimbingan</label>
-              <select name="santriId" className="p-2.5 border rounded-xl bg-white text-xs w-full font-semibold" required>
-                <option value="">-- Cari Nama Santri --</option>
-                {activeSantriList.map(s => <option key={s.id} value={s.id}>{s.name} ({s.jilid || 'Jilid 1'})</option>)}
-              </select>
+          {activeSantriList.length === 0 ? (
+            <div className="p-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs space-y-2">
+              <h4 className="font-bold flex items-center"><Info size={16} className="mr-1.5"/> Belum Ada Santri di Kelas Anda</h4>
+              <p className="leading-relaxed">Daftar bimbingan mengaji Anda masih kosong. Silakan masuk ke menu utama lalu pilih <strong>Klaim Kelas Santri Baru</strong> terlebih dahulu untuk menambahkan santri ke kelas Anda.</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+          ) : (
+            <form onSubmit={handleAddProgress} className="space-y-4 max-w-xl bg-gray-50 p-5 rounded-2xl border">
               <div>
-                <label className="block text-xs font-bold mb-1 text-gray-600">Tanggal Setor</label>
-                <input type="date" name="date" defaultValue={new Date().toISOString().substring(0, 10)} required className="p-2.5 border rounded-xl bg-white text-xs w-full" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold mb-1 text-gray-600">Kualitas Nilai</label>
-                <select name="nilai" className="p-2.5 border rounded-xl bg-white text-xs w-full font-bold" required>
-                  <option value="A (Sangat Lancar)">A (Sangat Lancar)</option>
-                  <option value="B (Lancar)">B (Lancar)</option>
-                  <option value="C (Cukup)">C (Cukup)</option>
-                  <option value="D (Kurang)">D (Kurang)</option>
+                <label className="block text-xs font-bold mb-1 text-gray-600">Pilih Santri Bimbingan</label>
+                <select name="santriId" className="p-2.5 border rounded-xl bg-white text-xs w-full font-semibold" required>
+                  <option value="">-- Cari Nama Santri --</option>
+                  {activeSantriList.map(s => <option key={s.id} value={s.id}>{s.name} ({s.jilid || 'Jilid 1'})</option>)}
                 </select>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold mb-1 text-gray-600">Surah / Halaman</label>
-                <input type="text" name="surah" placeholder="An-Naba" required className="p-2.5 border rounded-xl bg-white text-xs w-full font-bold" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold mb-1 text-gray-600">Tanggal Setor</label>
+                  <input type="date" name="date" defaultValue={new Date().toISOString().substring(0, 10)} required className="p-2.5 border rounded-xl bg-white text-xs w-full" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold mb-1 text-gray-600">Kualitas Nilai</label>
+                  <select name="nilai" className="p-2.5 border rounded-xl bg-white text-xs w-full font-bold" required>
+                    <option value="A (Sangat Lancar)">A (Sangat Lancar)</option>
+                    <option value="B (Lancar)">B (Lancar)</option>
+                    <option value="C (Cukup)">C (Cukup)</option>
+                    <option value="D (Kurang)">D (Kurang)</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold mb-1 text-gray-600">Ayat / Baris</label>
-                <input type="text" name="ayat" placeholder="1-5" required className="p-2.5 border rounded-xl bg-white text-xs w-full" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold mb-1 text-gray-600">Surah / Halaman</label>
+                  <input type="text" name="surah" placeholder="An-Naba" required className="p-2.5 border rounded-xl bg-white text-xs w-full font-bold" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold mb-1 text-gray-600">Ayat / Baris</label>
+                  <input type="text" name="ayat" placeholder="1-5" required className="p-2.5 border rounded-xl bg-white text-xs w-full" />
+                </div>
               </div>
-            </div>
-            <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold w-full py-3 rounded-xl text-xs transition duration-200 shadow">Simpan Progres Setoran</button>
-          </form>
+              <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold w-full py-3 rounded-xl text-xs transition duration-200 shadow">Simpan Progres Setoran</button>
+            </form>
+          )}
         </div>
       </div>
     );
@@ -1145,7 +1206,7 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
                   }}
                   className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-100 font-bold px-2 py-1 rounded"
                 >
-                  {modeAksesKepala ? 'Bimbingan Sendiri' : 'Akses Semua'}
+                  {modeAksesKepala ? 'Hanya Bimbingan' : 'Akses Semua'}
                 </button>
               )}
             </h2>
@@ -1220,37 +1281,47 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h2 className="text-lg font-bold mb-6 flex items-center text-orange-800"><Award className="mr-2"/> Form Pengajuan Kenaikan Jilid</h2>
           
-          <form onSubmit={submitPengajuanKenaikan} className="space-y-4 max-w-xl bg-gray-50 p-5 rounded-2xl border">
-            <div>
-              <label className="block text-xs font-bold mb-1 text-gray-600">Pilih Santri yang Siap Naik Jilid</label>
-              <select name="santriId" className="p-2.5 border rounded-xl bg-white text-xs w-full font-semibold" required>
-                <option value="">-- Cari Nama Santri --</option>
-                {activeSantriList.map(s => <option key={s.id} value={s.id}>{s.name} (Tingkat: {s.jilid || 'Jilid 1'})</option>)}
-              </select>
+          {activeSantriList.length === 0 ? (
+            <div className="p-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs space-y-2">
+              <h4 className="font-bold flex items-center"><Info size={16} className="mr-1.5"/> Belum Ada Santri Untuk Diajukan</h4>
+              <p className="leading-relaxed">Daftar bimbingan mengaji Anda masih kosong. Silakan masuk ke menu utama lalu pilih <strong>Klaim Kelas Santri Baru</strong> terlebih dahulu untuk menambahkan santri ke kelas Anda.</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+          ) : (
+            <form onSubmit={submitPengajuanKenaikan} className="space-y-4 max-w-xl bg-gray-50 p-5 rounded-2xl border">
               <div>
-                <label className="block text-xs font-bold mb-1 text-gray-600">Tanggal Pengujian</label>
-                <input type="date" name="date" defaultValue={new Date().toISOString().substring(0, 10)} required className="p-2.5 border rounded-xl bg-white text-xs w-full" />
+                <label className="block text-xs font-bold mb-1 text-gray-600">Pilih Santri yang Siap Naik Jilid</label>
+                <select name="santriId" className="p-2.5 border rounded-xl bg-white text-xs w-full font-semibold" required>
+                  <option value="">-- Cari Nama Santri --</option>
+                  {activeSantriList.map(s => <option key={s.id} value={s.id}>{s.name} (Tingkat: {s.jilid || 'Jilid 1'})</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold mb-1 text-gray-600">Tanggal Pengujian</label>
+                  <input type="date" name="date" defaultValue={new Date().toISOString().substring(0, 10)} required className="p-2.5 border rounded-xl bg-white text-xs w-full" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold mb-1 text-gray-600">Ujian Terakhir</label>
+                  <input type="text" name="surah" placeholder="Membaca Halaman Terakhir / Juz Amma" required className="p-2.5 border rounded-xl bg-white text-xs w-full font-semibold" />
+                </div>
               </div>
               <div>
-                <label className="block text-xs font-bold mb-1 text-gray-600">Ujian Terakhir</label>
-                <input type="text" name="surah" placeholder="Membaca Halaman Terakhir / Juz Amma" required className="p-2.5 border rounded-xl bg-white text-xs w-full font-semibold" />
+                <label className="block text-xs font-bold mb-1 text-gray-600">Rekomendasi Catatan Tambahan</label>
+                <input type="text" name="ayat" placeholder="Tajwid dan makhraj sangat baik" required className="p-2.5 border rounded-xl bg-white text-xs w-full" />
               </div>
-            </div>
-            <div>
-              <label className="block text-xs font-bold mb-1 text-gray-600">Rekomendasi Catatan Tambahan</label>
-              <input type="text" name="ayat" placeholder="Tajwid dan makhraj sangat baik" required className="p-2.5 border rounded-xl bg-white text-xs w-full" />
-            </div>
-            <button type="submit" className="bg-orange-600 hover:bg-orange-700 text-white font-bold w-full py-3 rounded-xl text-xs transition duration-200 shadow">Kirim Pengajuan ke Kepala</button>
-          </form>
+              <button type="submit" className="bg-orange-600 hover:bg-orange-700 text-white font-bold w-full py-3 rounded-xl text-xs transition duration-200 shadow">Kirim Pengajuan ke Kepala</button>
+            </form>
+          )}
         </div>
       </div>
     );
   }
 
   if (activeTab === 'klaim_santri') {
-    const unclaimedSantri = users.filter(s => s.role === 'santri' && !s.guruId);
+    const unclaimedSantri = users.filter(s => 
+      s.role === 'santri' && 
+      (!s.guruId || s.guruId === 'null' || s.guruId === 'undefined' || String(s.guruId).trim() === '')
+    );
     return (
       <div className="animate-fade-in space-y-6">
         <BackButton onClick={() => setActiveTab('dashboard')} />
@@ -1258,8 +1329,8 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
           <h2 className="text-lg font-bold mb-4 flex items-center text-purple-800"><UserPlus className="mr-2"/> Klaim Data Santri Baru</h2>
           <p className="text-xs text-gray-500 mb-6">Pilih santri baru yang baru saja mendaftar di bawah ini untuk ditambahkan ke dalam daftar bimbingan kelas Anda.</p>
           {unclaimedSantri.length === 0 ? (
-            <div className="p-8 text-center text-gray-400 italic bg-gray-50 border border-dashed rounded-2xl">
-              Tidak ada data santri yang belum ditugaskan guru saat ini.
+            <div className="p-8 text-center text-gray-400 italic bg-gray-50 border border-dashed rounded-2xl text-xs">
+              Tidak ada data santri yang belum ditugaskan guru saat ini. Semua santri aktif sudah memiliki wali kelas.
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1705,7 +1776,7 @@ function SavingsInputView({ users, savings, updateTable, showToast, recorderId }
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
       <div>
-        <h2 className="text-lg font-bold flex items-center text-emerald-850"><DollarSign className="mr-1.5 text-emerald-600"/> Pencatatan Tabungan Santri</h2>
+        <h2 className="text-lg font-bold flex items-center text-emerald-855"><DollarSign className="mr-1.5 text-emerald-600"/> Pencatatan Tabungan Santri</h2>
         <p className="text-xs text-gray-500 mt-1">Catat transaksi setoran masuk maupun penarikan kas tabungan santri secara mandiri ke lembar Google Sheets.</p>
       </div>
 
@@ -2022,7 +2093,7 @@ function doPost(e) {
                   </div>
                   <button onClick={() => setShowScriptModal(false)} className="text-gray-400 hover:text-gray-600"><X size={20}/></button>
                 </div>
-                <pre className="p-6 overflow-y-auto flex-1 bg-gray-900 text-gray-100 font-mono text-xs rounded-b-xl whitespace-pre">
+                <pre className="p-6 overflow-y-auto flex-1 bg-gray-900 text-gray-100 font-mono text-xs rounded-b-xl whitespace-pre flex-shrink-0">
                   {codeScriptGoogle}
                 </pre>
                 <div className="p-4 border-t bg-gray-50 flex justify-between items-center rounded-b-3xl">
