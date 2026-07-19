@@ -43,10 +43,23 @@ const INITIAL_DATA = {
   }
 };
 
-// Fungsi normalisasi untuk mengembalikan konsistensi data dari Google Sheets (mencegah auto-coercion angka)
+// Fungsi normalisasi untuk mengembalikan konsistensi data dari Google Sheets & mencegah duplikasi data santri/user
 const normalizeUsers = (rawUsers) => {
   if (!Array.isArray(rawUsers)) return [];
-  return rawUsers.map(u => {
+  const seenIds = new Set();
+  const uniqueUsers = [];
+
+  rawUsers.forEach(u => {
+    if (!u) return;
+    const idStr = u.id !== undefined && u.id !== null ? String(u.id).trim() : '';
+    if (!idStr) return;
+
+    // Jika ID pengguna ini sudah pernah dibaca sebelumnya, lewati agar tidak muncul dobel di UI
+    if (seenIds.has(idStr)) {
+      return;
+    }
+    seenIds.add(idStr);
+
     let completed = [];
     try {
       if (Array.isArray(u.completedTargets)) {
@@ -71,46 +84,81 @@ const normalizeUsers = (rawUsers) => {
       console.error("Error parsing historyBayar", e);
     }
 
-    return {
+    uniqueUsers.push({
       ...u,
-      id: u.id !== undefined && u.id !== null ? String(u.id) : '',
-      username: u.username !== undefined && u.username !== null ? String(u.username) : '',
+      id: idStr,
+      username: u.username !== undefined && u.username !== null ? String(u.username).trim() : '',
       password: u.password !== undefined && u.password !== null ? String(u.password) : '',
       role: u.role !== undefined && u.role !== null ? String(u.role) : '',
-      name: u.name !== undefined && u.name !== null ? String(u.name) : '',
-      guruId: u.guruId !== undefined && u.guruId !== null && String(u.guruId).trim() !== "" ? String(u.guruId) : null,
+      name: u.name !== undefined && u.name !== null ? String(u.name).trim() : '',
+      guruId: u.guruId !== undefined && u.guruId !== null && String(u.guruId).trim() !== "" ? String(u.guruId).trim() : null,
       jilid: u.jilid !== undefined && u.jilid !== null ? String(u.jilid) : undefined,
       hasAlarm: u.hasAlarm === true || u.hasAlarm === 'true' || u.hasAlarm === 1,
       lastAccDate: u.lastAccDate !== undefined && u.lastAccDate !== null ? String(u.lastAccDate) : '',
       completedTargets: completed,
       historyBayar: history
-    };
+    });
   });
+  return uniqueUsers;
 };
 
+// Fungsi normalisasi untuk progres belajar santri (mencegah progres ganda dengan ID yang sama)
 const normalizeProgress = (rawProgress) => {
   if (!Array.isArray(rawProgress)) return [];
-  return rawProgress.map(p => ({
-    ...p,
-    id: p.id !== undefined && p.id !== null ? String(p.id) : '',
-    santriId: p.santriId !== undefined && p.santriId !== null ? String(p.santriId) : '',
-    date: p.date !== undefined && p.date !== null ? String(p.date) : '',
-    surah: p.surah !== undefined && p.surah !== null ? String(p.surah) : '',
-    ayat: p.ayat !== undefined && p.ayat !== null ? String(p.ayat) : '',
-    nilai: p.nilai !== undefined && p.nilai !== null ? String(p.nilai) : '',
-    status: p.status !== undefined && p.status !== null ? String(p.status) : '',
-    type: p.type !== undefined && p.type !== null ? String(p.type) : ''
-  }));
+  const seenIds = new Set();
+  const uniqueProgress = [];
+
+  rawProgress.forEach(p => {
+    if (!p) return;
+    const idStr = p.id !== undefined && p.id !== null ? String(p.id).trim() : '';
+    if (!idStr) return;
+
+    // Hindari duplikasi riwayat mengaji harian
+    if (seenIds.has(idStr)) {
+      return;
+    }
+    seenIds.add(idStr);
+
+    uniqueProgress.push({
+      ...p,
+      id: idStr,
+      santriId: p.santriId !== undefined && p.santriId !== null ? String(p.santriId).trim() : '',
+      date: p.date !== undefined && p.date !== null ? String(p.date) : '',
+      surah: p.surah !== undefined && p.surah !== null ? String(p.surah) : '',
+      ayat: p.ayat !== undefined && p.ayat !== null ? String(p.ayat) : '',
+      nilai: p.nilai !== undefined && p.nilai !== null ? String(p.nilai) : '',
+      status: p.status !== undefined && p.status !== null ? String(p.status) : '',
+      type: p.type !== undefined && p.type !== null ? String(p.type) : ''
+    });
+  });
+  return uniqueProgress;
 };
 
+// Fungsi normalisasi untuk target jilid kurikulum (mencegah target ganda dengan ID yang sama)
 const normalizeTargets = (rawTargets) => {
   if (!Array.isArray(rawTargets)) return [];
-  return rawTargets.map(t => ({
-    ...t,
-    id: t.id !== undefined && t.id !== null ? String(t.id) : '',
-    level: t.level !== undefined && t.level !== null ? String(t.level) : '',
-    description: t.description !== undefined && t.description !== null ? String(t.description) : ''
-  }));
+  const seenIds = new Set();
+  const uniqueTargets = [];
+
+  rawTargets.forEach(t => {
+    if (!t) return;
+    const idStr = t.id !== undefined && t.id !== null ? String(t.id).trim() : '';
+    if (!idStr) return;
+
+    // Hindari duplikasi kurikulum target jilid
+    if (seenIds.has(idStr)) {
+      return;
+    }
+    seenIds.add(idStr);
+
+    uniqueTargets.push({
+      ...t,
+      id: idStr,
+      level: t.level !== undefined && t.level !== null ? String(t.level) : '',
+      description: t.description !== undefined && t.description !== null ? String(t.description) : ''
+    });
+  });
+  return uniqueTargets;
 };
 
 const safeGetLocalStorage = (key, fallback) => {
