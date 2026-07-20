@@ -113,12 +113,12 @@ const normalizeUsers = (rawUsers) => {
     const roleStr = String(rawRole).trim().toLowerCase();
     
     if (roleStr === 'santri') {
-      finalJilid = 'Jilid 1';
-      let rawJilid = getProp(u, ['jilid', 'Jilid', 'tingkatan', 'kelas']);
+      finalJilid = 'Jilid 1'; // Default Fallback
+      let rawJilid = getProp(u, ['jilid', 'Jid', 'jid', 'JID', 'Jilid', 'tingkatan', 'kelas']);
       if (rawJilid !== undefined && rawJilid !== null) {
         const jilidStr = String(rawJilid).trim();
         if (jilidStr !== "" && jilidStr !== "null" && jilidStr !== "undefined") {
-          finalJilid = jilidStr;
+          finalJilid = jilidStr; // CORRECTLY BIND LEVEL TO GOOGLE SHEETS
         }
       }
     }
@@ -133,7 +133,7 @@ const normalizeUsers = (rawUsers) => {
       role: roleStr,
       name: String(getProp(u, ['name', 'Name', 'nama', 'nama_lengkap', 'Nama Lengkap'], '')).trim(),
       guruId: finalGuruId,
-      jilid: finalJilid,
+      jilid: roleStr === 'santri' ? (finalJilid || 'Jilid 1') : null,
       hasAlarm: rawHasAlarm === true || rawHasAlarm === 'true' || rawHasAlarm === 1,
       lastAccDate: String(rawLastAccDate),
       completedTargets: completed,
@@ -968,7 +968,7 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
                         </span>
                       </td>
                       <td className="p-3 font-bold text-gray-800">Rp {s.amount.toLocaleString('id-ID')}</td>
-                      <td className="p-3 text-gray-500 italic">{s.description || '-'}</td>
+                      <td className="p-3 text-gray-500 font-semibold">{s.description || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -985,29 +985,24 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
 
 function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
   const [selectedSantri, setSelectedSantri] = useState(null);
-  const [modeAksesKepala, setModeAksesKepala] = useState(true);
+  const [modeAksesKepala, setModeAksesKepala] = useState(user.role === 'kepala_tpq');
 
-  const bimbinganSantri = users.filter(s => 
-    s.role === 'santri' && 
-    s.guruId && 
-    String(s.guruId).trim() !== '' && 
-    String(s.guruId) !== 'null' && 
-    String(s.guruId) !== 'undefined' && 
-    String(s.guruId) === String(user.id)
-  );
-  
-  const semuaSantri = users.filter(s => s.role === 'santri');
-  const activeSantriList = (user.role === 'kepala_tpq' && modeAksesKepala) ? semuaSantri : bimbinganSantri;
+  const activeSantriList = users.filter(u => {
+    if (u.role !== 'santri') return false;
+    if (user.role === 'kepala_tpq' && modeAksesKepala) return true;
+    return String(u.guruId) === String(user.id);
+  });
 
   const handleAddProgress = async (e) => {
     e.preventDefault();
-    if (!e.target.santriId.value) {
-      showToast('Harap pilih santri terlebih dahulu!', 'error');
+    const santriId = e.target.santriId.value;
+    if (!santriId) {
+      showToast('Pilih santri terlebih dahulu!', 'error');
       return;
     }
     const newProgress = {
       id: Date.now().toString(),
-      santriId: e.target.santriId.value,
+      santriId,
       date: e.target.date.value,
       surah: e.target.surah.value,
       ayat: e.target.ayat.value,
@@ -1599,7 +1594,7 @@ function BendaharaView({ activeTab, setActiveTab, users, savings, settings, upda
     });
 
     await updateTable('users', updatedUsers);
-    showToast(`Syahriah ${santri.name} lunas untuk tanggal {selectedMonth}!`);
+    showToast(`Syahriah ${santri.name} lunas untuk tanggal ${selectedMonth}!`);
   };
 
   const toggleAlarm = async (santriId) => {
@@ -2112,7 +2107,7 @@ function doPost(e) {
             <h4 className="font-bold flex items-center"><Info size={16} className="mr-1.5 text-amber-700"/> Panduan Deployment Google Sheets:</h4>
             <ol className="list-decimal list-inside space-y-1 text-amber-800 ml-1">
               <li>Buat Google Spreadsheet baru di Google Drive Anda.</li>
-              <li>Buat 5 sheet dengan nama persis: <code className="font-mono bg-amber-150 px-1 py-0.5 rounded font-bold">users</code>, <code className="font-mono bg-amber-150 px-1 py-0.5 rounded font-bold">progress</code>, <code className="font-mono bg-amber-150 px-1 py-0.5 rounded font-bold">targets</code>, <code className="font-mono bg-amber-150 px-1 py-0.5 rounded font-bold">savings</code>, dan <code className="font-mono bg-amber-150 px-1 py-0.5 rounded font-bold">settings</code>.</li>
+              <li>Buat 5 sheet dengan nama persis: <code className="font-mono bg-amber-150 px-1 py-0.5 rounded font-bold">users</code>, <code className="font-mono bg-amber-150 px-1 py-0.5 rounded font-bold">progress</code>, <code className="font-mono bg-amber-150 px-1 py-0.5 rounded font-bold">targets</code>, <code className="font-mono bg-amber-150 px-1 py-0.5 rounded font-bold">savings</code>, and <code className="font-mono bg-amber-150 px-1 py-0.5 rounded font-bold">settings</code>.</li>
               <li>Klik menu <strong>Ekstensi &gt; Apps Script</strong>.</li>
               <li>Tempelkan kode Apps Script, lalu klik <strong>Simpan</strong>.</li>
               <li>Klik <strong>Deploy &gt; New deployment</strong>.</li>
