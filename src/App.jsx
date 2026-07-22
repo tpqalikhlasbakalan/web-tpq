@@ -225,8 +225,12 @@ const Toast = ({ message, type, onClose }) => {
 };
 
 const BackButton = ({ onClick }) => (
-  <button onClick={onClick} className="mb-6 flex items-center text-sm font-bold text-gray-600 hover:text-emerald-700 transition">
-    <ArrowLeft className="w-4 h-4 mr-1" /> Kembali ke Menu Utama
+  <button 
+    onClick={onClick} 
+    className="mb-6 flex items-center text-sm font-bold text-gray-600 hover:text-emerald-700 transition-all duration-200 relative z-50 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm hover:shadow hover:border-emerald-300 w-fit active:scale-95"
+  >
+    <ArrowLeft className="w-4 h-4 mr-1.5" /> 
+    Kembali ke Menu Utama
   </button>
 );
 
@@ -854,9 +858,23 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
     if (activeTab === 'guru_klaim') mappedTab = 'klaim_santri';
     else if (activeTab === 'guru_target') mappedTab = 'nilai_target';
     else if (activeTab === 'guru_kenaikan') mappedTab = 'pengajuan_kenaikan';
-    return <GuruView activeTab={mappedTab} setActiveTab={(t) => setActiveTab(t === mappedTab ? 'dashboard' : activeTab)} user={user} users={users} setUsers={setUsers} progress={progress} targets={targets} savings={savings} settings={settings} updateTable={updateTable} showToast={showToast} simulatedWeekend={simulatedWeekend} setSimulatedWeekend={setSimulatedWeekend} />;
+    // ✅ PERBAIKAN: Kirim setActiveTab LANGSUNG, tidak dibungkus logika salah
+    return <GuruView 
+      activeTab={mappedTab} 
+      setActiveTab={(tab) => setActiveTab(tab === 'dashboard' ? 'dashboard' : activeTab)} 
+      user={user} 
+      users={users} 
+      setUsers={setUsers} 
+      progress={progress} 
+      targets={targets} 
+      savings={savings} 
+      settings={settings} 
+      updateTable={updateTable} 
+      showToast={showToast} 
+      simulatedWeekend={simulatedWeekend} 
+      setSimulatedWeekend={setSimulatedWeekend} 
+    />;
   }
-
   if (activeTab === 'input_tabungan') return <div className="animate-fade-in"><BackButton onClick={() => setActiveTab('dashboard')} /><SavingsInputView users={users} savings={savings} updateTable={updateTable} showToast={showToast} recorderId={user.id} /></div>;
   if (activeTab === 'kelola_syahriah') return <div className="animate-fade-in"><BackButton onClick={() => setActiveTab('dashboard')} /><BendaharaView activeTab="kelola_syahriah" setActiveTab={setActiveTab} users={users} savings={savings} settings={settings} updateTable={updateTable} showToast={showToast} /></div>;
   if (activeTab === 'hak_akses') return <div className="animate-fade-in"><BackButton onClick={() => setActiveTab('dashboard')} /><AdminView activeTab="hak_akses" setActiveTab={setActiveTab} users={users} updateTable={updateTable} showToast={showToast} settings={settings} appsScriptUrl={appsScriptUrl} setAppsScriptUrl={setAppsScriptUrl} loadDatabase={loadDatabase} /></div>;
@@ -995,9 +1013,14 @@ function BendaharaView({ activeTab, setActiveTab, users, savings, settings, upda
   );
 
   if (activeTab === 'input_tabungan_bendahara' && isSavingAuthorized) return (
-    <div className="animate-fade-in"><BackButton onClick={() => { setIsInputTabunganOpen(false); setActiveTab('dashboard'); }} /><SavingsInputView users={users} savings={savings} updateTable={updateTable} showToast={showToast} recorderId="bendahara" /></div>
+    <div className="animate-fade-in relative z-10">
+      <BackButton onClick={() => { 
+        setIsInputTabunganOpen(false); 
+        setActiveTab('dashboard'); // ✅ Paksa pindah ke dashboard
+      }} />
+      <SavingsInputView users={users} savings={savings} updateTable={updateTable} showToast={showToast} recorderId="bendahara" />
+    </div>
   );
-
   if (activeTab === 'kelola_syahriah') {
     const santriList = users.filter(u => u.role === 'santri');
     return (
