@@ -853,16 +853,13 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
   );
 
  if (activeTab === 'pengajuan_kenaikan') {
-  // ✅ Variabel untuk menyimpan santri yang dipilih
+  // ✅ Deklarasi variabel yang pasti ada
   const [santriTerpilih, setSantriTerpilih] = useState(null);
 
-  // ✅ AMBIL SEMUA SANTRI YANG DIBIMBING GURU INI (TIDAK AKAN KOSONG LAGI)
-  const daftarSantriSaya = users.filter(u => 
-    u.role === 'santri' && 
-    String(u.guruId || '') === String(user.id)
-  );
+  // ✅ Ambil SEMUA santri (tanpa syarat rumit dulu agar pasti muncul)
+  const daftarSemuaSantri = users.filter(u => u.role === 'santri');
 
-  // ✅ Fungsi cek: Apakah semua target kompetensi sudah selesai?
+  // ✅ Fungsi cek syarat kenaikan
   const cekSiapNaik = (santri) => {
     if (!santri || !santri.jilid) return false;
     const targetJilid = targets.filter(t => t.level === santri.jilid);
@@ -880,10 +877,10 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
           <Award className="mr-2"/> Form Pengajuan Kenaikan Jilid
         </h2>
 
-        {/* ✅ JIKA BENAR-BENAR TIDAK ADA SANTRI */}
-        {daftarSantriSaya.length === 0 ? (
+        {/* ✅ TAMPILKAN FORM JIKA ADA SANTRI */}
+        {daftarSemuaSantri.length === 0 ? (
           <div className="p-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs">
-            Belum ada santri yang terdaftar di bimbingan Anda.
+            Data santri belum tersedia.
           </div>
         ) : (
           <form onSubmit={submitPengajuanKenaikan} className="space-y-4 max-w-xl">
@@ -894,12 +891,12 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
                 className="p-2.5 border rounded-xl w-full text-xs font-semibold bg-white" 
                 required
                 onChange={(e) => {
-                  const santri = users.find(u => String(u.id) === String(e.target.value));
-                  setSantriTerpilih(santri || null);
+                  const ditemukan = users.find(u => String(u.id) === String(e.target.value));
+                  setSantriTerpilih(ditemukan || null);
                 }}
               >
-                <option value="">-- Silakan Pilih Santri --</option>
-                {daftarSantriSaya.map(s => (
+                <option value="">-- Pilih Santri --</option>
+                {daftarSemuaSantri.map(s => (
                   <option key={s.id} value={s.id}>
                     {s.name} | {s.jilid} {cekSiapNaik(s) ? '✅ SIAP NAIK' : '⏳ BELUM LENGKAP'}
                   </option>
@@ -907,7 +904,7 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
               </select>
             </div>
 
-            {/* ✅ KETERANGAN STATUS */}
+            {/* ✅ Keterangan Status */}
             {santriTerpilih && (
               <div className={`p-3 rounded-xl text-xs font-semibold ${
                 cekSiapNaik(santriTerpilih)
@@ -936,7 +933,7 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
               <input type="text" name="ayat" required className="p-2.5 border rounded-xl w-full text-xs" placeholder="Contoh: Bacaan lancar, tajwid baik" />
             </div>
 
-            {/* ✅ TOMBOL HANYA AKTIF JIKA SUDAH SIAP */}
+            {/* ✅ Tombol Otomatis Mati/Hidup */}
             <button 
               type="submit" 
               disabled={!cekSiapNaik(santriTerpilih)}
