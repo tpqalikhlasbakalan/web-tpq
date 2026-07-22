@@ -772,37 +772,41 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
           </div>
         </div>
 
-        {activeWeekendNotification && (
-          <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl flex items-start space-x-3.5 shadow-sm animate-bounce">
-            <Bell className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-extrabold text-amber-900 text-sm">Peringatan: Verifikasi Mingguan Mandiri Diperlukan!</h3>
-              <p className="text-xs text-amber-700 mt-1 leading-relaxed">Akhir pekan telah tiba. Wali santri wajib menekan tombol verifikasi bimbingan mengaji mandiri di rumah demi mengonfirmasi keikutsertaan.</p>
-              <button 
-                onClick={async () => {
-                  const updated = users.map(u => String(u.id) === String(user.id) ? { ...u, lastAccDate: new Date().toISOString() } : u);
-                  await updateTable('users', updated);
-                  showToast('Verifikasi mingguan mandiri berhasil dikirim!');
-                }}
-                className="mt-3 bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow transition-all duration-200"
-              >
-                Konfirmasi Belajar Mandiri Selesai
-              </button>
-            </div>
-          </div>
-        )}
-// ✅ Tambahkan kode ini:
-{user.hasAlarm && (
-  <div className="bg-red-50 border border-red-200 p-5 rounded-2xl flex items-start space-x-3.5 shadow-sm">
-    <Bell className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+       {/* === NOTIFIKASI VERIFIKASI MINGGUAN (SUDAH ADA) === */}
+{activeWeekendNotification && (
+  <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl flex items-start space-x-3.5 shadow-sm animate-bounce">
+    <Bell className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
     <div>
-      <h3 className="font-extrabold text-red-900 text-sm">Peringatan: Ada Tagihan Belum Dibayar!</h3>
-      <p className="text-xs text-red-700 mt-1 leading-relaxed">Silakan segera lunasi pembayaran iuran bulanan Anda ke bendahara.</p>
+      <h3 className="font-extrabold text-amber-900 text-sm">Peringatan: Verifikasi Mingguan Mandiri Diperlukan!</h3>
+      <p className="text-xs text-amber-700 mt-1 leading-relaxed">Akhir pekan telah tiba. Wali santri wajib menekan tombol verifikasi bimbingan mengaji mandiri di rumah demi mengonfirmasi keikutsertaan.</p>
       <button 
-        onClick={() => setActiveTab('riwayat_pembayaran')}
+        onClick={async () => {
+          const updated = users.map(u => String(u.id) === String(user.id) ? { ...u, lastAccDate: new Date().toISOString() } : u);
+          await updateTable('users', updated);
+          showToast('Verifikasi mingguan mandiri berhasil dikirim!');
+        }}
+        className="mt-3 bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow transition-all duration-200"
+      >
+        Konfirmasi Belajar Mandiri Selesai
+      </button>
+    </div>
+  </div>
+)}
+
+{/* === NOTIFIKASI BELUM BAYAR (DITAMBAHKAN) === */}
+{user?.tagihanBelumBayar > 0 && (
+  <div className="bg-red-50 border border-red-200 p-5 rounded-2xl flex items-start space-x-3.5 shadow-sm mt-4">
+    <svg className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+    </svg>
+    <div>
+      <h3 className="font-extrabold text-red-900 text-sm">Peringatan: Tagihan Belum Dilunasi!</h3>
+      <p className="text-xs text-red-700 mt-1 leading-relaxed">Anda memiliki tagihan pembayaran yang belum diselesaikan. Silakan lunasi segera agar akses layanan tidak terhambat.</p>
+      <button 
+        onClick={() => window.location.href = '/santri/pembayaran'}
         className="mt-3 bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow transition-all duration-200"
       >
-        Lihat Riwayat Pembayaran
+        Lihat & Bayar Sekarang
       </button>
     </div>
   </div>
