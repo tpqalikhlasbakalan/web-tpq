@@ -852,26 +852,71 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
     </div>
   );
 
-  if (activeTab === 'pengajuan_kenaikan') return (
-    <div className="animate-fade-in space-y-6">
-      <BackButton onClick={() => setActiveTab('dashboard')} />
-      <div className="bg-white p-6 rounded-2xl shadow-sm border">
-        <h2 className="text-lg font-bold mb-6 flex items-center text-orange-800"><Award className="mr-2"/> Form Pengajuan Kenaikan Jilid</h2>
-        {activeSantriList.length === 0 ? <div className="p-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs">Belum ada santri untuk diajukan.</div> : (
-          <form onSubmit={submitPengajuanKenaikan} className="space-y-4 max-w-xl bg-gray-50 p-5 rounded-2xl border">
-            <div><label className="block text-xs font-bold mb-1 text-gray-600">Pilih Santri</label><select name="santriId" className="p-2.5 border rounded-xl w-full text-xs font-semibold" required><option value="">-- Cari Nama Santri --</option>{activeSantriList.map(s => <option key={s.id} value={s.id}>{s.name} ({s.jilid})</option>)}</select></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="block text-xs font-bold mb-1 text-gray-600">Tanggal Ujian</label><input type="date" name="date" defaultValue={new Date().toISOString().substring(0,10)} required className="p-2.5 border rounded-xl w-full text-xs" /></div>
-              <div><label className="block text-xs font-bold mb-1 text-gray-600">Ujian Terakhir</label><input type="text" name="surah" required className="p-2.5 border rounded-xl w-full text-xs font-semibold" placeholder="Halaman / Juz Amma" /></div>
-            </div>
-            <div><label className="block text-xs font-bold mb-1 text-gray-600">Catatan</label><input type="text" name="ayat" required className="p-2.5 border rounded-xl w-full text-xs" placeholder="Tajwid & makhraj baik" /></div>
-            <button type="submit" className="bg-orange-600 hover:bg-orange-700 text-white font-bold w-full py-3 rounded-xl text-xs shadow">Kirim Pengajuan ke Kepala</button>
-          </form>
-        )}
-      </div>
-    </div>
-  );
+ if (activeTab === 'pengajuan_kenaikan') return (
+  <div className="animate-fade-in space-y-6">
+    <BackButton onClick={() => setActiveTab('dashboard')} />
+    <div className="bg-white p-6 rounded-2xl shadow-sm border">
+      <h2 className="text-lg font-bold mb-6 flex items-center text-orange-800"><Award className="mr-2"/> Form Pengajuan Kenaikan Jilid</h2>
+      {activeSantriList.length === 0 ? (
+        <div className="p-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs">Belum ada santri untuk diajukan.</div>
+      ) : (
+        <form onSubmit={submitPengajuanKenaikan} className="space-y-4 max-w-xl bg-gray-50 p-5 rounded-2xl border">
+          <div>
+            <label className="block text-xs font-bold mb-1 text-gray-600">Pilih Santri</label>
+            <select 
+              name="santriId" 
+              className="p-2.5 border rounded-xl w-full text-xs font-semibold" 
+              required
+              onChange={(e) => {
+                const santriTerpilih = users.find(u => String(u.id) === String(e.target.value));
+                setSantriTerpilih(santriTerpilih || null);
+              }}
+            >
+              <option value="">-- Cari Nama Santri --</option>
+              {activeSantriList.map(s => <option key={s.id} value={s.id}>{s.name} ({s.jilid})</option>)}
+            </select>
+          </div>
 
+          {/* ✅ CEK OTOMATIS: APAKAH TARGET KOMPETENSI SUDAH LENGKAP? */}
+          {santriTerpilih && (() => {
+            const targetSantri = targets.filter(t => t.level === santriTerpilih.jilid);
+            const semuaLengkap = targetSantri.length > 0 && targetSantri.every(t => 
+              santriTerpilih.completedTargets && santriTerpilih.completedTargets.includes(String(t.id))
+            );
+            return (
+              <div className={`p-3 rounded-xl text-xs font-semibold ${semuaLengkap ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                {semuaLengkap ? '✅ Syarat terpenuhi: Semua kompetensi sudah selesai.' : '❌ Belum bisa diajukan: Masih ada target kompetensi yang belum selesai dicentang.'}
+              </div>
+            );
+          })()}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className="block text-xs font-bold mb-1 text-gray-600">Tanggal Ujian</label><input type="date" name="date" defaultValue={new Date().toISOString().substring(0,10)} required className="p-2.5 border rounded-xl w-full text-xs" /></div>
+            <div><label className="block text-xs font-bold mb-1 text-gray-600">Ujian Terakhir</label><input type="text" name="surah" required className="p-2.5 border rounded-xl w-full text-xs font-semibold" placeholder="Halaman / Juz Amma" /></div>
+          </div>
+          <div><label className="block text-xs font-bold mb-1 text-gray-600">Catatan</label><input type="text" name="ayat" required className="p-2.5 border rounded-xl w-full text-xs" placeholder="Tajwid & makhraj baik" /></div>
+
+          {/* ✅ TOMBOL OTOMATIS MATI JIKA SYARAT BELUM TERCAPAI */}
+          <button 
+            type="submit" 
+            disabled={!santriTerpilih || !(targets.filter(t => t.level === santriTerpilih?.jilid).every(t => santriTerpilih?.completedTargets?.includes(String(t.id))))}
+            className={`font-bold w-full py-3 rounded-xl text-xs shadow transition-all duration-200 ${
+              santriTerpilih && targets.filter(t => t.level === santriTerpilih?.jilid).every(t => santriTerpilih?.completedTargets?.includes(String(t.id)))
+                ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {santriTerpilih ? (
+              targets.filter(t => t.level === santriTerpilih?.jilid).every(t => santriTerpilih?.completedTargets?.includes(String(t.id)))
+                ? '📤 KIRIM PENGAJUAN KE KEPALA'
+                : '🔒 LENGKAPI KOMPETENSI DULU'
+            ) : 'Pilih Santri Terlebih Dahulu'}
+          </button>
+        </form>
+      )}
+    </div>
+  </div>
+);
   if (activeTab === 'klaim_santri') {
     const unclaimedSantri = users.filter(s => s.role === 'santri' && (!s.guruId || String(s.guruId).trim() === '' || s.guruId === 'null'));
     return (
