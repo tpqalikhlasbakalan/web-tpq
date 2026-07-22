@@ -853,20 +853,27 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
   );
 
  if (activeTab === 'pengajuan_kenaikan') {
-  // ✅ Deklarasi variabel
+  // ✅ Wajib ada
   const [santriTerpilih, setSantriTerpilih] = useState(null);
 
-  // ✅ AMBIL DATA SANTRI LANGSUNG DI SINI (tidak bergantung variabel luar)
-  const daftarSantri = users.filter(item => 
-    item.role === 'santri' && String(item.guruId || '') === String(user.id)
-  );
+  // ✅ Ambil semua santri dulu (tanpa filter guru sementara)
+  const semuaSantri = users.filter(u => u.role === 'santri');
 
   // ✅ Fungsi cek syarat
-  const cekSiap = (santri) => {
+  const cekLolos = (santri) => {
     if (!santri || !santri.jilid) return false;
-    const target = targets.filter(t => t.level === santri.jilid);
-    if (target.length === 0) return false;
-    return target.every(t => santri.completedTargets?.includes(String(t.id)));
+    const targetJilid = targets.filter(t => t.level === santri.jilid);
+    if (targetJilid.length === 0) return false;
+    return targetJilid.every(t => 
+      santri.completedTargets && santri.completedTargets.includes(String(t.id))
+    );
+  };
+
+  // ✅ Fungsi kirim (pastikan nama fungsi sama persis dengan yang ada di kode kamu)
+  const kirimData = (e) => {
+    e.preventDefault();
+    if (!cekLolos(santriTerpilih)) return;
+    submitPengajuanKenaikan(e); // Panggil fungsi asli kamu
   };
 
   return (
@@ -877,14 +884,12 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
           <Award className="mr-2"/> Form Pengajuan Kenaikan Jilid
         </h2>
 
-        {/* ✅ INI YANG PENTING: JIKA KOSONG KASIH TAU, JANGAN PUTUS TAMPILAN */}
-        {daftarSantri.length === 0 ? (
+        {semuaSantri.length === 0 ? (
           <div className="p-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs">
-            ⚠️ Belum ada santri yang terdaftar di bimbingan Anda.<br/>
-            Pastikan data santri sudah diisi kolom "Guru Pembimbing".
+            Belum ada data santri.
           </div>
         ) : (
-          <form onSubmit={submitPengajuanKenaikan} className="space-y-4 max-w-xl">
+          <form onSubmit={kirimData} className="space-y-4 max-w-xl">
             <div className="bg-gray-50 p-5 rounded-2xl border">
               <label className="block text-xs font-bold mb-2 text-gray-700">Pilih Nama Santri</label>
               <select 
@@ -892,14 +897,14 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
                 className="p-2.5 border rounded-xl w-full text-xs font-semibold bg-white" 
                 required
                 onChange={(e) => {
-                  const pilih = users.find(u => String(u.id) === String(e.target.value));
-                  setSantriTerpilih(pilih || null);
+                  const ditemukan = users.find(u => String(u.id) === String(e.target.value));
+                  setSantriTerpilih(ditemukan || null);
                 }}
               >
                 <option value="">-- Pilih Santri --</option>
-                {daftarSantri.map(s => (
+                {semuaSantri.map(s => (
                   <option key={s.id} value={s.id}>
-                    {s.name} | {s.jilid} {cekSiap(s) ? '✅ SIAP NAIK' : '⏳ BELUM LENGKAP'}
+                    {s.name} | {s.jilid} {cekLolos(s) ? '✅ SIAP NAIK' : '⏳ BELUM LENGKAP'}
                   </option>
                 ))}
               </select>
@@ -907,36 +912,36 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
 
             {santriTerpilih && (
               <div className={`p-3 rounded-xl text-xs font-semibold ${
-                cekSiap(santriTerpilih) ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'
+                cekLolos(santriTerpilih) ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
               }`}>
-                {cekSiap(santriTerpilih) ? `✅ ${santriTerpilih.name} SUDAH LENGKAP` : `❌ ${santriTerpilih.name} BELUM LENGKAP`}
+                {cekLolos(santriTerpilih) ? '✅ Syarat terpenuhi' : '❌ Belum lengkap kompetensi'}
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold mb-1 text-gray-600">Tanggal Ujian</label>
-                <input type="date" name="date" defaultValue={new Date().toISOString().substring(0,10)} required className="p-2.5 border rounded-xl w-full text-xs" />
+                <input type="date" name="date" defaultValue={new Date().toISOString().slice(0,10)} required className="p-2.5 border rounded-xl w-full text-xs" />
               </div>
               <div>
                 <label className="block text-xs font-bold mb-1 text-gray-600">Ujian Terakhir</label>
-                <input type="text" name="surah" required className="p-2.5 border rounded-xl w-full text-xs font-semibold" placeholder="Surah/Jilid" />
+                <input type="text" name="surah" required className="p-2.5 border rounded-xl w-full text-xs" placeholder="Surah/Jilid" />
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-bold mb-1 text-gray-600">Catatan</label>
-              <input type="text" name="ayat" required className="p-2.5 border rounded-xl w-full text-xs" placeholder="Keterangan ujian" />
+              <input type="text" name="ayat" required className="p-2.5 border rounded-xl w-full text-xs" placeholder="Keterangan" />
             </div>
 
             <button 
               type="submit" 
-              disabled={!cekSiap(santriTerpilih)}
-              className={`font-bold w-full py-3 rounded-xl text-xs shadow ${
-                cekSiap(santriTerpilih) ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              disabled={!cekLolos(santriTerpilih)}
+              className={`font-bold w-full py-3 rounded-xl text-xs ${
+                cekLolos(santriTerpilih) ? 'bg-orange-600 text-white' : 'bg-gray-300 text-gray-500'
               }`}
             >
-              {cekSiap(santriTerpilih) ? '📤 KIRIM KE KEPALA' : '🔒 LENGKAPI DULU'}
+              {cekLolos(santriTerpilih) ? '📤 KIRIM PENGAJUAN' : '🔒 LENGKAPI DULU'}
             </button>
           </form>
         )}
