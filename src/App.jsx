@@ -113,12 +113,12 @@ const normalizeUsers = (rawUsers) => {
     const roleStr = String(rawRole).trim().toLowerCase();
     
     if (roleStr === 'santri') {
-      finalJilid = 'Jilid 1'; // Default Fallback
+      finalJilid = 'Jilid 1';
       let rawJilid = getProp(u, ['jilid', 'Jid', 'jid', 'JID', 'Jilid', 'tingkatan', 'kelas']);
       if (rawJilid !== undefined && rawJilid !== null) {
         const jilidStr = String(rawJilid).trim();
         if (jilidStr !== "" && jilidStr !== "null" && jilidStr !== "undefined") {
-          finalJilid = jilidStr; // CORRECTLY BIND LEVEL TO GOOGLE SHEETS
+          finalJilid = jilidStr;
         }
       }
     }
@@ -611,7 +611,8 @@ export default function App() {
     <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
       <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: '' })} />
       
-      <header className="bg-emerald-800 text-white p-4 shadow-md flex justify-between items-center checked-bg sticky top-0 z-10 font-medium">
+      {/* ✅ PERBAIKAN 0: Typo class 'checked-bg' dihapus */}
+      <header className="bg-emerald-800 text-white p-4 shadow-md flex justify-between items-center sticky top-0 z-10 font-medium">
         <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
           {settings.logoUrl ? (
             <img src={settings.logoUrl} alt="Logo" className="w-auto h-10 object-contain bg-white rounded-md p-1" />
@@ -646,6 +647,7 @@ export default function App() {
       </header>
 
       <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
+        {/* ✅ PERBAIKAN 2: Logika render dibersihkan, TIDAK ADA LAGI render ganda GuruView */}
         {currentUser.role === 'santri' && (
           <SantriView 
             activeTab={activeTab} 
@@ -661,7 +663,8 @@ export default function App() {
             setSimulatedWeekend={setSimulatedWeekend}
           />
         )}
-        {(currentUser.role === 'guru' || currentUser.role === 'kepala_tpq') && activeTab !== 'dashboard' && (activeTab === 'isi_progres' || activeTab === 'nilai_target' || activeTab === 'pengajuan_kenaikan' || activeTab === 'klaim_santri' || activeTab === 'input_tabungan_guru') ? (
+
+        {currentUser.role === 'guru' && (
           <GuruView 
             activeTab={activeTab} 
             setActiveTab={setActiveTab} 
@@ -677,8 +680,9 @@ export default function App() {
             simulatedWeekend={simulatedWeekend}
             setSimulatedWeekend={setSimulatedWeekend}
           />
-        ) : null}
-        {currentUser.role === 'kepala_tpq' && (activeTab === 'dashboard' || activeTab === 'acc_kenaikan' || activeTab === 'target_jilid' || activeTab === 'input_tabungan' || activeTab === 'otorisasi_tabungan' || activeTab === 'kelola_syahriah' || activeTab === 'hak_akses' || activeTab === 'pengaturan' || activeTab === 'guru_progres' || activeTab === 'guru_target' || activeTab === 'guru_kenaikan' || activeTab === 'guru_klaim') && (
+        )}
+
+        {currentUser.role === 'kepala_tpq' && (
           <KepalaView 
             activeTab={activeTab} 
             setActiveTab={setActiveTab} 
@@ -699,23 +703,7 @@ export default function App() {
             loadDatabase={loadDatabase}
           />
         )}
-        {currentUser.role === 'guru' && activeTab === 'dashboard' && (
-          <GuruView 
-            activeTab={activeTab} 
-            setActiveTab={setActiveTab} 
-            user={currentUser} 
-            users={users}
-            setUsers={setUsers}
-            progress={progress}
-            targets={targets}
-            savings={savings}
-            settings={settings}
-            updateTable={updateTable}
-            showToast={showToast} 
-            simulatedWeekend={simulatedWeekend}
-            setSimulatedWeekend={setSimulatedWeekend}
-          />
-        )}
+
         {currentUser.role === 'bendahara' && (
           <BendaharaView 
             activeTab={activeTab} 
@@ -727,6 +715,7 @@ export default function App() {
             showToast={showToast} 
           />
         )}
+
         {currentUser.role === 'admin' && (
           <AdminView 
             activeTab={activeTab} 
@@ -986,6 +975,23 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
 function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
   const [selectedSantri, setSelectedSantri] = useState(null);
   const [modeAksesKepala, setModeAksesKepala] = useState(user.role === 'kepala_tpq');
+
+  // ==================================================================
+  // ✅ PERBAIKAN 1: useEffect PENYELAMAT CHECKBOX (PALING PENTING!)
+  // ==================================================================
+  // Ini otomatis me-refresh tampilan centangan setiap kali data users
+  // berubah setelah disimpan ke database / Google Sheets
+  useEffect(() => {
+    if (selectedSantri) {
+      const dataTerbaru = users.find(u => String(u.id) === String(selectedSantri.id));
+      if (dataTerbaru && JSON.stringify(dataTerbaru) !== JSON.stringify(selectedSantri)) {
+        setSelectedSantri(dataTerbaru);
+      }
+    }
+  }, [users, selectedSantri]);
+  // ==================================================================
+  // ✅ AKHIR PERBAIKAN UTAMA
+  // ==================================================================
 
   const activeSantriList = users.filter(u => {
     if (u.role !== 'santri') return false;
@@ -1416,6 +1422,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
     );
   }
 
+  // ✅ Pastikan mapping tab guru_target -> nilai_target BENAR
   if (activeTab === 'guru_progres' || activeTab === 'guru_klaim' || activeTab === 'guru_target' || activeTab === 'guru_kenaikan') {
     let mappedTab = 'isi_progres';
     if (activeTab === 'guru_klaim') mappedTab = 'klaim_santri';
@@ -2088,13 +2095,15 @@ function doPost(e) {
                 <pre className="p-6 overflow-y-auto flex-1 bg-gray-900 text-gray-100 font-mono text-xs rounded-b-xl whitespace-pre flex-shrink-0">
                   {codeScriptGoogle}
                 </pre>
-                <div className="p-4 border-t bg-gray-50 flex justify-between items-center rounded-b-3xl">
-                  <span className="text-[11px] text-gray-500 font-semibold">Deploy script sebagai Web App (Akses: Anyone)</span>
-                  <div className="flex space-x-2">
-                    <button onClick={copyScriptToClipboard} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center transition">
+                <div className="p-4 border-t bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-3 rounded-b-3xl">
+                  <span className="text-[11px] text-gray-500 font-semibold">
+                    Deploy sebagai <strong>Web App</strong>, Execute as: <strong>Me</strong>, Who has access: <strong>Anyone</strong>.
+                  </span>
+                  <div className="flex items-center space-x-2">
+                    <button onClick={copyScriptToClipboard} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center shadow">
                       <Copy size={14} className="mr-1.5"/> Salin Script
                     </button>
-                    <button onClick={() => setShowScriptModal(false)} className="bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold px-4 py-2 rounded-xl transition">
+                    <button onClick={() => setShowScriptModal(false)} className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold px-4 py-2 rounded-xl text-xs">
                       Tutup
                     </button>
                   </div>
@@ -2103,47 +2112,22 @@ function doPost(e) {
             </div>
           )}
 
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6 text-xs text-amber-900 space-y-2">
-            <h4 className="font-bold flex items-center"><Info size={16} className="mr-1.5 text-amber-700"/> Panduan Deployment Google Sheets:</h4>
-            <ol className="list-decimal list-inside space-y-1 text-amber-800 ml-1">
-              <li>Buat Google Spreadsheet baru di Google Drive Anda.</li>
-              <li>Buat 5 sheet dengan nama persis: <code className="font-mono bg-amber-150 px-1 py-0.5 rounded font-bold">users</code>, <code className="font-mono bg-amber-150 px-1 py-0.5 rounded font-bold">progress</code>, <code className="font-mono bg-amber-150 px-1 py-0.5 rounded font-bold">targets</code>, <code className="font-mono bg-amber-150 px-1 py-0.5 rounded font-bold">savings</code>, and <code className="font-mono bg-amber-150 px-1 py-0.5 rounded font-bold">settings</code>.</li>
-              <li>Klik menu <strong>Ekstensi &gt; Apps Script</strong>.</li>
-              <li>Tempelkan kode Apps Script, lalu klik <strong>Simpan</strong>.</li>
-              <li>Klik <strong>Deploy &gt; New deployment</strong>.</li>
-              <li>Pilih jenis <strong>Web App</strong>. Setel opsi berikut:
-                <ul className="list-disc list-inside ml-5 mt-1 space-y-0.5 font-semibold">
-                  <li>Jalankan sebagai (Execute as): <span className="text-emerald-700 underline">Me (Email Anda)</span></li>
-                  <li>Yang memiliki akses (Who has access): <span className="text-emerald-700 underline">Anyone</span></li>
-                </ul>
-              </li>
-              <li>Salin **URL Web App** berakhiran <code className="font-bold">/exec</code> dan tempelkan di bawah.</li>
-            </ol>
-          </div>
-
-          <form onSubmit={handleSaveSettings} className="space-y-4 max-w-xl">
+          <form onSubmit={handleSaveSettings} className="space-y-4 max-w-xl bg-gray-50 p-5 rounded-2xl border">
             <div>
-              <label className="block text-xs font-bold mb-1 text-gray-500">Nama Lembaga TPQ</label>
-              <input type="text" name="tpqName" defaultValue={settings?.tpqName} required className="w-full p-2.5 border rounded-xl outline-none focus:border-emerald-500 text-xs text-gray-800" />
+              <label className="block text-xs font-bold mb-1 text-gray-600">Nama Lembaga TPQ</label>
+              <input type="text" name="tpqName" defaultValue={settings.tpqName || ''} required className="p-2.5 border rounded-xl bg-white text-xs w-full font-bold text-gray-800" />
             </div>
             <div>
-              <label className="block text-xs font-bold mb-1 text-gray-500">URL Gambar Logo (Tautan Online)</label>
-              <input type="url" name="logoUrl" defaultValue={settings?.logoUrl} className="w-full p-2.5 border rounded-xl outline-none focus:border-emerald-500 text-xs text-gray-800" placeholder="https://domain.com/logo-anda.png" />
+              <label className="block text-xs font-bold mb-1 text-gray-600">URL Gambar Logo Lembaga (Opsional)</label>
+              <input type="url" name="logoUrl" defaultValue={settings.logoUrl || ''} placeholder="https://..." className="p-2.5 border rounded-xl bg-white text-xs w-full text-gray-600" />
             </div>
             <div>
-              <label className="block text-xs font-bold mb-1 text-gray-500 text-emerald-800 flex items-center">
-                <Database size={14} className="mr-1" /> URL Google Apps Script Web App
-              </label>
-              <input 
-                type="url" 
-                name="appsScriptUrl" 
-                defaultValue={appsScriptUrl} 
-                required 
-                className="w-full p-2.5 border-2 border-emerald-100 bg-emerald-50/20 rounded-xl outline-none focus:border-emerald-500 text-xs text-gray-855 font-mono" 
-                placeholder="https://script.google.com/macros/s/.../exec" 
-              />
+              <label className="block text-xs font-bold mb-1 text-gray-600">URL Deploy Google Apps Script Exec</label>
+              <input type="url" name="appsScriptUrl" defaultValue={appsScriptUrl} placeholder="https://script.google.com/macros/s/.../exec" required className="p-2.5 border rounded-xl bg-white text-xs w-full font-mono text-gray-700" />
             </div>
-            <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-sm transition">Simpan & Hubungkan Database</button>
+            <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold w-full py-3 rounded-xl text-xs transition duration-200 shadow">
+              Simpan Pengaturan
+            </button>
           </form>
         </div>
       </div>
@@ -2154,22 +2138,113 @@ function doPost(e) {
     return (
       <div className="animate-fade-in space-y-6">
         <BackButton onClick={() => setActiveTab('dashboard')} />
-        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h2 className="text-sm font-bold text-gray-800 mb-4 flex items-center border-b pb-2"><UserPlus size={16} className="mr-2 text-purple-600"/> Tambah Akun Pengguna Baru</h2>
+            <form onSubmit={handleAddUser} className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-600 mb-1">Nama Lengkap</label>
+                <input name="name" type="text" placeholder="Ahmad Zaki" required className="p-2.5 border rounded-xl bg-gray-50 text-xs w-full" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-gray-600 mb-1">Username Login</label>
+                <input name="username" type="text" placeholder="zaki" required className="p-2.5 border rounded-xl bg-gray-50 text-xs w-full" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-gray-600 mb-1">Password</label>
+                <input name="password" type="text" placeholder="123" required className="p-2.5 border rounded-xl bg-gray-50 text-xs w-full" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-gray-600 mb-1">Peran / Hak Akses</label>
+                <select name="role" value={selectedFormRole} onChange={(e) => setSelectedFormRole(e.target.value)} className="p-2.5 border rounded-xl bg-gray-50 text-xs w-full font-bold">
+                  <option value="santri">Santri / Wali</option>
+                  <option value="guru">Guru Ngaji</option>
+                  <option value="bendahara">Bendahara</option>
+                  <option value="kepala_tpq">Kepala TPQ</option>
+                  <option value="admin">Admin System</option>
+                </select>
+              </div>
+              {selectedFormRole === 'santri' && (
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-600 mb-1">Tingkatan / Jilid Awal</label>
+                  <select name="jilid" defaultValue="Jilid 1" className="p-2.5 border rounded-xl bg-gray-50 text-xs w-full font-semibold">
+                    {JILID_LEVELS.map(j => <option key={j} value={j}>{j}</option>)}
+                  </select>
+                </div>
+              )}
+              <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow mt-2">
+                Daftarkan Pengguna
+              </button>
+            </form>
+          </div>
+
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
+            <h2 className="text-sm font-bold text-gray-800 mb-4 flex items-center border-b pb-2"><Users size={16} className="mr-2 text-purple-600"/> Daftar Akun Pengguna Terdaftar ({users.length})</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-gray-50 font-bold text-gray-600 uppercase border-b">
+                    <th className="p-3">Nama Lengkap</th>
+                    <th className="p-3">Username</th>
+                    <th className="p-3">Peran</th>
+                    <th className="p-3">Password</th>
+                    <th className="p-3 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map(u => (
+                    <tr key={u.id} className="border-b hover:bg-gray-50 transition">
+                      <td className="p-3 font-bold text-gray-800">
+                        {u.name}
+                        {u.role === 'santri' && <span className="block text-[10px] text-gray-400 font-normal">{u.jilid}</span>}
+                      </td>
+                      <td className="p-3 font-mono text-gray-600">{u.username}</td>
+                      <td className="p-3">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-purple-50 text-purple-700 border border-purple-100">
+                          {getRoleName(u.role)}
+                        </span>
+                      </td>
+                      <td className="p-3 font-mono">
+                        <div className="flex items-center space-x-1">
+                          <span>{showPasswordMap[u.id] ? u.password : '••••••'}</span>
+                          <button onClick={() => togglePasswordVisibility(u.id)} className="text-gray-400 hover:text-gray-600 p-1">
+                            {showPasswordMap[u.id] ? <EyeOff size={12}/> : <Eye size={12}/>}
+                          </button>
+                        </div>
+                      </td>
+                      <td className="p-3 text-center">
+                        <div className="flex items-center justify-center space-x-1">
+                          <button onClick={() => triggerResetDialog(u)} className="p-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg transition" title="Reset Password">
+                            <Unlock size={13}/>
+                          </button>
+                          <button onClick={() => triggerDeleteDialog(u)} className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition" title="Hapus Akun">
+                            <Trash2 size={13}/>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         {resettingUser && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
             <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm border">
-              <h3 className="font-bold text-gray-800 text-base mb-2">Reset Password</h3>
-              <p className="text-xs text-gray-500 mb-4">Ubah kata sandi login untuk akun <strong>{resettingUser.name}</strong></p>
+              <h3 className="font-extrabold text-sm text-gray-800 mb-1">Reset Password Akun</h3>
+              <p className="text-xs text-gray-500 mb-4">Pengguna: <strong>{resettingUser.name}</strong> (@{resettingUser.username})</p>
               <input 
                 type="text" 
                 value={newPasswordVal} 
                 onChange={(e) => setNewPasswordVal(e.target.value)} 
-                placeholder="Kata Sandi Baru..." 
-                className="w-full p-2.5 border rounded-xl text-xs bg-gray-50 outline-none mb-4 focus:border-purple-500 font-bold text-gray-800"
+                placeholder="Masukkan kata sandi baru..." 
+                className="w-full p-2.5 border rounded-xl bg-gray-50 text-xs font-mono mb-4 focus:ring-2 focus:ring-amber-500 outline-none"
               />
               <div className="flex justify-end space-x-2">
-                <button onClick={() => setResettingUser(null)} className="bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold px-4 py-2 rounded-xl transition">Batal</button>
-                <button onClick={submitResetPassword} className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition">Simpan</button>
+                <button onClick={() => setResettingUser(null)} className="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-bold">Batal</button>
+                <button onClick={submitResetPassword} className="px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold shadow">Simpan Sandi Baru</button>
               </div>
             </div>
           </div>
@@ -2178,126 +2253,15 @@ function doPost(e) {
         {deletingUser && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
             <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm border">
-              <h3 className="font-bold text-red-800 text-base mb-2">Hapus Pengguna</h3>
-              <p className="text-xs text-gray-500 mb-4">Apakah Anda yakin ingin menghapus akun milik <strong>{deletingUser.name}</strong> secara permanen?</p>
-              <div className="flex justify-end space-x-2">
-                <button onClick={() => setDeletingUser(null)} className="bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold px-4 py-2 rounded-xl transition">Batal</button>
-                <button onClick={confirmDeleteUser} className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition">Ya, Hapus</button>
+              <h3 className="font-extrabold text-sm text-red-600 mb-1 flex items-center"><AlertTriangle size={16} className="mr-1.5"/> Konfirmasi Hapus Akun</h3>
+              <p className="text-xs text-gray-600 my-3 leading-relaxed">Apakah Anda yakin ingin menghapus akun <strong>{deletingUser.name}</strong> (@{deletingUser.username}) secara permanen?</p>
+              <div className="flex justify-end space-x-2 mt-4">
+                <button onClick={() => setDeletingUser(null)} className="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-bold">Batal</button>
+                <button onClick={confirmDeleteUser} className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold shadow">Hapus Permanen</button>
               </div>
             </div>
           </div>
         )}
-
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h2 className="text-lg font-bold mb-4 flex items-center text-purple-800"><UserPlus className="mr-2"/> Daftarkan Akun Pengguna Baru</h2>
-          <form onSubmit={handleAddUser} className="bg-gray-50 p-5 rounded-2xl border border-gray-200">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
-              <div>
-                <label className="block text-[11px] font-bold text-gray-600 mb-1">Nama Lengkap</label>
-                <input type="text" name="name" placeholder="Ahmad Zaki" required className="p-2.5 w-full border rounded-xl focus:border-purple-500 outline-none text-xs bg-white font-bold text-gray-800" />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-gray-600 mb-1">Username Login</label>
-                <input type="text" name="username" placeholder="zaki12" required className="p-2.5 w-full border rounded-xl focus:border-purple-500 outline-none text-xs bg-white font-bold text-gray-800" />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-gray-600 mb-1">Kata Sandi Awal</label>
-                <input type="text" name="password" placeholder="12345" required className="p-2.5 w-full border rounded-xl focus:border-purple-500 outline-none text-xs bg-white font-bold text-gray-800" />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-gray-600 mb-1">Hak Akses Peran (Role)</label>
-                <select 
-                  name="role" 
-                  value={selectedFormRole}
-                  onChange={(e) => setSelectedFormRole(e.target.value)}
-                  required 
-                  className="p-2.5 w-full border rounded-xl focus:border-purple-500 outline-none font-bold text-gray-700 text-xs bg-white"
-                >
-                  <option value="santri">Santri / Wali</option>
-                  <option value="guru">Guru Ngaji</option>
-                  <option value="bendahara">Bendahara</option>
-                  <option value="kepala_tpq">Kepala TPQ</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-              {selectedFormRole === 'santri' ? (
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-600 mb-1">Tingkatan / Jilid Awal</label>
-                  <select 
-                    name="jilid" 
-                    required 
-                    className="p-2.5 w-full border rounded-xl focus:border-purple-500 outline-none font-bold text-gray-700 text-xs bg-white"
-                  >
-                    {JILID_LEVELS.map(j => <option key={j} value={j}>{j}</option>)}
-                  </select>
-                </div>
-              ) : (
-                <div className="hidden lg:block"></div>
-              )}
-            </div>
-            <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl shadow-sm text-xs transition duration-200">
-               Buat Akun
-            </button>
-          </form>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
-          <h2 className="text-lg font-bold mb-4 flex items-center text-purple-800"><Shield className="mr-2"/> Kelola Kredensial Pengguna</h2>
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-purple-50 text-purple-950 border-b border-purple-100 font-bold uppercase text-[10px]">
-                <th className="p-4 rounded-tl-xl">Nama Pengguna & Peran</th>
-                <th className="p-4">Username Login</th>
-                <th className="p-4">Kata Sandi</th>
-                <th className="p-4 text-center rounded-tr-xl">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map(u => (
-                <tr key={u.id} className="border-b hover:bg-gray-50 text-xs transition">
-                  <td className="p-4">
-                    <p className="font-bold text-gray-800">{u.name}</p>
-                    <span className={`mt-1 inline-block px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider border ${
-                      u.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                      u.role === 'kepala_tpq' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                      u.role === 'guru' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                      u.role === 'bendahara' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                      'bg-gray-50 text-gray-600 border-gray-200'
-                    }`}>
-                      {u.role ? u.role.replace('_', ' ') : ''}
-                    </span>
-                    {u.role === 'santri' && u.jilid && (
-                      <span className="mt-1 ml-1.5 inline-block px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border bg-teal-50 text-teal-700 border-teal-200">
-                        {u.jilid}
-                      </span>
-                    )}
-                  </td>
-                  <td className="p-4 font-mono font-bold text-gray-600">{u.username}</td>
-                  <td className="p-4">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-mono bg-gray-50 px-2 py-1 rounded border text-xs min-w-[80px] text-center font-bold text-gray-750">
-                        {showPasswordMap[u.id] ? u.password : '••••••••'}
-                      </span>
-                      <button onClick={() => togglePasswordVisibility(u.id)} className="text-gray-400 hover:text-purple-600 p-1">
-                        {showPasswordMap[u.id] ? <EyeOff size={15}/> : <Eye size={15}/>}
-                      </button>
-                    </div>
-                  </td>
-                  <td className="p-4 text-center">
-                    <div className="flex justify-center gap-2">
-                      <button onClick={() => triggerResetDialog(u)} className="bg-white border border-purple-200 text-purple-600 hover:bg-purple-50 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center transition shadow-sm">
-                        <Edit size={12} className="mr-1"/> Sandi
-                      </button>
-                      <button onClick={() => triggerDeleteDialog(u)} className="bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center transition shadow-sm">
-                        <Trash2 size={12} className="mr-1"/> Hapus
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       </div>
     );
   }
