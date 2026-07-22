@@ -498,6 +498,29 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
           <div><p className="text-emerald-200">Status Tabungan</p><p className="text-base font-bold mt-0.5">Rp {currentBalance.toLocaleString('id-ID')}</p></div>
         </div>
       </div>
+
+      {/* 🔴 NOTIF ALARM TAGIHAN - PINDAH & DITAMBAHKAN DI DASHBOARD (SESUAI PERMINTAAN) */}
+      {user.hasAlarm && (
+        <div className="bg-red-50 border border-red-200 p-5 rounded-2xl flex items-start space-x-3.5 shadow-sm animate-pulse">
+          <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="font-extrabold text-red-900 text-sm flex items-center">
+              ⚠️ Peringatan: Ada Tagihan Syahriah Belum Lunas!
+            </h3>
+            <p className="text-xs text-red-700 mt-1 leading-relaxed">
+              Anda memiliki tunggakan pembayaran iuran bulanan. Segera lunasi ke bendahara agar akses layanan tidak terhambat.
+            </p>
+            <button 
+              onClick={() => setActiveTab('riwayat_pembayaran')} 
+              className="mt-3 bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow transition-all duration-200 flex items-center gap-1"
+            >
+              <CreditCard className="w-3.5 h-3.5" /> Lihat Detail Tagihan Sekarang
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 🟡 NOTIF VERIFIKASI MINGGUAN (TETAP ADA) */}
       {activeWeekendNotification && (
         <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl flex items-start space-x-3.5 shadow-sm">
           <Bell className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -508,7 +531,10 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
           </div>
         </div>
       )}
+
       <MenuGrid menus={menus} onSelect={setActiveTab} />
+
+      {/* Target Kompetensi (tetap sama) */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <div className="flex justify-between items-center mb-4 border-b pb-3">
           <h3 className="font-bold text-gray-800 text-sm sm:text-base flex items-center"><Award className="mr-1.5 text-emerald-600"/> Target Kompetensi Jilid Aktif ({user.jilid})</h3>
@@ -530,7 +556,6 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
       </div>
     </div>
   );
-
   if (activeTab === 'progres_mengaji') return (
     <div className="animate-fade-in">
       <BackButton onClick={() => setActiveTab('dashboard')} />
