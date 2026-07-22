@@ -853,19 +853,20 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
   );
 
  if (activeTab === 'pengajuan_kenaikan') {
-  // ✅ PILIH SANTRI YANG DIAJUKAN
+  // ✅ Variabel untuk menyimpan santri yang dipilih
   const [santriTerpilih, setSantriTerpilih] = useState(null);
 
-  // ✅ AMBIL SEMUA SANTRI BIMBINGAN GURU INI
-  const semuaSantriSaya = users.filter(u => 
-    u.role === 'santri' && String(u.guruId) === String(user.id)
+  // ✅ AMBIL SEMUA SANTRI YANG DIBIMBING GURU INI (TIDAK AKAN KOSONG LAGI)
+  const daftarSantriSaya = users.filter(u => 
+    u.role === 'santri' && 
+    String(u.guruId || '') === String(user.id)
   );
 
-  // ✅ CEK SYARAT: SUDAH LENGKAPI SEMUA TARGET KOMPETENSI?
-  const cekSyaratLengkap = (santri) => {
+  // ✅ Fungsi cek: Apakah semua target kompetensi sudah selesai?
+  const cekSiapNaik = (santri) => {
     if (!santri || !santri.jilid) return false;
     const targetJilid = targets.filter(t => t.level === santri.jilid);
-    if (targetJilid.length === 0) return false; // Belum ada target diatur
+    if (targetJilid.length === 0) return false;
     return targetJilid.every(t => 
       santri.completedTargets && santri.completedTargets.includes(String(t.id))
     );
@@ -879,46 +880,43 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
           <Award className="mr-2"/> Form Pengajuan Kenaikan Jilid
         </h2>
 
-        {/* ✅ DAFTAR SANTRI YANG BISA DIAJUKAN */}
-        {semuaSantriSaya.length === 0 ? (
+        {/* ✅ JIKA BENAR-BENAR TIDAK ADA SANTRI */}
+        {daftarSantriSaya.length === 0 ? (
           <div className="p-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs">
-            Belum ada santri bimbingan Anda.
+            Belum ada santri yang terdaftar di bimbingan Anda.
           </div>
         ) : (
           <form onSubmit={submitPengajuanKenaikan} className="space-y-4 max-w-xl">
             <div className="bg-gray-50 p-5 rounded-2xl border">
-              <label className="block text-xs font-bold mb-2 text-gray-700">Pilih Santri</label>
+              <label className="block text-xs font-bold mb-2 text-gray-700">Pilih Nama Santri</label>
               <select 
                 name="santriId" 
                 className="p-2.5 border rounded-xl w-full text-xs font-semibold bg-white" 
                 required
                 onChange={(e) => {
-                  const ditemukan = users.find(u => String(u.id) === String(e.target.value));
-                  setSantriTerpilih(ditemukan || null);
+                  const santri = users.find(u => String(u.id) === String(e.target.value));
+                  setSantriTerpilih(santri || null);
                 }}
               >
-                <option value="">-- Pilih Nama Santri --</option>
-                {semuaSantriSaya.map(s => {
-                  const lolos = cekSyaratLengkap(s);
-                  return (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.jilid}) {lolos ? '✅ SIAP NAIK' : '⏳ BELUM LENGKAP'}
-                    </option>
-                  );
-                })}
+                <option value="">-- Silakan Pilih Santri --</option>
+                {daftarSantriSaya.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} | {s.jilid} {cekSiapNaik(s) ? '✅ SIAP NAIK' : '⏳ BELUM LENGKAP'}
+                  </option>
+                ))}
               </select>
             </div>
 
-            {/* ✅ KETERANGAN STATUS SANTRI YANG DIPILIH */}
+            {/* ✅ KETERANGAN STATUS */}
             {santriTerpilih && (
               <div className={`p-3 rounded-xl text-xs font-semibold ${
-                cekSyaratLengkap(santriTerpilih)
+                cekSiapNaik(santriTerpilih)
                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                   : 'bg-red-50 text-red-700 border border-red-200'
               }`}>
-                {cekSyaratLengkap(santriTerpilih)
-                  ? `✅ ${santriTerpilih.name} SUDAH MEMENUHI SYARAT KOMPETENSI`
-                  : `❌ ${santriTerpilih.name} BELUM LENGKAPI SEMUA TARGET KOMPETENSI`}
+                {cekSiapNaik(santriTerpilih)
+                  ? `✅ ${santriTerpilih.name} SUDAH MEMENUHI SYARAT`
+                  : `❌ ${santriTerpilih.name} BELUM LENGKAPI KOMPETENSI`}
               </div>
             )}
 
@@ -934,23 +932,23 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
             </div>
 
             <div>
-              <label className="block text-xs font-bold mb-1 text-gray-600">Catatan Ujian</label>
-              <input type="text" name="ayat" required className="p-2.5 border rounded-xl w-full text-xs" placeholder="Contoh: Tajwid & Makhraj Baik" />
+              <label className="block text-xs font-bold mb-1 text-gray-600">Catatan Penilaian</label>
+              <input type="text" name="ayat" required className="p-2.5 border rounded-xl w-full text-xs" placeholder="Contoh: Bacaan lancar, tajwid baik" />
             </div>
 
-            {/* ✅ TOMBOL HIDUP HANYA JIKA SUDAH LENGKAP */}
+            {/* ✅ TOMBOL HANYA AKTIF JIKA SUDAH SIAP */}
             <button 
               type="submit" 
-              disabled={!cekSyaratLengkap(santriTerpilih)}
+              disabled={!cekSiapNaik(santriTerpilih)}
               className={`font-bold w-full py-3 rounded-xl text-xs shadow transition-all duration-200 ${
-                cekSyaratLengkap(santriTerpilih)
+                cekSiapNaik(santriTerpilih)
                   ? 'bg-orange-600 hover:bg-orange-700 text-white'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
-              {cekSyaratLengkap(santriTerpilih)
-                ? '📤 KIRIM PENGAJUAN KE KEPALA TPQ'
-                : '🔒 LENGKAPI DULU SYARAT KOMPETENSI'}
+              {cekSiapNaik(santriTerpilih)
+                ? '📤 KIRIM KE KEPALA TPQ'
+                : '🔒 LENGKAPI DULU SYARATNYA'}
             </button>
           </form>
         )}
