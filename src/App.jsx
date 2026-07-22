@@ -473,7 +473,10 @@ export default function App() {
 }
 
 function SantriView({ activeTab, setActiveTab, user, users, progress, targets, savings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
-  const myProgress = progress.filter(p => String(p.santriId) === String(user.id) && p.status !== 'pending');
+  // ✅ SEMUA riwayat tampil (termasuk yang belum disetujui)
+const semuaProgresSaya = progress.filter(p => String(p.santriId) === String(user.id));
+// ✅ Khusus yang menunggu persetujuan (untuk kunci input & notif)
+const progresMenungguAcc = progress.filter(p => String(p.santriId) === String(user.id) && p.status === 'belum_disetujui');
   const myTargets = targets.filter(t => t.level === user.jilid);
   const mySavings = savings.filter(s => String(s.santriId) === String(user.id));
   const totalDeposit = mySavings.filter(s => s.type === 'setor').reduce((acc, curr) => acc + curr.amount, 0);
@@ -482,10 +485,21 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
   const activeWeekendNotification = isAccNeeded(user.lastAccDate, simulatedWeekend);
 
   const menus = [
-    { id: 'progres_mengaji', label: 'Progres Mengaji Saya', icon: BookOpen, color: 'bg-emerald-100 text-emerald-600', desc: 'Riwayat catatan setoran bacaan harian yang sudah divalidasi guru.' },
-    { id: 'riwayat_pembayaran', label: 'Riwayat Pembayaran', icon: CreditCard, color: 'bg-indigo-100 text-indigo-600', desc: 'Lihat status tagihan dan riwayat pembayaran iuran bulanan Anda.' },
-    { id: 'riwayat_tabungan', label: 'Riwayat Tabungan', icon: DollarSign, color: 'bg-amber-100 text-amber-600', desc: 'Lihat riwayat setoran, penarikan, dan saldo tabungan Anda.' }
-  ];
+  // ✅ Menu baru: Persetujuan Wali (posisi paling atas)
+  { 
+    id: 'persetujuan_wali', 
+    label: progresMenungguAcc.length > 0 
+      ? `🔴 Persetujuan Wali (${progresMenungguAcc.length})` 
+      : '✍️ Persetujuan Wali Santri', 
+    icon: CheckSquare, 
+    color: progresMenungguAcc.length > 0 ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-blue-50 text-blue-600', 
+    desc: 'Setujui setoran guru agar proses mengaji bisa dilanjutkan.' 
+  },
+  // Menu lama tetap ada, hanya ubah keterangannya
+  { id: 'progres_mengaji', label: 'Progres Mengaji Saya', icon: BookOpen, color: 'bg-emerald-100 text-emerald-600', desc: 'Riwayat semua catatan setoran Anda (belum & sudah disetujui).' },
+  { id: 'riwayat_pembayaran', label: 'Riwayat Pembayaran', icon: CreditCard, color: 'bg-indigo-100 text-indigo-600', desc: 'Lihat status tagihan dan riwayat pembayaran iuran bulanan Anda.' },
+  { id: 'riwayat_tabungan', label: 'Riwayat Tabungan', icon: DollarSign, color: 'bg-amber-100 text-amber-600', desc: 'Lihat riwayat setoran, penarikan, dan saldo tabungan Anda.' }
+];
 
   if (activeTab === 'dashboard') return (
     <div className="space-y-6 animate-fade-in">
@@ -557,28 +571,30 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
     </div>
   );
   if (activeTab === 'progres_mengaji') return (
-    <div className="animate-fade-in">
-      <BackButton onClick={() => setActiveTab('dashboard')} />
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-        <h2 className="text-lg font-bold mb-6 flex items-center text-emerald-800"><BookOpen className="mr-2"/> Catatan Progres Mengaji Harian</h2>
-        {myProgress.length === 0 ? <p className="text-center text-gray-500 py-6 text-sm">Belum ada catatan setoran bimbingan.</p> : (
-          <div className="space-y-3">
-            {myProgress.map(p => (
-              <div key={p.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl border">
-                <div>
-                  <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-bold uppercase">{p.date}</span>
-                  <h3 className="font-bold text-gray-800 mt-2 text-sm">Membaca {p.surah}</h3>
-                  <p className="text-xs text-gray-500 font-medium">Ayat {p.ayat}</p>
-                </div>
-                <div className="text-right"><span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-xl">{p.nilai}</span></div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+  <div className="animate-fade-in space-y-6">
+    <BackButton onClick={() => setActiveTab('dashboard')} />
+    <div className="bg-white p-6 rounded-2xl shadow-sm border">
+      <h3 className="font-bold text-gray-800 mb-4">📋 Riwayat Semua Setoran Mengaji</h3>
+      <p className="text-xs text-gray-500 mb-4">🔒 = Belum Disetujui · ✅ = Sudah Disetujui Wali</p>
+      
+      {semuaProgresSaya.length === 0 ? (
+        <p className="text-xs text-gray-400 italic">Belum ada riwayat setoran.</p>
+      ) : (
+        <div className="space-y-3">
+          {semuaProgresSaya.map(p => (
+            <div key={p.id} className={`p-4 rounded-xl border ${p.status === 'belum_disetujui' ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${p.status === 'belum_disetujui' ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
+                {p.status === 'belum_disetujui' ? '🔒 MENUNGGU PERSETUJUAN' : '✅ SUDAH DISETUJUI'}
+              </span>
+              <p className="font-bold mt-2">{p.surah} ayat {p.ayat} · {p.nilai}</p>
+              <p className="text-xs text-gray-500 mt-1">Tanggal: {p.tanggal}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
-  );
-
+  </div>
+);
   if (activeTab === 'riwayat_pembayaran') return (
     <div className="animate-fade-in">
       <BackButton onClick={() => setActiveTab('dashboard')} />
@@ -638,9 +654,58 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
       </div>
     </div>
   );
+    // ... KODE riwayat_tabungan kamu di atas tetap utuh seperti aslinya ...
+
+
+  // ✅ TARUH KODE HALAMAN PERSETUJUAN INI DI SINI (ANTARA riwayat_tabungan DAN return null)
+  if (activeTab === 'persetujuan_wali') {
+    const setujuiSemua = async () => {
+      const waktuTtd = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'full', timeStyle: 'long' });
+      const dataBaru = progress.map(p => 
+        String(p.santriId) === String(user.id) && p.status === 'belum_disetujui' 
+          ? { ...p, status: 'disetujui_wali', disetujuiOleh: user.name, waktuPersetujuan: waktuTtd } 
+          : p
+      );
+      await updateTable('progress', dataBaru);
+      showToast('✅ Persetujuan selesai! Guru sekarang bisa input setoran baru.');
+    };
+
+    return (
+      <div className="animate-fade-in space-y-6">
+        <BackButton onClick={() => setActiveTab('dashboard')} />
+        <div className="bg-white p-6 rounded-2xl shadow-sm border">
+          <h2 className="text-lg font-bold mb-4">✍️ Persetujuan Setoran Wali Santri</h2>
+          <p className="text-xs text-gray-600 mb-4">
+            Setoran sudah tercatat di riwayat. <strong>Setujui di sini agar guru bisa melanjutkan input setoran berikutnya.</strong>
+          </p>
+
+          {progresMenungguAcc.length === 0 ? (
+            <p className="text-center text-emerald-600 font-bold py-10">✅ Semua setoran sudah Anda setujui!</p>
+          ) : (
+            <>
+              <button onClick={setujuiSemua} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl mb-4">
+                ✅ SETUJUI SEMUA {progresMenungguAcc.length} SETORAN
+              </button>
+              <div className="space-y-3">
+                {progresMenungguAcc.map(p => (
+                  <div key={p.id} className="p-4 bg-amber-50 rounded-xl border border-amber-200">
+                    <p className="font-bold">{p.surah} ayat {p.ayat} · {p.nilai}</p>
+                    <p className="text-xs text-gray-500">Tanggal: {p.tanggal}</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+  // ✅ AKHIR KODE HALAMAN PERSETUJUAN
+
+
+  // ⚠️ BARIS INI TETAP DI PALING AKHIR, JANGAN DIUBAH
   return null;
 }
-
 function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
   const [selectedSantri, setSelectedSantri] = useState(null);
   const [modeAksesKepala, setModeAksesKepala] = useState(user.role === 'kepala_tpq');
