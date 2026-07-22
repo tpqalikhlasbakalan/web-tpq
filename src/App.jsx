@@ -772,7 +772,7 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
           </div>
         </div>
 
-       {/* === NOTIFIKASI VERIFIKASI MINGGUAN (SUDAH ADA) === */}
+    {/* === NOTIFIKASI VERIFIKASI MINGGUAN === */}
 {activeWeekendNotification && (
   <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl flex items-start space-x-3.5 shadow-sm animate-bounce">
     <Bell className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
