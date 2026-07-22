@@ -853,20 +853,20 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
   );
 
  if (activeTab === 'pengajuan_kenaikan') {
-  // ✅ Deklarasi variabel yang pasti ada
+  // ✅ Deklarasi variabel
   const [santriTerpilih, setSantriTerpilih] = useState(null);
 
-  // ✅ Ambil SEMUA santri (tanpa syarat rumit dulu agar pasti muncul)
-  const daftarSemuaSantri = users.filter(u => u.role === 'santri');
+  // ✅ AMBIL DATA SANTRI LANGSUNG DI SINI (tidak bergantung variabel luar)
+  const daftarSantri = users.filter(item => 
+    item.role === 'santri' && String(item.guruId || '') === String(user.id)
+  );
 
-  // ✅ Fungsi cek syarat kenaikan
-  const cekSiapNaik = (santri) => {
+  // ✅ Fungsi cek syarat
+  const cekSiap = (santri) => {
     if (!santri || !santri.jilid) return false;
-    const targetJilid = targets.filter(t => t.level === santri.jilid);
-    if (targetJilid.length === 0) return false;
-    return targetJilid.every(t => 
-      santri.completedTargets && santri.completedTargets.includes(String(t.id))
-    );
+    const target = targets.filter(t => t.level === santri.jilid);
+    if (target.length === 0) return false;
+    return target.every(t => santri.completedTargets?.includes(String(t.id)));
   };
 
   return (
@@ -877,10 +877,11 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
           <Award className="mr-2"/> Form Pengajuan Kenaikan Jilid
         </h2>
 
-        {/* ✅ TAMPILKAN FORM JIKA ADA SANTRI */}
-        {daftarSemuaSantri.length === 0 ? (
+        {/* ✅ INI YANG PENTING: JIKA KOSONG KASIH TAU, JANGAN PUTUS TAMPILAN */}
+        {daftarSantri.length === 0 ? (
           <div className="p-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs">
-            Data santri belum tersedia.
+            ⚠️ Belum ada santri yang terdaftar di bimbingan Anda.<br/>
+            Pastikan data santri sudah diisi kolom "Guru Pembimbing".
           </div>
         ) : (
           <form onSubmit={submitPengajuanKenaikan} className="space-y-4 max-w-xl">
@@ -891,29 +892,24 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
                 className="p-2.5 border rounded-xl w-full text-xs font-semibold bg-white" 
                 required
                 onChange={(e) => {
-                  const ditemukan = users.find(u => String(u.id) === String(e.target.value));
-                  setSantriTerpilih(ditemukan || null);
+                  const pilih = users.find(u => String(u.id) === String(e.target.value));
+                  setSantriTerpilih(pilih || null);
                 }}
               >
                 <option value="">-- Pilih Santri --</option>
-                {daftarSemuaSantri.map(s => (
+                {daftarSantri.map(s => (
                   <option key={s.id} value={s.id}>
-                    {s.name} | {s.jilid} {cekSiapNaik(s) ? '✅ SIAP NAIK' : '⏳ BELUM LENGKAP'}
+                    {s.name} | {s.jilid} {cekSiap(s) ? '✅ SIAP NAIK' : '⏳ BELUM LENGKAP'}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* ✅ Keterangan Status */}
             {santriTerpilih && (
               <div className={`p-3 rounded-xl text-xs font-semibold ${
-                cekSiapNaik(santriTerpilih)
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  : 'bg-red-50 text-red-700 border border-red-200'
+                cekSiap(santriTerpilih) ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'
               }`}>
-                {cekSiapNaik(santriTerpilih)
-                  ? `✅ ${santriTerpilih.name} SUDAH MEMENUHI SYARAT`
-                  : `❌ ${santriTerpilih.name} BELUM LENGKAPI KOMPETENSI`}
+                {cekSiap(santriTerpilih) ? `✅ ${santriTerpilih.name} SUDAH LENGKAP` : `❌ ${santriTerpilih.name} BELUM LENGKAP`}
               </div>
             )}
 
@@ -924,28 +920,23 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
               </div>
               <div>
                 <label className="block text-xs font-bold mb-1 text-gray-600">Ujian Terakhir</label>
-                <input type="text" name="surah" required className="p-2.5 border rounded-xl w-full text-xs font-semibold" placeholder="Surah / Jilid Terakhir" />
+                <input type="text" name="surah" required className="p-2.5 border rounded-xl w-full text-xs font-semibold" placeholder="Surah/Jilid" />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold mb-1 text-gray-600">Catatan Penilaian</label>
-              <input type="text" name="ayat" required className="p-2.5 border rounded-xl w-full text-xs" placeholder="Contoh: Bacaan lancar, tajwid baik" />
+              <label className="block text-xs font-bold mb-1 text-gray-600">Catatan</label>
+              <input type="text" name="ayat" required className="p-2.5 border rounded-xl w-full text-xs" placeholder="Keterangan ujian" />
             </div>
 
-            {/* ✅ Tombol Otomatis Mati/Hidup */}
             <button 
               type="submit" 
-              disabled={!cekSiapNaik(santriTerpilih)}
-              className={`font-bold w-full py-3 rounded-xl text-xs shadow transition-all duration-200 ${
-                cekSiapNaik(santriTerpilih)
-                  ? 'bg-orange-600 hover:bg-orange-700 text-white'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              disabled={!cekSiap(santriTerpilih)}
+              className={`font-bold w-full py-3 rounded-xl text-xs shadow ${
+                cekSiap(santriTerpilih) ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
-              {cekSiapNaik(santriTerpilih)
-                ? '📤 KIRIM KE KEPALA TPQ'
-                : '🔒 LENGKAPI DULU SYARATNYA'}
+              {cekSiap(santriTerpilih) ? '📤 KIRIM KE KEPALA' : '🔒 LENGKAPI DULU'}
             </button>
           </form>
         )}
