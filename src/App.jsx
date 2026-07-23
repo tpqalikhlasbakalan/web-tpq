@@ -1150,6 +1150,9 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
 function BendaharaView({ activeTab, setActiveTab, users, savings, settings, updateTable, showToast }) {
   const [selectedMonth, setSelectedMonth] = useState('2026-07-10');
   const [isInputTabunganOpen, setIsInputTabunganOpen] = useState(false);
+  const [viewRiwayatSantri, setViewRiwayatSantri] = useState(null);
+  const [editBayarDate, setEditBayarDate] = useState('');
+  const [confirmHapusBayar, setConfirmHapusBayar] = useState(null);
 
   const handleBayar = async (santriId) => {
     const santri = users.find(u => String(u.id) === String(santriId));
@@ -1165,6 +1168,28 @@ function BendaharaView({ activeTab, setActiveTab, users, savings, settings, upda
     const updated = users.map(u => String(u.id) === String(santriId) ? { ...u, hasAlarm: !u.hasAlarm } : u);
     await updateTable('users', updated);
     showToast('Status alarm tagihan diubah.');
+  };
+
+  const hapusBayar = async (santriId, tanggal) => {
+    const santri = users.find(u => String(u.id) === String(santriId));
+    if (!santri) return;
+    const newHistory = santri.historyBayar.filter(d => d !== tanggal);
+    const updated = users.map(u => String(u.id) === String(santriId) ? { ...u, historyBayar: newHistory } : u);
+    await updateTable('users', updated);
+    showToast('Riwayat pembayaran dihapus!');
+    setConfirmHapusBayar(null);
+  };
+
+  const ubahBayar = async (santriId, tanggalLama, tanggalBaru) => {
+    if (!tanggalBaru.trim()) return showToast('Tanggal tidak boleh kosong!', 'error');
+    const santri = users.find(u => String(u.id) === String(santriId));
+    if (!santri) return;
+    if (santri.historyBayar.includes(tanggalBaru)) return showToast('Tanggal baru sudah tercatat!', 'error');
+    const newHistory = santri.historyBayar.map(d => d === tanggalLama ? tanggalBaru : d);
+    const updated = users.map(u => String(u.id) === String(santriId) ? { ...u, historyBayar: newHistory } : u);
+    await updateTable('users', updated);
+    showToast('Riwayat pembayaran diperbarui!');
+    setViewRiwayatSantri(null);
   };
 
   const isSavingAuthorized = settings.savingInputRoles?.includes('bendahara');
@@ -1185,11 +1210,70 @@ function BendaharaView({ activeTab, setActiveTab, users, savings, settings, upda
     <div className="animate-fade-in relative z-10">
       <BackButton onClick={() => { 
         setIsInputTabunganOpen(false); 
-        setActiveTab('dashboard'); // ✅ Paksa pindah ke dashboard
+        setActiveTab('dashboard');
       }} />
       <SavingsInputView users={users} savings={savings} updateTable={updateTable} showToast={showToast} recorderId="bendahara" />
     </div>
   );
+
+  // HALAMAN RIWAYAT PEMBAYARAN KHUSUS SANTRI
+  if (viewRiwayatSantri) {
+    const santri = users.find(u => String(u.id) === String(viewRiwayatSantri));
+    if (!santri) return null;
+    return (
+      <div className="animate-fade-in space-y-6">
+        <BackButton onClick={() => setViewRiwayatSantri(null)} />
+        <div className="bg-white p-6 rounded-2xl shadow-sm border">
+          <h2 className="text-lg font-bold mb-4 flex items-center text-indigo-800">
+            <CreditCard className="mr-2"/> Riwayat Pembayaran: {santri.name}
+          </h2>
+          {(!santri.historyBayar || santri.historyBayar.length === 0) ? (
+            <p className="text-xs text-gray-400 italic py-6 text-center">Belum ada riwayat pembayaran.</p>
+          ) : (
+            <div className="space-y-3">
+              {santri.historyBayar.sort().reverse().map((tgl, idx) => (
+                <div key={idx} className="p-3.5 bg-gray-50 rounded-xl border flex justify-between items-center text-xs">
+                  <span className="font-semibold">Tanggal Bayar: {tgl}</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => setEditBayarDate(tgl)} className="bg-amber-50 text-amber-700 px-2.5 py-1 rounded-lg font-bold">Ubah</button>
+                    <button onClick={() => setConfirmHapusBayar({id:santri.id, tgl})} className="bg-red-50 text-red-700 px-2.5 py-1 rounded-lg font-bold">Hapus</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {editBayarDate && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white p-6 rounded-2xl w-full max-w-sm">
+              <h3 className="font-bold mb-4">Ubah Tanggal Pembayaran</h3>
+              <p className="text-xs text-gray-500 mb-3">Tanggal lama: {editBayarDate}</p>
+              <input type="date" value={editBayarDate} onChange={(e) => setEditBayarDate(e.target.value)} className="w-full p-2.5 border rounded-xl mb-4" />
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setEditBayarDate('')} className="px-4 py-2 bg-gray-100 rounded-xl">Batal</button>
+                <button onClick={() => ubahBayar(santri.id, editBayarDate, editBayarDate)} className="px-4 py-2 bg-emerald-600 text-white rounded-xl">Simpan</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {confirmHapusBayar && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white p-6 rounded-2xl w-full max-w-sm">
+              <h3 className="font-bold text-red-600 mb-2">Konfirmasi Hapus?</h3>
+              <p className="text-xs text-gray-600 mb-4">Data pembayaran tanggal {confirmHapusBayar.tgl} akan hilang permanen.</p>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setConfirmHapusBayar(null)} className="px-4 py-2 bg-gray-100 rounded-xl">Batal</button>
+                <button onClick={() => hapusBayar(confirmHapusBayar.id, confirmHapusBayar.tgl)} className="px-4 py-2 bg-red-600 text-white rounded-xl">Ya, Hapus</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (activeTab === 'kelola_syahriah') {
     const santriList = users.filter(u => u.role === 'santri');
     return (
@@ -1217,7 +1301,7 @@ function BendaharaView({ activeTab, setActiveTab, users, savings, settings, upda
                       <td className="p-4 text-center">
                         <div className="flex flex-col gap-1.5 items-center">
                           <button onClick={() => handleBayar(s.id)} disabled={isPaid} className={`font-bold px-3 py-1.5 rounded-xl text-[10px] shadow-sm ${isPaid ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`}>Bayar</button>
-                          <button onClick={() => alert(`Riwayat ${s.name}:\n${s.historyBayar?.join('\n') || 'Belum ada'}`)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-xl text-[10px] shadow">Riwayat</button>
+                          <button onClick={() => setViewRiwayatSantri(s.id)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-xl text-[10px] shadow">Riwayat</button>
                         </div>
                       </td>
                     </tr>
@@ -1235,33 +1319,123 @@ function BendaharaView({ activeTab, setActiveTab, users, savings, settings, upda
 
 function SavingsInputView({ users, savings, updateTable, showToast, recorderId }) {
   const santriList = users.filter(u => u.role === 'santri');
+  const [editId, setEditId] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [formData, setFormData] = useState({ santriId:'', date:'', type:'setor', amount:'', description:'' });
+
+  const resetForm = () => {
+    setFormData({ santriId:'', date:new Date().toISOString().slice(0,10), type:'setor', amount:'', description:'' });
+    setEditId(null);
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
-    const santriId = e.target.santriId.value;
+    const santriId = formData.santriId;
     if (!santriId) { showToast('Pilih santri!', 'error'); return; }
-    const amount = Number(e.target.amount.value);
-    const newSaving = { id: 's_' + Date.now(), santriId, date: e.target.date.value, amount, type: e.target.type.value, description: e.target.description.value.trim(), inputBy: String(recorderId) };
-    await updateTable('savings', [newSaving, ...savings]);
-    showToast(`Transaksi Rp ${amount.toLocaleString('id-ID')} tersimpan!`);
-    e.target.reset();
+    const amount = Number(formData.amount);
+    if (amount <= 0) return showToast('Nominal harus lebih dari 0!', 'error');
+
+    if (editId) {
+      const updated = savings.map(s => String(s.id) === String(editId) ? { ...s, ...formData, amount } : s);
+      await updateTable('savings', updated);
+      showToast('Transaksi diperbarui!');
+    } else {
+      const newSaving = { id: 's_' + Date.now(), santriId, date: formData.date, amount, type: formData.type, description: formData.description.trim(), inputBy: String(recorderId) };
+      await updateTable('savings', [newSaving, ...savings]);
+      showToast(`Transaksi Rp ${amount.toLocaleString('id-ID')} tersimpan!`);
+    }
+    resetForm();
   };
+
+  const startEdit = (trx) => {
+    setEditId(trx.id);
+    setFormData({ santriId: trx.santriId, date: trx.date, type: trx.type, amount: String(trx.amount), description: trx.description || '' });
+  };
+
+  const hapusTransaksi = async () => {
+    await updateTable('savings', savings.filter(s => String(s.id) !== String(confirmDelete.id)));
+    showToast('Transaksi dihapus! Saldo otomatis terkoreksi.');
+    setConfirmDelete(null);
+  };
+
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-6 animate-fade-in">
       <div><h2 className="text-lg font-bold flex items-center text-emerald-800"><DollarSign className="mr-1.5"/> Pencatatan Tabungan Santri</h2><p className="text-xs text-gray-500 mt-1">Catat setoran masuk & penarikan keluar.</p></div>
+      
+      {/* FORM INPUT/EDIT */}
       <form onSubmit={handleSave} className="space-y-4 max-w-xl bg-gray-50 p-5 rounded-2xl border">
-        <div><label className="block text-xs font-bold mb-1 text-gray-600">Pilih Santri</label><select name="santriId" className="p-2.5 border rounded-xl w-full text-xs font-bold" required><option value="">-- Pilih Nama --</option>{santriList.map(s => <option key={s.id} value={s.id}>{s.name} ({s.jilid})</option>)}</select></div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div><label className="block text-xs font-bold mb-1">Tanggal</label><input type="date" name="date" defaultValue={new Date().toISOString().substring(0,10)} required className="p-2.5 border rounded-xl w-full text-xs" /></div>
-          <div><label className="block text-xs font-bold mb-1">Jenis</label><select name="type" className="p-2.5 border rounded-xl w-full text-xs font-bold" required><option value="setor">Setoran Masuk</option><option value="tarik">Penarikan</option></select></div>
-          <div><label className="block text-xs font-bold mb-1">Nominal Rp</label><input type="number" name="amount" placeholder="10000" required className="p-2.5 border rounded-xl w-full text-xs font-bold" /></div>
+        <div><label className="block text-xs font-bold mb-1 text-gray-600">Pilih Santri</label>
+          <select name="santriId" value={formData.santriId} onChange={e=>setFormData(p=>({...p,santriId:e.target.value}))} className="p-2.5 border rounded-xl w-full text-xs font-bold" required>
+            <option value="">-- Pilih Nama --</option>{santriList.map(s => <option key={s.id} value={s.id}>{s.name} ({s.jilid})</option>)}
+          </select>
         </div>
-        <div><label className="block text-xs font-bold mb-1">Keterangan</label><input type="text" name="description" placeholder="Setoran mingguan" className="p-2.5 border rounded-xl w-full text-xs" /></div>
-        <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold w-full py-3 rounded-xl text-xs shadow">Simpan Transaksi</button>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div><label className="block text-xs font-bold mb-1">Tanggal</label>
+            <input type="date" value={formData.date} onChange={e=>setFormData(p=>({...p,date:e.target.value}))} required className="p-2.5 border rounded-xl w-full text-xs" />
+          </div>
+          <div><label className="block text-xs font-bold mb-1">Jenis</label>
+            <select value={formData.type} onChange={e=>setFormData(p=>({...p,type:e.target.value}))} className="p-2.5 border rounded-xl w-full text-xs font-bold" required>
+              <option value="setor">Setoran Masuk</option><option value="tarik">Penarikan</option>
+            </select>
+          </div>
+          <div><label className="block text-xs font-bold mb-1">Nominal Rp</label>
+            <input type="number" value={formData.amount} onChange={e=>setFormData(p=>({...p,amount:e.target.value}))} placeholder="10000" required className="p-2.5 border rounded-xl w-full text-xs font-bold" />
+          </div>
+        </div>
+        <div><label className="block text-xs font-bold mb-1">Keterangan</label>
+          <input type="text" value={formData.description} onChange={e=>setFormData(p=>({...p,description:e.target.value}))} placeholder="Setoran mingguan" className="p-2.5 border rounded-xl w-full text-xs" />
+        </div>
+        <div className="flex gap-2">
+          <button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-xs shadow">
+            {editId ? 'Perbarui Transaksi' : 'Simpan Transaksi'}
+          </button>
+          {editId && <button type="button" onClick={resetForm} className="px-4 bg-gray-200 rounded-xl text-xs font-bold">Batal</button>}
+        </div>
       </form>
+
+      {/* DAFTAR RIWAYAT LANGSUNG DI HALAMAN */}
+      <div className="border-t pt-6">
+        <h3 className="font-bold text-sm mb-4">Daftar Semua Transaksi</h3>
+        {savings.length === 0 ? <p className="text-xs text-gray-400 italic">Belum ada transaksi.</p> : (
+          <div className="space-y-2.5">
+            {savings.map(trx => {
+              const namaSantri = santriList.find(s=>String(s.id)===String(trx.santriId))?.name || 'Tidak Diketahui';
+              return (
+                <div key={trx.id} className="p-3.5 bg-gray-50 rounded-xl border flex justify-between items-center text-xs">
+                  <div>
+                    <p className="font-bold">{namaSantri}</p>
+                    <p className="text-gray-500">{trx.date} · {trx.description || '-'}</p>
+                    <p className={`font-bold ${trx.type==='setor'?'text-emerald-700':'text-red-700'}`}>
+                      {trx.type==='setor'?'+':'-'} Rp {trx.amount.toLocaleString('id-ID')}
+                    </p>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button onClick={()=>startEdit(trx)} className="p-1.5 bg-amber-50 text-amber-700 rounded-lg"><Edit size={13}/></button>
+                    <button onClick={()=>setConfirmDelete(trx)} className="p-1.5 bg-red-50 text-red-700 rounded-lg"><Trash2 size={13}/></button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* MODAL KONFIRMASI HAPUS */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white p-6 rounded-2xl w-full max-w-sm">
+            <h3 className="font-bold text-red-600 mb-2">Konfirmasi Hapus?</h3>
+            <p className="text-xs text-gray-600 mb-4">Transaksi akan hilang permanen dan saldo akan otomatis dikoreksi.</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={()=>setConfirmDelete(null)} className="px-4 py-2 bg-gray-100 rounded-xl">Batal</button>
+              <button onClick={hapusTransaksi} className="px-4 py-2 bg-red-600 text-white rounded-xl">Ya, Hapus</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
 function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, settings, appsScriptUrl, setAppsScriptUrl, loadDatabase }) {
   const [showPasswordMap, setShowPasswordMap] = useState({});
   const [resettingUser, setResettingUser] = useState(null);
