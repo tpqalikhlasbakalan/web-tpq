@@ -852,121 +852,115 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
     </div>
   );
 
- if (activeTab === 'pengajuan_kenaikan') {
-  // ✅ Variabel aman
-  const [santriTerpilih, setSantriTerpilih] = useState('');
+ // ==== BAGIAN INI YANG HARUS DIPERBAIKI ====
+  if (activeTab === 'pengajuan_kenaikan') {
+    // ✅ Variabel aman
+    const [santriTerpilih, setSantriTerpilih] = useState('');
 
-  // ✅ Ambil semua santri (pasti tampil)
-  const daftarSantri = users.filter(u => u.role === 'santri');
+    // ✅ AMBIL SANTRI BIMBINGAN GURU SAJA (sudah benar)
+    const daftarSantri = users.filter(u => 
+      u.role === 'santri' && String(u.guruId || '') === String(user.id)
+    );
 
-  // ✅ Fungsi cek syarat kompetensi
-  const cekSiapNaik = (santri) => {
-    if (!santri || !santri.jilid) return false;
-    const target = targets.filter(t => t.level === santri.jilid);
-    if (target.length === 0) return false;
-    return target.every(t => santri.completedTargets?.includes(String(t.id)));
-  };
-
-  // ✅ Fungsi kirim (sudah aman, tidak akan error)
-  const prosesKirim = async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const data = {
-      santriId: formData.get('santriId'),
-      tanggal: formData.get('date'),
-      surah: formData.get('surah'),
-      catatan: formData.get('ayat'),
-      status: 'menunggu',
-      dikirimOleh: user.name,
-      tanggalKirim: new Date().toLocaleString('id-ID')
+    // ✅ Fungsi cek syarat kompetensi
+    const cekSiapNaik = (santri) => {
+      if (!santri || !santri.jilid) return false;
+      const target = targets.filter(t => t.level === santri.jilid);
+      if (target.length === 0) return false;
+      return target.every(t => santri.completedTargets?.includes(String(t.id)));
     };
-    
-    // Jika fungsi asli sudah ada, pakai ini:
-    // await submitPengajuanKenaikan(e);
-    // Sementara agar aman:
-    showToast('✅ Pengajuan berhasil dikirim ke Kepala TPQ!');
-    setSantriTerpilih('');
-  };
 
-  return (
-    <div className="animate-fade-in space-y-6 p-4">
-      <BackButton onClick={() => setActiveTab('dashboard')} />
-      <div className="bg-white p-6 rounded-2xl shadow-sm border">
-        <h2 className="text-lg font-bold mb-6 flex items-center text-orange-800">
-          <Award className="mr-2"/> Form Pengajuan Kenaikan Jilid
-        </h2>
+    // ✅ Fungsi kirim yang sudah terhubung dengan fungsi asli
+    const prosesKirim = async (e) => {
+      e.preventDefault();
+      await submitPengajuanKenaikan(e);
+      showToast('✅ Pengajuan berhasil dikirim ke Kepala TPQ!');
+      setSantriTerpilih('');
+    };
 
-        {daftarSantri.length === 0 ? (
-          <div className="p-6 bg-amber-50 border border-amber-200 rounded-xl text-xs">
-            Belum ada data santri yang terdaftar.
-          </div>
-        ) : (
-          <form onSubmit={prosesKirim} className="space-y-4 max-w-xl">
-            <div className="bg-gray-50 p-4 rounded-xl border">
-              <label className="block text-xs font-bold mb-2 text-gray-700">Pilih Nama Santri</label>
-              <select
-                name="santriId"
-                value={santriTerpilih}
-                onChange={(e) => setSantriTerpilih(e.target.value)}
-                className="w-full p-2.5 border rounded-xl text-xs font-semibold bg-white"
-                required
+    return (
+      <div className="animate-fade-in space-y-6 p-4">
+        <BackButton onClick={() => setActiveTab('dashboard')} />
+        <div className="bg-white p-6 rounded-2xl shadow-sm border">
+          <h2 className="text-lg font-bold mb-6 flex items-center text-orange-800">
+            <Award className="mr-2"/> Form Pengajuan Kenaikan Jilid
+          </h2>
+
+          {daftarSantri.length === 0 ? (
+            <div className="p-6 bg-amber-50 border border-amber-200 rounded-xl text-xs">
+              ⚠️ Belum ada santri bimbingan Anda.<br/>
+              Silakan gunakan menu <strong>Klaim Kelas Santri Baru</strong> terlebih dahulu.
+            </div>
+          ) : (
+            <form onSubmit={prosesKirim} className="space-y-4 max-w-xl">
+              <div className="bg-gray-50 p-4 rounded-xl border">
+                <label className="block text-xs font-bold mb-2 text-gray-700">Pilih Nama Santri</label>
+                <select
+                  name="santriId"
+                  value={santriTerpilih}
+                  onChange={(e) => setSantriTerpilih(e.target.value)}
+                  className="w-full p-2.5 border rounded-xl text-xs font-semibold bg-white"
+                  required
+                >
+                  <option value="">-- Silakan Pilih --</option>
+                  {daftarSantri.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.jilid}) {cekSiapNaik(s) ? '✅ SIAP NAIK' : '⏳ BELUM LENGKAP'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {santriTerpilih && (
+                <div className={`p-3 rounded-xl text-xs font-semibold ${
+                  cekSiapNaik(users.find(u => String(u.id) === String(santriTerpilih)))
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-red-50 text-red-700 border-red-200'
+                }`}>
+                  {cekSiapNaik(users.find(u => String(u.id) === String(santriTerpilih)))
+                    ? '✅ Santri sudah memenuhi syarat kompetensi'
+                    : '❌ Belum lengkapi semua target kompetensi'}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold mb-1 text-gray-600">Tanggal Ujian</label>
+                  <input type="date" name="date" defaultValue={new Date().toISOString().slice(0,10)} required className="p-2.5 border rounded-xl w-full text-xs" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold mb-1 text-gray-600">Ujian Terakhir</label>
+                  <input type="text" name="surah" required className="p-2.5 border rounded-xl w-full text-xs font-semibold" placeholder="Contoh: Juz 30 / Surah Al-Baqarah" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1 text-gray-600">Catatan Penilaian</label>
+                <input type="text" name="ayat" required className="p-2.5 border rounded-xl w-full text-xs" placeholder="Contoh: Bacaan lancar, tajwid sempurna" />
+              </div>
+
+              <button
+                type="submit"
+                disabled={!cekSiapNaik(users.find(u => String(u.id) === String(santriTerpilih)))}
+                className={`font-bold w-full py-3 rounded-xl text-xs shadow transition-all ${
+                  cekSiapNaik(users.find(u => String(u.id) === String(santriTerpilih)))
+                    ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
               >
-                <option value="">-- Silakan Pilih --</option>
-                {daftarSantri.map(s => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.jilid}) {cekSiapNaik(s) ? '✅ SIAP' : '⏳ BELUM'}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {santriTerpilih && (
-              <div className={`p-3 rounded-xl text-xs font-semibold ${
-                cekSiapNaik(users.find(u => u.id === santriTerpilih))
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-red-50 text-red-700 border-red-200'
-              }`}>
-                {cekSiapNaik(users.find(u => u.id === santriTerpilih))
-                  ? '✅ Santri sudah memenuhi syarat kompetensi'
-                  : '❌ Belum lengkapi semua target kompetensi'}
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold mb-1 text-gray-600">Tanggal Ujian</label>
-                <input type="date" name="date" defaultValue={new Date().toISOString().slice(0,10)} required className="p-2.5 border rounded-xl w-full text-xs" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold mb-1 text-gray-600">Ujian Terakhir</label>
-                <input type="text" name="surah" required className="p-2.5 border rounded-xl w-full text-xs font-semibold" placeholder="Contoh: Juz 30 / Surah Al-Baqarah" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold mb-1 text-gray-600">Catatan Penilaian</label>
-              <input type="text" name="ayat" required className="p-2.5 border rounded-xl w-full text-xs" placeholder="Contoh: Bacaan lancar, tajwid sempurna" />
-            </div>
-
-            <button
-              type="submit"
-              disabled={!cekSiapNaik(users.find(u => u.id === santriTerpilih))}
-              className={`font-bold w-full py-3 rounded-xl text-xs shadow transition-all ${
-                cekSiapNaik(users.find(u => u.id === santriTerpilih))
-                  ? 'bg-orange-600 hover:bg-orange-700 text-white'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              {cekSiapNaik(users.find(u => u.id === santriTerpilih))
-                ? '📤 KIRIM PENGAJUAN KE KEPALA'
-                : '🔒 LENGKAPI DULU SYARATNYA'}
-            </button>
-          </form>
-        )}
+                {cekSiapNaik(users.find(u => String(u.id) === String(santriTerpilih)))
+                  ? '📤 KIRIM PENGAJUAN KE KEPALA'
+                  : '🔒 LENGKAPI DULU SYARATNYA'}
+              </button>
+            </form>
+          )}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+  // ==== AKHIR PERBAIKAN ====
+
+  // ✅ POSISI return null; SUDAH BENAR DI PALING AKHIR
   if (activeTab === 'klaim_santri') {
     const unclaimedSantri = users.filter(s => s.role === 'santri' && (!s.guruId || String(s.guruId).trim() === '' || s.guruId === 'null'));
     return (
