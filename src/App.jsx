@@ -708,6 +708,7 @@ const progresMenungguAcc = progress.filter(p => String(p.santriId) === String(us
 }
 function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
   const [selectedSantri, setSelectedSantri] = useState(null);
+  const [santriTerpilih, setSantriTerpilih] = useState('');
   const [modeAksesKepala, setModeAksesKepala] = useState(user.role === 'kepala_tpq');
 
   useEffect(() => {
@@ -744,8 +745,8 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
     if (!e.target.santriId.value) { showToast('Pilih santri terlebih dahulu!', 'error'); return; }
     const newRequest = { id: Date.now().toString(), santriId: e.target.santriId.value, date: e.target.date.value, surah: e.target.surah.value, ayat: e.target.ayat.value, nilai: 'Selesai Ujian Jilid', status: 'pending', type: 'kenaikan' };
     await updateTable('progress', [newRequest, ...progress]);
-    showToast('Pengajuan kenaikan jilid berhasil diteruskan ke Kepala TPQ!');
-    e.target.reset();
+    showToast('✅ Pengajuan kenaikan jilid berhasil dikirim ke Kepala TPQ!');
+    setSantriTerpilih('');
   };
 
   const toggleTargetCheck = async (santriId, targetId) => {
@@ -756,14 +757,22 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
       completed = completed.includes(String(targetId)) ? completed.filter(t => String(t) !== String(targetId)) : [...completed, String(targetId)];
       const updated = users.map(u => String(u.id) === String(santriId) ? { ...u, completedTargets: completed } : u);
       await updateTable('users', updated);
-      showToast('Status target kompetensi berhasil diperbarui!');
+      showToast('Status target kompetensi diperbarui!');
     } catch (err) { showToast(`Gagal: ${err.message}`, 'error'); }
+  };
+
+  const cekSiapNaik = (santri) => {
+    if (!santri || !santri.jilid) return false;
+    const target = targets.filter(t => t.level === santri.jilid);
+    if (target.length === 0) return false;
+    return target.every(t => santri.completedTargets?.includes(String(t.id)));
   };
 
   const isSavingAuthorized = settings.savingInputRoles?.includes(user.role) || user.role === 'kepala_tpq';
   const menus = [
     { id: 'isi_progres', label: 'Input Setoran Harian', icon: ClipboardList, color: 'bg-emerald-100 text-emerald-600', desc: 'Catat setoran harian mengaji santri bimbingan Anda.' },
     { id: 'nilai_target', label: 'Penilaian Kompetensi', icon: CheckSquare, color: 'bg-indigo-100 text-indigo-600', desc: 'Centang target kurikulum kompetensi jilid aktif santri.' },
+    // ✅ MENU AJUKAN KENAIKAN JILID SUDAH ADA DI SINI
     { id: 'pengajuan_kenaikan', label: 'Ajukan Naik Jilid / Juz', icon: Award, color: 'bg-orange-100 text-orange-600', desc: 'Ajukan kelayakan santri untuk ujian kenaikan jilid.' },
     { id: 'klaim_santri', label: 'Klaim Kelas Santri Baru', icon: UserPlus, color: 'bg-purple-100 text-purple-600', desc: 'Klaim santri yang belum ditugaskan guru.' }
   ];
@@ -852,31 +861,11 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
     </div>
   );
 
- // ==== BAGIAN INI YANG HARUS DIPERBAIKI ====
+  // ✅ HALAMAN AJUKAN KENAIKAN JILID - SUDAH BENAR POSISINYA
   if (activeTab === 'pengajuan_kenaikan') {
-    // ✅ Variabel aman
-    const [santriTerpilih, setSantriTerpilih] = useState('');
-
-    // ✅ AMBIL SANTRI BIMBINGAN GURU SAJA (sudah benar)
     const daftarSantri = users.filter(u => 
       u.role === 'santri' && String(u.guruId || '') === String(user.id)
     );
-
-    // ✅ Fungsi cek syarat kompetensi
-    const cekSiapNaik = (santri) => {
-      if (!santri || !santri.jilid) return false;
-      const target = targets.filter(t => t.level === santri.jilid);
-      if (target.length === 0) return false;
-      return target.every(t => santri.completedTargets?.includes(String(t.id)));
-    };
-
-    // ✅ Fungsi kirim yang sudah terhubung dengan fungsi asli
-    const prosesKirim = async (e) => {
-      e.preventDefault();
-      await submitPengajuanKenaikan(e);
-      showToast('✅ Pengajuan berhasil dikirim ke Kepala TPQ!');
-      setSantriTerpilih('');
-    };
 
     return (
       <div className="animate-fade-in space-y-6 p-4">
@@ -892,7 +881,7 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
               Silakan gunakan menu <strong>Klaim Kelas Santri Baru</strong> terlebih dahulu.
             </div>
           ) : (
-            <form onSubmit={prosesKirim} className="space-y-4 max-w-xl">
+            <form onSubmit={submitPengajuanKenaikan} className="space-y-4 max-w-xl">
               <div className="bg-gray-50 p-4 rounded-xl border">
                 <label className="block text-xs font-bold mb-2 text-gray-700">Pilih Nama Santri</label>
                 <select
@@ -958,9 +947,8 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
       </div>
     );
   }
-  // ==== AKHIR PERBAIKAN ====
 
-  // ✅ POSISI return null; SUDAH BENAR DI PALING AKHIR
+  // ✅ MENU KLAIM SANTRI - POSISI SUDAH BENAR
   if (activeTab === 'klaim_santri') {
     const unclaimedSantri = users.filter(s => s.role === 'santri' && (!s.guruId || String(s.guruId).trim() === '' || s.guruId === 'null'));
     return (
@@ -982,6 +970,8 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
       </div>
     );
   }
+
+  // ✅ PENUTUP FUNGSI SUDAH BENAR
   return null;
 }
 
