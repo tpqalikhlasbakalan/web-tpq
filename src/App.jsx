@@ -1216,7 +1216,7 @@ function BendaharaView({ activeTab, setActiveTab, users, savings, settings, upda
     </div>
   );
 
-  // HALAMAN RIWAYAT PEMBAYARAN KHUSUS SANTRI
+  // HALAMAN RIWAYAT PEMBAYARAN KHUSUS SANTRI (SYAHRIAH)
   if (viewRiwayatSantri) {
     const santri = users.find(u => String(u.id) === String(viewRiwayatSantri));
     if (!santri) return null;
@@ -1321,6 +1321,7 @@ function SavingsInputView({ users, savings, updateTable, showToast, recorderId }
   const santriList = users.filter(u => u.role === 'santri');
   const [editId, setEditId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [viewSavingsSantri, setViewSavingsSantri] = useState(null);
   const [formData, setFormData] = useState({ santriId:'', date:'', type:'setor', amount:'', description:'' });
 
   const resetForm = () => {
@@ -1360,7 +1361,7 @@ function SavingsInputView({ users, savings, updateTable, showToast, recorderId }
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-6 animate-fade-in">
-      <div><h2 className="text-lg font-bold flex items-center text-emerald-800"><DollarSign className="mr-1.5"/> Pencatatan Tabungan Santri</h2><p className="text-xs text-gray-500 mt-1">Catat setoran masuk & penarikan keluar.</p></div>
+      <div><h2 className="text-lg font-bold flex items-center text-emerald-800"><DollarSign className="mr-1.5"/> Pencatatan Tabungan Santri</h2><p className="text-xs text-gray-500 mt-1">Catat setoran masuk & penarikan keluar. Klik nama santri untuk lihat riwayat pribadi.</p></div>
       
       {/* FORM INPUT/EDIT */}
       <form onSubmit={handleSave} className="space-y-4 max-w-xl bg-gray-50 p-5 rounded-2xl border">
@@ -1393,7 +1394,7 @@ function SavingsInputView({ users, savings, updateTable, showToast, recorderId }
         </div>
       </form>
 
-      {/* DAFTAR RIWAYAT LANGSUNG DI HALAMAN */}
+      {/* DAFTAR SEMUA TRANSAKSI */}
       <div className="border-t pt-6">
         <h3 className="font-bold text-sm mb-4">Daftar Semua Transaksi</h3>
         {savings.length === 0 ? <p className="text-xs text-gray-400 italic">Belum ada transaksi.</p> : (
@@ -1403,7 +1404,9 @@ function SavingsInputView({ users, savings, updateTable, showToast, recorderId }
               return (
                 <div key={trx.id} className="p-3.5 bg-gray-50 rounded-xl border flex justify-between items-center text-xs">
                   <div>
-                    <p className="font-bold">{namaSantri}</p>
+                    <p className="font-bold text-blue-700 cursor-pointer hover:underline" onClick={() => setViewSavingsSantri(trx.santriId)}>
+                      {namaSantri}
+                    </p>
                     <p className="text-gray-500">{trx.date} · {trx.description || '-'}</p>
                     <p className={`font-bold ${trx.type==='setor'?'text-emerald-700':'text-red-700'}`}>
                       {trx.type==='setor'?'+':'-'} Rp {trx.amount.toLocaleString('id-ID')}
@@ -1419,6 +1422,57 @@ function SavingsInputView({ users, savings, updateTable, showToast, recorderId }
           </div>
         )}
       </div>
+
+      {/* MODAL RIWAYAT TABUNGAN PER SANTRI */}
+      {viewSavingsSantri && (() => {
+        const santri = santriList.find(s => String(s.id) === String(viewSavingsSantri));
+        const riwayatSantri = savings.filter(s => String(s.santriId) === String(viewSavingsSantri));
+        const totalSetor = riwayatSantri.filter(s => s.type === 'setor').reduce((sum, t) => sum + Number(t.amount), 0);
+        const totalTarik = riwayatSantri.filter(s => s.type === 'tarik').reduce((sum, t) => sum + Number(t.amount), 0);
+        const saldoAkhir = totalSetor - totalTarik;
+
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-start justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-white p-6 rounded-2xl w-full max-w-lg my-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-emerald-800">Riwayat Tabungan: {santri?.name || 'Tidak Diketahui'}</h3>
+                <button onClick={() => setViewSavingsSantri(null)} className="text-gray-400 hover:text-gray-700 text-xl">&times;</button>
+              </div>
+
+              <div className="bg-emerald-50 p-3 rounded-xl mb-4 text-xs">
+                <div className="flex justify-between"><span>Total Setoran:</span><span className="font-bold text-emerald-700">Rp {totalSetor.toLocaleString('id-ID')}</span></div>
+                <div className="flex justify-between"><span>Total Penarikan:</span><span className="font-bold text-red-700">Rp {totalTarik.toLocaleString('id-ID')}</span></div>
+                <div className="flex justify-between font-bold mt-1 pt-1 border-t border-emerald-200 text-sm">
+                  <span>Saldo Akhir:</span>
+                  <span className={saldoAkhir >= 0 ? 'text-emerald-700' : 'text-red-700'}>Rp {saldoAkhir.toLocaleString('id-ID')}</span>
+                </div>
+              </div>
+
+              {riwayatSantri.length === 0 ? (
+                <p className="text-xs text-gray-400 italic text-center py-4">Belum ada transaksi tabungan.</p>
+              ) : (
+                <div className="space-y-2.5 max-h-64 overflow-y-auto">
+                  {riwayatSantri.sort((a,b)=>b.date.localeCompare(a.date)).map(trx => (
+                    <div key={trx.id} className="p-3 bg-gray-50 rounded-xl border flex justify-between items-center text-xs">
+                      <div>
+                        <p className="font-semibold">{trx.date}</p>
+                        <p className="text-gray-500">{trx.description || '-'}</p>
+                        <p className={`font-bold ${trx.type==='setor'?'text-emerald-700':'text-red-700'}`}>
+                          {trx.type==='setor'?'+':'-'} Rp {trx.amount.toLocaleString('id-ID')}
+                        </p>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <button onClick={()=>{setViewSavingsSantri(null);startEdit(trx);}} className="p-1.5 bg-amber-50 text-amber-700 rounded-lg"><Edit size={13}/></button>
+                        <button onClick={()=>{setViewSavingsSantri(null);setConfirmDelete(trx);}} className="p-1.5 bg-red-50 text-red-700 rounded-lg"><Trash2 size={13}/></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* MODAL KONFIRMASI HAPUS */}
       {confirmDelete && (
@@ -1436,7 +1490,8 @@ function SavingsInputView({ users, savings, updateTable, showToast, recorderId }
     </div>
   );
 }
-function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, settings, appsScriptUrl, setAppsScriptUrl, loadDatabase }) {
+
+export default BendaharaView;function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, settings, appsScriptUrl, setAppsScriptUrl, loadDatabase }) {
   const [showPasswordMap, setShowPasswordMap] = useState({});
   const [resettingUser, setResettingUser] = useState(null);
   const [newPasswordVal, setNewPasswordVal] = useState('');
