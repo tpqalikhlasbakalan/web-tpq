@@ -1490,8 +1490,7 @@ function SavingsInputView({ users, savings, updateTable, showToast, recorderId }
     </div>
   );
 }
-
-export default BendaharaView;function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, settings, appsScriptUrl, setAppsScriptUrl, loadDatabase }) {
+function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, settings, appsScriptUrl, setAppsScriptUrl, loadDatabase }) {
   const [showPasswordMap, setShowPasswordMap] = useState({});
   const [resettingUser, setResettingUser] = useState(null);
   const [newPasswordVal, setNewPasswordVal] = useState('');
