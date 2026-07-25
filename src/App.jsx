@@ -1145,7 +1145,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
     );
   }
 
-    // === HALAMAN BUAT SURAT (LANGSUNG FILE PDF) ===
+   // === HALAMAN BUAT SURAT (MARGIN PAS & UKURAN PENUH A4) ===
   if (activeTab === 'buat_surat') {
     const [jenisSurat, setJenisSurat] = useState('undangan');
     const [formSurat, setFormSurat] = useState({
@@ -1165,48 +1165,92 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
     };
 
     const unduhLangsungPDF = () => {
-      // Isi lengkap surat dengan setting cetak sempurna
       const isiPenuh = `
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Surat TPQ</title>
+<title>Surat TPQ Al Ikhlas</title>
 <style>
-  @page { size: A4 portrait; margin: 0; }
-  html, body { 
-    width: 210mm; min-height: 297mm; margin: 0 auto; 
-    padding: 18mm 20mm 25mm 25mm; 
-    font-family: Arial, sans-serif; 
-    font-size: 13pt; line-height: 1.6; 
+  @page { 
+    size: A4 portrait; 
+    margin: 1cm 2cm 2cm 3cm; /* ATAS KANAN BAWAH KIRI */
   }
-  .kop-wrapper { display: flex; align-items: center; border-bottom: 2px solid black; padding-bottom: 8px; margin-bottom: 15px; }
-  .kop-logo { width: 22%; }
-  .kop-logo img { height: 120px; }
-  .kop-teks { width: 78%; text-align: center; }
-  .kop-teks h3 { margin: 0; font-size: 13pt; }
-  .kop-teks h2 { margin: 3px 0; font-size: 16pt; font-weight: bold; }
-  .kop-teks p { margin: 2px 0; font-size: 11.5pt; }
-  .data-surat { width: 100%; margin-bottom: 18px; border-collapse: collapse; font-size: 13pt; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { 
+    width: 210mm; 
+    min-height: 297mm; 
+    font-family: Arial, sans-serif; 
+    font-size: 13pt; 
+    line-height: 1.65; 
+    color: black;
+    background: white;
+  }
+  .kop-wrapper { 
+    display: flex; 
+    align-items: center; 
+    border-bottom: 2px solid black; 
+    padding-bottom: 8px; 
+    margin-bottom: 18px; 
+  }
+  .kop-logo { width: 20%; }
+  .kop-logo img { height: 130px; width: auto; }
+  .kop-teks { width: 80%; text-align: center; }
+  .kop-teks h3 { margin: 0; font-size: 13pt; line-height: 1.2; }
+  .kop-teks h2 { margin: 3px 0; font-size: 17pt; font-weight: bold; line-height: 1.2; }
+  .kop-teks p { margin: 2px 0; font-size: 11.5pt; line-height: 1.3; }
+  .data-surat { 
+    width: 100%; 
+    margin-bottom: 20px; 
+    border-collapse: collapse; 
+    font-size: 13pt; 
+  }
   .data-surat td { padding: 2px 0; vertical-align: top; }
-  .isi-surat-wrapper { margin-left: 14%; font-size: 13pt; line-height: 1.7; }
+  .isi-surat-wrapper { 
+    margin-left: 12%; 
+    font-size: 13pt; 
+    line-height: 1.7; 
+  }
   .isi-paragraf { text-align: justify; }
-  .jadwal { margin: 15px 0; width: 100%; border-collapse: collapse; font-size: 13pt; }
+  .jadwal { 
+    margin: 18px 0; 
+    width: 100%; 
+    border-collapse: collapse; 
+    font-size: 13pt;
+  }
   .jadwal td { padding: 3px 0; vertical-align: top; }
   .jadwal .label { width: 150px; }
-  .tanda-tangan { margin-top: 45px; width: 100%; padding-left: 40%; position: relative; }
-  .jabatan { text-align: center; margin:0; }
-  .nama-pejabat { text-align: center; font-weight: bold; margin:0; }
-  .ttd-gabung { position: absolute; left: 55%; top:0; transform: translateX(-50%); height: 180px; }
+  .tanda-tangan { 
+    margin-top: 50px; 
+    width: 100%; 
+    padding-left: 42%; 
+    position: relative;
+  }
+  .jabatan { text-align: center; margin:0; font-size: 13pt; }
+  .nama-pejabat { text-align: center; font-weight: bold; margin:0; font-size: 13pt; }
+  .ttd-gabung { 
+    position: absolute;
+    left: 55%;
+    top:0;
+    transform: translateX(-50%);
+    height: 190px; 
+    width: auto;
+  }
   @media print {
-    @page { margin: 0; size: A4; }
-    body { margin: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    @page { 
+      margin: 1cm 2cm 2cm 3cm !important; 
+      size: A4 portrait !important; 
+    }
+    body { 
+      print-color-adjust: exact; 
+      -webkit-print-color-adjust: exact; 
+    }
   }
 </style>
 </head>
 <body>
   <div class="kop-wrapper">
-    <div class="kop-logo"><img src="https://raw.githubusercontent.com/tpqalikhlasbakalan/web-tpq/main/logo.png"></div>
+    <div class="kop-logo"><img src="https://raw.githubusercontent.com/tpqalikhlasbakalan/web-tpq/main/logo.png" alt="Logo TPQ"></div>
     <div class="kop-teks">
       <h3>YAYASAN MABIN AN NAHDLIYAH LANGITAN</h3>
       <h2>TPQ AL IKHLAS BAKALAN</h2>
@@ -1216,7 +1260,12 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
     </div>
   </div>
   <table class="data-surat">
-    <tr><td style="width:90px">Nomor</td><td>:</td><td>${formSurat.noSurat}</td><td style="text-align:right;width:220px">Bakalan, ${formatTanggal(formSurat.tanggalSurat)}</td></tr>
+    <tr>
+      <td style="width:90px">Nomor</td>
+      <td style="width:10px">:</td>
+      <td>${formSurat.noSurat}</td>
+      <td style="text-align:right;width:230px">Bakalan, ${formatTanggal(formSurat.tanggalSurat)}</td>
+    </tr>
     <tr><td>Lampiran</td><td>:</td><td>-</td></tr>
     <tr><td>Hal</td><td>:</td><td><b>${jenisSurat==='undangan'?'UNDANGAN':'EDARAN'}</b></td></tr>
   </table>
@@ -1241,22 +1290,21 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
   </div>
   <div class="tanda-tangan">
     <p class="jabatan">Kepala TPQ Al Ikhlas Bakalan</p>
-    <img src="https://raw.githubusercontent.com/tpqalikhlasbakalan/web-tpq/main/ttd%20+%20stempel.png" class="ttd-gabung">
+    <img src="https://raw.githubusercontent.com/tpqalikhlasbakalan/web-tpq/main/ttd%20+%20stempel.png" class="ttd-gabung" alt="Stempel & Tanda Tangan">
     <br><br><br><br>
     <p class="nama-pejabat">ABD. ADZIM</p>
   </div>
 </body>
 </html>`;
 
-      // Buka jendela baru siap cetak
-      const win = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
+      const win = window.open('', '_blank', 'width=950,height=800,scrollbars=yes');
       win.document.write(isiPenuh);
       win.document.close();
 
       setTimeout(() => {
         win.focus();
         win.print();
-        showToast('👉 Pilih Tujuan: "Simpan sebagai PDF" → Klik Simpan. Hasilnya langsung file PDF!');
+        showToast('✅ Margin sudah disesuaikan: Atas 1cm, Bawah 2cm, Kiri 3cm, Kanan 2cm');
       }, 700);
     };
 
