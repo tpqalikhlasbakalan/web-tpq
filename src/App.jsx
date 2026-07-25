@@ -1016,6 +1016,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
     { id: 'input_tabungan', label: 'Input Tabungan Santri', icon: DollarSign, color: 'bg-emerald-100 text-emerald-600', desc: 'Catat setoran & penarikan tabungan.' },
     { id: 'otorisasi_tabungan', label: 'Otorisasi Tabungan', icon: Shield, color: 'bg-red-100 text-red-600', desc: 'Tentukan role yang bisa input tabungan.' },
     { id: 'kelola_syahriah', label: 'Syahriah Keuangan', icon: CreditCard, color: 'bg-yellow-100 text-yellow-600', desc: 'Pantau iuran bulanan & alarm tagihan.' },
+    { id: 'buat_surat', label: 'Buat Surat (Edaran & Undangan)', icon: ClipboardList, color: 'bg-sky-100 text-sky-700', desc: 'Cetak surat undangan dan edaran resmi TPQ.' },
     { id: 'hak_akses', label: 'Manajemen Hak Akses', icon: Shield, color: 'bg-purple-100 text-purple-800', desc: 'Atur kredensial & tambah akun baru.' },
     { id: 'pengaturan', label: 'Profil & Logo TPQ', icon: Settings, color: 'bg-gray-100 text-gray-700', desc: 'Ubah identitas & Google Sheet URL.' }
   ];
@@ -1027,7 +1028,6 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
     if (activeTab === 'guru_klaim') mappedTab = 'klaim_santri';
     else if (activeTab === 'guru_target') mappedTab = 'nilai_target';
     else if (activeTab === 'guru_kenaikan') mappedTab = 'pengajuan_kenaikan';
-    // ✅ PERBAIKAN: Kirim setActiveTab LANGSUNG, tidak dibungkus logika salah
     return <GuruView 
       activeTab={mappedTab} 
       setActiveTab={(tab) => setActiveTab(tab === 'dashboard' ? 'dashboard' : activeTab)} 
@@ -1144,353 +1144,220 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
       </div>
     );
   }
-  return null;
-}
 
-function BendaharaView({ activeTab, setActiveTab, users, savings, settings, updateTable, showToast }) {
-  const [selectedMonth, setSelectedMonth] = useState('2026-07-10');
-  const [isInputTabunganOpen, setIsInputTabunganOpen] = useState(false);
-  const [viewRiwayatSantri, setViewRiwayatSantri] = useState(null);
-  const [editBayarDate, setEditBayarDate] = useState('');
-  const [confirmHapusBayar, setConfirmHapusBayar] = useState(null);
+  // === HALAMAN BUAT SURAT ===
+  if (activeTab === 'buat_surat') {
+    const [jenisSurat, setJenisSurat] = useState('undangan');
+    const [formSurat, setFormSurat] = useState({
+      noSurat: '', tanggalSurat: '', kepada: '', hari: '', pukul: '', tempat: '', agenda: '', isiEdaran: ''
+    });
 
-  const handleBayar = async (santriId) => {
-    const santri = users.find(u => String(u.id) === String(santriId));
-    if (!santri) return;
-    const history = santri.historyBayar ? [...santri.historyBayar] : [];
-    if (history.includes(selectedMonth)) { showToast('Tanggal ini sudah terdaftar!', 'error'); return; }
-    const updated = users.map(u => String(u.id) === String(santriId) ? { ...u, historyBayar: [...history, selectedMonth], hasAlarm: false } : u);
-    await updateTable('users', updated);
-    showToast(`Syahriah ${santri.name} LUNAS!`);
-  };
+    const handleSuratChange = (e) => {
+      setFormSurat({...formSurat, [e.target.name]: e.target.value});
+    };
 
-  const toggleAlarm = async (santriId) => {
-    const updated = users.map(u => String(u.id) === String(santriId) ? { ...u, hasAlarm: !u.hasAlarm } : u);
-    await updateTable('users', updated);
-    showToast('Status alarm tagihan diubah.');
-  };
-
-  const hapusBayar = async (santriId, tanggal) => {
-    const santri = users.find(u => String(u.id) === String(santriId));
-    if (!santri) return;
-    const newHistory = santri.historyBayar.filter(d => d !== tanggal);
-    const updated = users.map(u => String(u.id) === String(santriId) ? { ...u, historyBayar: newHistory } : u);
-    await updateTable('users', updated);
-    showToast('Riwayat pembayaran dihapus!');
-    setConfirmHapusBayar(null);
-  };
-
-  const ubahBayar = async (santriId, tanggalLama, tanggalBaru) => {
-    if (!tanggalBaru.trim()) return showToast('Tanggal tidak boleh kosong!', 'error');
-    const santri = users.find(u => String(u.id) === String(santriId));
-    if (!santri) return;
-    if (santri.historyBayar.includes(tanggalBaru)) return showToast('Tanggal baru sudah tercatat!', 'error');
-    const newHistory = santri.historyBayar.map(d => d === tanggalLama ? tanggalBaru : d);
-    const updated = users.map(u => String(u.id) === String(santriId) ? { ...u, historyBayar: newHistory } : u);
-    await updateTable('users', updated);
-    showToast('Riwayat pembayaran diperbarui!');
-    setViewRiwayatSantri(null);
-  };
-
-  const isSavingAuthorized = settings.savingInputRoles?.includes('bendahara');
-  const menus = [{ id: 'kelola_syahriah', label: 'Iuran Syahriah Bulanan', icon: CreditCard, color: 'bg-yellow-100 text-yellow-600', desc: 'Validasi SPP bulanan & alarm tagihan.' }];
-  if (isSavingAuthorized) menus.push({ id: 'input_tabungan_bendahara', label: 'Input Tabungan Santri', icon: DollarSign, color: 'bg-emerald-100 text-emerald-600', desc: 'Setoran & penarikan kas tabungan.' });
-
-  if (activeTab === 'dashboard') return (
-    <div className="space-y-6 animate-fade-in">
-      <h2 className="text-xl font-black text-gray-800">Manajemen Bendahara & Keuangan</h2>
-      <MenuGrid menus={menus} onSelect={(id) => {
-        if (id === 'input_tabungan_bendahara') { setIsInputTabunganOpen(true); setActiveTab(id); }
-        else setActiveTab(id);
-      }} />
-    </div>
-  );
-
-  if (activeTab === 'input_tabungan_bendahara' && isSavingAuthorized) return (
-    <div className="animate-fade-in relative z-10">
-      <BackButton onClick={() => { 
-        setIsInputTabunganOpen(false); 
-        setActiveTab('dashboard');
-      }} />
-      <SavingsInputView users={users} savings={savings} updateTable={updateTable} showToast={showToast} recorderId="bendahara" />
-    </div>
-  );
-
-  // HALAMAN RIWAYAT PEMBAYARAN KHUSUS SANTRI (SYAHRIAH)
-  if (viewRiwayatSantri) {
-    const santri = users.find(u => String(u.id) === String(viewRiwayatSantri));
-    if (!santri) return null;
-    return (
-      <div className="animate-fade-in space-y-6">
-        <BackButton onClick={() => setViewRiwayatSantri(null)} />
-        <div className="bg-white p-6 rounded-2xl shadow-sm border">
-          <h2 className="text-lg font-bold mb-4 flex items-center text-indigo-800">
-            <CreditCard className="mr-2"/> Riwayat Pembayaran: {santri.name}
-          </h2>
-          {(!santri.historyBayar || santri.historyBayar.length === 0) ? (
-            <p className="text-xs text-gray-400 italic py-6 text-center">Belum ada riwayat pembayaran.</p>
-          ) : (
-            <div className="space-y-3">
-              {santri.historyBayar.sort().reverse().map((tgl, idx) => (
-                <div key={idx} className="p-3.5 bg-gray-50 rounded-xl border flex justify-between items-center text-xs">
-                  <span className="font-semibold">Tanggal Bayar: {tgl}</span>
-                  <div className="flex gap-2">
-                    <button onClick={() => setEditBayarDate(tgl)} className="bg-amber-50 text-amber-700 px-2.5 py-1 rounded-lg font-bold">Ubah</button>
-                    <button onClick={() => setConfirmHapusBayar({id:santri.id, tgl})} className="bg-red-50 text-red-700 px-2.5 py-1 rounded-lg font-bold">Hapus</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {editBayarDate && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white p-6 rounded-2xl w-full max-w-sm">
-              <h3 className="font-bold mb-4">Ubah Tanggal Pembayaran</h3>
-              <p className="text-xs text-gray-500 mb-3">Tanggal lama: {editBayarDate}</p>
-              <input type="date" value={editBayarDate} onChange={(e) => setEditBayarDate(e.target.value)} className="w-full p-2.5 border rounded-xl mb-4" />
-              <div className="flex justify-end gap-2">
-                <button onClick={() => setEditBayarDate('')} className="px-4 py-2 bg-gray-100 rounded-xl">Batal</button>
-                <button onClick={() => ubahBayar(santri.id, editBayarDate, editBayarDate)} className="px-4 py-2 bg-emerald-600 text-white rounded-xl">Simpan</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {confirmHapusBayar && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white p-6 rounded-2xl w-full max-w-sm">
-              <h3 className="font-bold text-red-600 mb-2">Konfirmasi Hapus?</h3>
-              <p className="text-xs text-gray-600 mb-4">Data pembayaran tanggal {confirmHapusBayar.tgl} akan hilang permanen.</p>
-              <div className="flex justify-end gap-2">
-                <button onClick={() => setConfirmHapusBayar(null)} className="px-4 py-2 bg-gray-100 rounded-xl">Batal</button>
-                <button onClick={() => hapusBayar(confirmHapusBayar.id, confirmHapusBayar.tgl)} className="px-4 py-2 bg-red-600 text-white rounded-xl">Ya, Hapus</button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
+    const htmlSurat = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { 
+    font-family: Arial, sans-serif; 
+    font-size: 12pt; 
+    line-height: 1.5; 
+    width: 210mm; 
+    min-height: 297mm;
+    margin: 0 auto; 
+    padding: 20mm; 
+    box-sizing: border-box;
   }
+  .kop-wrapper { 
+    display: flex; 
+    align-items: center; 
+    border-bottom: 2px solid black; 
+    padding-bottom: 5px; 
+    margin-bottom: 12px; 
+  }
+  .kop-logo { width: 20%; text-align: left; }
+  .kop-logo img { height: 110px; }
+  .kop-teks { width: 80%; text-align: center; }
+  .kop-teks h3 { margin: 0; font-size: 12pt; line-height: 1.2; }
+  .kop-teks h2 { margin: 2px 0; font-size: 14pt; font-weight: bold; line-height: 1.2; }
+  .kop-teks p { margin: 1px 0; font-size: 11pt; line-height: 1.3; }
+  .data-surat { 
+    width: 100%; 
+    margin-bottom: 15px; 
+    border-collapse: collapse; 
+    font-size: 12pt; 
+  }
+  .data-surat td { padding: 1px 0; }
+  .isi-surat-wrapper { 
+    margin-left: 13%; 
+    font-size: 12pt; 
+    line-height: 1.6; 
+  }
+  .isi-surat-wrapper .isi-paragraf { text-align: justify; }
+  .jadwal { 
+    margin: 12px 0; 
+    width: 100%; 
+    border-collapse: collapse; 
+    font-size: 12pt;
+  }
+  .jadwal td { padding: 2px 0; vertical-align: top; }
+  .jadwal .label { width: 140px; }
+  .tanda-tangan { 
+    margin-top: 35px; 
+    width: 100%; 
+    font-size: 12pt; 
+    padding-left: 35%; 
+    position: relative;
+  }
+  .tanda-tangan .jabatan { 
+    margin: 0; 
+    padding: 0;
+    text-align: center;
+  }
+  .tanda-tangan .nama-pejabat { 
+    margin: 0; 
+    padding: 0;
+    font-weight: bold; 
+    text-align: center;
+  }
+  .ttd-gabung { 
+    position: absolute;
+    left: 58%;
+    top: 0;
+    transform: translateX(-50%);
+    height: 170px; 
+    z-index: 2;
+  }
+</style>
+</head>
+<body>
+<div class="kop-wrapper">
+  <div class="kop-logo">
+    <img src="https://raw.githubusercontent.com/tpqalikhlasbakalan/web-tpq/main/logo.png" alt="Logo TPQ Al Ikhlas">
+  </div>
+  <div class="kop-teks">
+    <h3>YAYASAN MABIN AN NAHDLIYAH LANGITAN</h3>
+    <h2>TPQ AL IKHLAS BAKALAN</h2>
+    <p>NIC: B. 1a.05.1158</p>
+    <p>Nomor : AHU-0023193.AH.01.04. Tahun 2016</p>
+    <p>Alamat: Dusun Bakalan RT.003/ RW.001 Kec. Tikung Kabupaten Lamongan</p>
+  </div>
+</div>
+<table class="data-surat">
+  <tr>
+    <td style="width: 80px;">Nomor</td>
+    <td>:</td>
+    <td>${formSurat.noSurat}</td>
+    <td style="text-align:right;">Bakalan, ${formSurat.tanggalSurat}</td>
+  </tr>
+  <tr>
+    <td>Lamp</td>
+    <td>:</td>
+    <td>-</td>
+  </tr>
+  <tr>
+    <td>Hal</td>
+    <td>:</td>
+    <td><b>${jenisSurat==='undangan'?'UNDANGAN':'EDARAN'}</b></td>
+  </tr>
+</table>
+<div class="isi-surat-wrapper">
+Kepada Yth.<br><br>
+${formSurat.kepada}<br><br>
+Di -<br>
+Tempat<br><br>
+Assalâmualaikum Wr. Wb.<br>
+<div class="isi-paragraf">
+Salam silaturrahmi kami sampaikan, semoga kita senantiasa dalam lindungan serta kasih sayang Allah SWT. Shalawat beserta salam semoga selalu tercurah limpahkan kepada Nabi Muhammad SAW.<br><br>
+${jenisSurat==='undangan'?`Selanjutnya, sehubungan dalam rangka kegiatan yang akan dilaksanakan. Maka kami bermaksud mengundang Bapak/Ibu pada:`:formSurat.isiEdaran}
+</div>
+${jenisSurat==='undangan'?`
+<table class="jadwal">
+  <tr>
+    <td class="label">Hari/ tanggal</td>
+    <td>:</td>
+    <td>${formSurat.hari}</td>
+  </tr>
+  <tr>
+    <td>Pukul</td>
+    <td>:</td>
+    <td>${formSurat.pukul}</td>
+  </tr>
+  <tr>
+    <td>Tempat</td>
+    <td>:</td>
+    <td>${formSurat.tempat}</td>
+  </tr>
+  <tr>
+    <td>Agenda</td>
+    <td>:</td>
+    <td>${formSurat.agenda}</td>
+  </tr>
+</table>
+`:''}
+<div class="isi-paragraf">
+Demikian ${jenisSurat==='undangan'?'Undangan ini':'Edaran ini'} kami sampaikan. Atas perhatian dan kerjasamanya kami ucapkan terima kasih.<br><br>
+Wallâhul Muwaffiq Ilâ Aqwamith Tharîq<br>
+Wassalâmu‘alaikum Wr. Wb.
+</div>
+</div>
+<div class="tanda-tangan">
+  <p class="jabatan">Kepala TPQ Al Ikhlas Bakalan</p>
+  <img src="https://raw.githubusercontent.com/tpqalikhlasbakalan/web-tpq/main/ttd%20+%20stempel.png" class="ttd-gabung" alt="Stempel dan Tanda Tangan">
+  <br><br><br><br>
+  <p class="nama-pejabat">ABD. ADZIM</p>
+</div>
+</body>
+</html>
+    `;
 
-  if (activeTab === 'kelola_syahriah') {
-    const santriList = users.filter(u => u.role === 'santri');
+    const cetakSurat = () => {
+      const win = window.open('', '_blank');
+      win.document.write(htmlSurat);
+      win.document.close();
+      setTimeout(() => win.print(), 500);
+    };
+
     return (
       <div className="animate-fade-in space-y-6">
         <BackButton onClick={() => setActiveTab('dashboard')} />
         <div className="bg-white p-6 rounded-2xl shadow-sm border">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <div><h2 className="text-lg font-bold flex items-center text-yellow-800"><CreditCard className="mr-2"/> Pengelolaan Iuran Syahriah</h2><p className="text-xs text-gray-500 mt-1">Transaksi SPP & notifikasi tunggakan.</p></div>
-            <div className="flex items-center space-x-2"><label className="text-xs font-bold text-gray-500">Tanggal SPP:</label><input type="date" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="p-2 border rounded-xl text-xs bg-gray-50 font-bold" /></div>
+          <h2 className="text-lg font-bold mb-6 flex items-center text-sky-800"><ClipboardList className="mr-2"/> Buat Surat Resmi TPQ</h2>
+
+          <div className="flex gap-3 mb-6">
+            <button onClick={() => setJenisSurat('undangan')} className={`px-5 py-2.5 rounded-xl text-xs font-bold ${jenisSurat==='undangan'?'bg-sky-600 text-white shadow':'bg-gray-100 text-gray-700'}`}>📄 Undangan</button>
+            <button onClick={() => setJenisSurat('edaran')} className={`px-5 py-2.5 rounded-xl text-xs font-bold ${jenisSurat==='edaran'?'bg-sky-600 text-white shadow':'bg-gray-100 text-gray-700'}`}>📃 Edaran / Pemberitahuan</button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead><tr className="bg-yellow-50 text-yellow-950 font-bold uppercase border-b"><th className="p-4">Nama Santri</th><th className="p-4">Tingkatan</th><th className="p-4 text-center">Bayar Terakhir</th><th className="p-4 text-center">Status</th><th className="p-4 text-center">Alarm</th><th className="p-4 text-center">Aksi</th></tr></thead>
-              <tbody>
-                {santriList.map(s => {
-                  const isPaid = s.historyBayar && s.historyBayar.includes(selectedMonth);
-                  const lastPay = s.historyBayar?.length > 0 ? [...s.historyBayar].sort().reverse()[0] : '-';
-                  return (
-                    <tr key={s.id} className="border-b hover:bg-gray-50 transition">
-                      <td className="p-4 font-bold">{s.name}</td>
-                      <td className="p-4 text-gray-500">{s.jilid || 'Jilid 1'}</td>
-                      <td className="p-4 text-center font-semibold">{lastPay}</td>
-                      <td className="p-4 text-center">{isPaid ? <span className="inline-flex items-center bg-emerald-50 text-emerald-700 border px-2.5 py-1 rounded-full text-[10px] font-bold uppercase"><CheckCircle size={11} className="mr-1"/> Lunas</span> : <span className="inline-flex items-center bg-red-50 text-red-700 border px-2.5 py-1 rounded-full text-[10px] font-bold uppercase">Belum Bayar</span>}</td>
-                      <td className="p-4 text-center"><button onClick={() => toggleAlarm(s.id)} className={`p-2 rounded-xl border transition ${s.hasAlarm ? 'bg-red-50 border-red-200 text-red-600 animate-pulse' : 'bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-600'}`}><Bell size={16}/></button></td>
-                      <td className="p-4 text-center">
-                        <div className="flex flex-col gap-1.5 items-center">
-                          <button onClick={() => handleBayar(s.id)} disabled={isPaid} className={`font-bold px-3 py-1.5 rounded-xl text-[10px] shadow-sm ${isPaid ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`}>Bayar</button>
-                          <button onClick={() => setViewRiwayatSantri(s.id)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-xl text-[10px] shadow">Riwayat</button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div><label className="block text-xs font-bold mb-1">Nomor Surat</label><input name="noSurat" value={formSurat.noSurat} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="001/TPQ-VII/2026" required /></div>
+            <div><label className="block text-xs font-bold mb-1">Tanggal Surat</label><input type="date" name="tanggalSurat" value={formSurat.tanggalSurat} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" required /></div>
           </div>
+          <div><label className="block text-xs font-bold mb-1">Kepada Yth.</label><textarea name="kepada" value={formSurat.kepada} onChange={handleSuratChange} rows={3} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Yth. Bapak/Ibu Wali Santri&#10;Di Tempat" required /></div>
+
+          {jenisSurat==='undangan' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label className="block text-xs font-bold mb-1">Hari & Tanggal Acara</label><input name="hari" value={formSurat.hari} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Sabtu, 26 Juli 2026" required /></div>
+              <div><label className="block text-xs font-bold mb-1">Pukul</label><input name="pukul" value={formSurat.pukul} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="08.00 WIB s.d Selesai" required /></div>
+              <div><label className="block text-xs font-bold mb-1">Tempat</label><input name="tempat" value={formSurat.tempat} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Aula TPQ Al Ikhlas" required /></div>
+              <div><label className="block text-xs font-bold mb-1">Agenda / Kegiatan</label><input name="agenda" value={formSurat.agenda} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Rapat Pertemuan Wali Santri" required /></div>
+            </div>
+          ) : (
+            <div><label className="block text-xs font-bold mb-1">Isi Edaran</label><textarea name="isiEdaran" value={formSurat.isiEdaran} onChange={handleSuratChange} rows={6} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Dengan ini diberitahukan kepada seluruh wali santri bahwa..." required /></div>
+          )}
+
+          <button onClick={cetakSurat} className="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 rounded-xl text-xs shadow">🖨️ Lihat & Cetak Surat</button>
         </div>
       </div>
     );
   }
+
   return null;
-}
-
-function SavingsInputView({ users, savings, updateTable, showToast, recorderId }) {
-  const santriList = users.filter(u => u.role === 'santri');
-  const [editId, setEditId] = useState(null);
-  const [confirmDelete, setConfirmDelete] = useState(null);
-  const [viewSavingsSantri, setViewSavingsSantri] = useState(null);
-  const [formData, setFormData] = useState({ santriId:'', date:'', type:'setor', amount:'', description:'' });
-
-  const resetForm = () => {
-    setFormData({ santriId:'', date:new Date().toISOString().slice(0,10), type:'setor', amount:'', description:'' });
-    setEditId(null);
-  };
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    const santriId = formData.santriId;
-    if (!santriId) { showToast('Pilih santri!', 'error'); return; }
-    const amount = Number(formData.amount);
-    if (amount <= 0) return showToast('Nominal harus lebih dari 0!', 'error');
-
-    if (editId) {
-      const updated = savings.map(s => String(s.id) === String(editId) ? { ...s, ...formData, amount } : s);
-      await updateTable('savings', updated);
-      showToast('Transaksi diperbarui!');
-    } else {
-      const newSaving = { id: 's_' + Date.now(), santriId, date: formData.date, amount, type: formData.type, description: formData.description.trim(), inputBy: String(recorderId) };
-      await updateTable('savings', [newSaving, ...savings]);
-      showToast(`Transaksi Rp ${amount.toLocaleString('id-ID')} tersimpan!`);
-    }
-    resetForm();
-  };
-
-  const startEdit = (trx) => {
-    setEditId(trx.id);
-    setFormData({ santriId: trx.santriId, date: trx.date, type: trx.type, amount: String(trx.amount), description: trx.description || '' });
-  };
-
-  const hapusTransaksi = async () => {
-    await updateTable('savings', savings.filter(s => String(s.id) !== String(confirmDelete.id)));
-    showToast('Transaksi dihapus! Saldo otomatis terkoreksi.');
-    setConfirmDelete(null);
-  };
-
-  return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-6 animate-fade-in">
-      <div><h2 className="text-lg font-bold flex items-center text-emerald-800"><DollarSign className="mr-1.5"/> Pencatatan Tabungan Santri</h2><p className="text-xs text-gray-500 mt-1">Catat setoran masuk & penarikan keluar. Klik nama santri untuk lihat riwayat pribadi.</p></div>
-      
-      {/* FORM INPUT/EDIT */}
-      <form onSubmit={handleSave} className="space-y-4 max-w-xl bg-gray-50 p-5 rounded-2xl border">
-        <div><label className="block text-xs font-bold mb-1 text-gray-600">Pilih Santri</label>
-          <select name="santriId" value={formData.santriId} onChange={e=>setFormData(p=>({...p,santriId:e.target.value}))} className="p-2.5 border rounded-xl w-full text-xs font-bold" required>
-            <option value="">-- Pilih Nama --</option>{santriList.map(s => <option key={s.id} value={s.id}>{s.name} ({s.jilid})</option>)}
-          </select>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div><label className="block text-xs font-bold mb-1">Tanggal</label>
-            <input type="date" value={formData.date} onChange={e=>setFormData(p=>({...p,date:e.target.value}))} required className="p-2.5 border rounded-xl w-full text-xs" />
-          </div>
-          <div><label className="block text-xs font-bold mb-1">Jenis</label>
-            <select value={formData.type} onChange={e=>setFormData(p=>({...p,type:e.target.value}))} className="p-2.5 border rounded-xl w-full text-xs font-bold" required>
-              <option value="setor">Setoran Masuk</option><option value="tarik">Penarikan</option>
-            </select>
-          </div>
-          <div><label className="block text-xs font-bold mb-1">Nominal Rp</label>
-            <input type="number" value={formData.amount} onChange={e=>setFormData(p=>({...p,amount:e.target.value}))} placeholder="10000" required className="p-2.5 border rounded-xl w-full text-xs font-bold" />
-          </div>
-        </div>
-        <div><label className="block text-xs font-bold mb-1">Keterangan</label>
-          <input type="text" value={formData.description} onChange={e=>setFormData(p=>({...p,description:e.target.value}))} placeholder="Setoran mingguan" className="p-2.5 border rounded-xl w-full text-xs" />
-        </div>
-        <div className="flex gap-2">
-          <button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-xs shadow">
-            {editId ? 'Perbarui Transaksi' : 'Simpan Transaksi'}
-          </button>
-          {editId && <button type="button" onClick={resetForm} className="px-4 bg-gray-200 rounded-xl text-xs font-bold">Batal</button>}
-        </div>
-      </form>
-
-      {/* DAFTAR SEMUA TRANSAKSI */}
-      <div className="border-t pt-6">
-        <h3 className="font-bold text-sm mb-4">Daftar Semua Transaksi</h3>
-        {savings.length === 0 ? <p className="text-xs text-gray-400 italic">Belum ada transaksi.</p> : (
-          <div className="space-y-2.5">
-            {savings.map(trx => {
-              const namaSantri = santriList.find(s=>String(s.id)===String(trx.santriId))?.name || 'Tidak Diketahui';
-              return (
-                <div key={trx.id} className="p-3.5 bg-gray-50 rounded-xl border flex justify-between items-center text-xs">
-                  <div>
-                    <p className="font-bold text-blue-700 cursor-pointer hover:underline" onClick={() => setViewSavingsSantri(trx.santriId)}>
-                      {namaSantri}
-                    </p>
-                    <p className="text-gray-500">{trx.date} · {trx.description || '-'}</p>
-                    <p className={`font-bold ${trx.type==='setor'?'text-emerald-700':'text-red-700'}`}>
-                      {trx.type==='setor'?'+':'-'} Rp {trx.amount.toLocaleString('id-ID')}
-                    </p>
-                  </div>
-                  <div className="flex gap-1.5">
-                    <button onClick={()=>startEdit(trx)} className="p-1.5 bg-amber-50 text-amber-700 rounded-lg"><Edit size={13}/></button>
-                    <button onClick={()=>setConfirmDelete(trx)} className="p-1.5 bg-red-50 text-red-700 rounded-lg"><Trash2 size={13}/></button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* MODAL RIWAYAT TABUNGAN PER SANTRI */}
-      {viewSavingsSantri && (() => {
-        const santri = santriList.find(s => String(s.id) === String(viewSavingsSantri));
-        const riwayatSantri = savings.filter(s => String(s.santriId) === String(viewSavingsSantri));
-        const totalSetor = riwayatSantri.filter(s => s.type === 'setor').reduce((sum, t) => sum + Number(t.amount), 0);
-        const totalTarik = riwayatSantri.filter(s => s.type === 'tarik').reduce((sum, t) => sum + Number(t.amount), 0);
-        const saldoAkhir = totalSetor - totalTarik;
-
-        return (
-          <div className="fixed inset-0 bg-black/50 flex items-start justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-white p-6 rounded-2xl w-full max-w-lg my-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-emerald-800">Riwayat Tabungan: {santri?.name || 'Tidak Diketahui'}</h3>
-                <button onClick={() => setViewSavingsSantri(null)} className="text-gray-400 hover:text-gray-700 text-xl">&times;</button>
-              </div>
-
-              <div className="bg-emerald-50 p-3 rounded-xl mb-4 text-xs">
-                <div className="flex justify-between"><span>Total Setoran:</span><span className="font-bold text-emerald-700">Rp {totalSetor.toLocaleString('id-ID')}</span></div>
-                <div className="flex justify-between"><span>Total Penarikan:</span><span className="font-bold text-red-700">Rp {totalTarik.toLocaleString('id-ID')}</span></div>
-                <div className="flex justify-between font-bold mt-1 pt-1 border-t border-emerald-200 text-sm">
-                  <span>Saldo Akhir:</span>
-                  <span className={saldoAkhir >= 0 ? 'text-emerald-700' : 'text-red-700'}>Rp {saldoAkhir.toLocaleString('id-ID')}</span>
-                </div>
-              </div>
-
-              {riwayatSantri.length === 0 ? (
-                <p className="text-xs text-gray-400 italic text-center py-4">Belum ada transaksi tabungan.</p>
-              ) : (
-                <div className="space-y-2.5 max-h-64 overflow-y-auto">
-                  {riwayatSantri.sort((a,b)=>b.date.localeCompare(a.date)).map(trx => (
-                    <div key={trx.id} className="p-3 bg-gray-50 rounded-xl border flex justify-between items-center text-xs">
-                      <div>
-                        <p className="font-semibold">{trx.date}</p>
-                        <p className="text-gray-500">{trx.description || '-'}</p>
-                        <p className={`font-bold ${trx.type==='setor'?'text-emerald-700':'text-red-700'}`}>
-                          {trx.type==='setor'?'+':'-'} Rp {trx.amount.toLocaleString('id-ID')}
-                        </p>
-                      </div>
-                      <div className="flex gap-1.5">
-                        <button onClick={()=>{setViewSavingsSantri(null);startEdit(trx);}} className="p-1.5 bg-amber-50 text-amber-700 rounded-lg"><Edit size={13}/></button>
-                        <button onClick={()=>{setViewSavingsSantri(null);setConfirmDelete(trx);}} className="p-1.5 bg-red-50 text-red-700 rounded-lg"><Trash2 size={13}/></button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* MODAL KONFIRMASI HAPUS */}
-      {confirmDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded-2xl w-full max-w-sm">
-            <h3 className="font-bold text-red-600 mb-2">Konfirmasi Hapus?</h3>
-            <p className="text-xs text-gray-600 mb-4">Transaksi akan hilang permanen dan saldo akan otomatis dikoreksi.</p>
-            <div className="flex justify-end gap-2">
-              <button onClick={()=>setConfirmDelete(null)} className="px-4 py-2 bg-gray-100 rounded-xl">Batal</button>
-              <button onClick={hapusTransaksi} className="px-4 py-2 bg-red-600 text-white rounded-xl">Ya, Hapus</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, settings, appsScriptUrl, setAppsScriptUrl, loadDatabase }) {
+}function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, settings, appsScriptUrl, setAppsScriptUrl, loadDatabase }) {
   const [showPasswordMap, setShowPasswordMap] = useState({});
   const [resettingUser, setResettingUser] = useState(null);
   const [newPasswordVal, setNewPasswordVal] = useState('');
