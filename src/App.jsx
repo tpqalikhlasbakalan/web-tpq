@@ -1145,7 +1145,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
     );
   }
 
-    // === HALAMAN BUAT SURAT (SUDAH DIPERBAIKI) ===
+   // === HALAMAN BUAT SURAT (SUDAH DIPERBAIKI) ===
   if (activeTab === 'buat_surat') {
     const [jenisSurat, setJenisSurat] = useState('undangan');
     const [formSurat, setFormSurat] = useState({
@@ -1369,7 +1369,7 @@ Wassalâmu‘alaikum Wr. Wb.
           ) : (
             <div><label className="block text-xs font-bold mb-1">Isi Edaran</label><textarea name="isiEdaran" value={formSurat.isiEdaran} onChange={handleSuratChange} rows={6} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Dengan ini diberitahukan kepada seluruh wali santri bahwa..." required /></div>
           )}
-          
+
           <button onClick={unduhSurat} className="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 rounded-xl text-xs shadow">⬇️ Unduh & Cetak Surat</button>
         </div>
       </div>
