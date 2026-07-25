@@ -1145,7 +1145,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
     );
   }
 
-  // === HALAMAN BUAT SURAT ===
+    // === HALAMAN BUAT SURAT (SUDAH DIPERBAIKI) ===
   if (activeTab === 'buat_surat') {
     const [jenisSurat, setJenisSurat] = useState('undangan');
     const [formSurat, setFormSurat] = useState({
@@ -1156,61 +1156,71 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
       setFormSurat({...formSurat, [e.target.name]: e.target.value});
     };
 
+    // Ubah format tanggal jadi: 25 Juli 2026
+    const formatTanggal = (tgl) => {
+      if (!tgl) return '';
+      const bln = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+      const d = new Date(tgl);
+      return `${d.getDate()} ${bln[d.getMonth()]} ${d.getFullYear()}`;
+    };
+
     const htmlSurat = `
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
+<title>Surat TPQ Al Ikhlas</title>
 <style>
-  body { 
-    font-family: Arial, sans-serif; 
-    font-size: 12pt; 
-    line-height: 1.5; 
+  @page { size: A4; margin: 0; }
+  html, body { 
     width: 210mm; 
-    min-height: 297mm;
+    min-height: 297mm; 
     margin: 0 auto; 
-    padding: 20mm; 
+    padding: 18mm 20mm 25mm 25mm; 
     box-sizing: border-box;
+    font-family: Arial, sans-serif; 
+    font-size: 13pt; 
+    line-height: 1.6; 
   }
   .kop-wrapper { 
     display: flex; 
     align-items: center; 
     border-bottom: 2px solid black; 
-    padding-bottom: 5px; 
-    margin-bottom: 12px; 
+    padding-bottom: 8px; 
+    margin-bottom: 15px; 
   }
-  .kop-logo { width: 20%; text-align: left; }
-  .kop-logo img { height: 110px; }
-  .kop-teks { width: 80%; text-align: center; }
-  .kop-teks h3 { margin: 0; font-size: 12pt; line-height: 1.2; }
-  .kop-teks h2 { margin: 2px 0; font-size: 14pt; font-weight: bold; line-height: 1.2; }
-  .kop-teks p { margin: 1px 0; font-size: 11pt; line-height: 1.3; }
+  .kop-logo { width: 22%; text-align: left; }
+  .kop-logo img { height: 120px; }
+  .kop-teks { width: 78%; text-align: center; }
+  .kop-teks h3 { margin: 0; font-size: 13pt; line-height: 1.2; }
+  .kop-teks h2 { margin: 3px 0; font-size: 16pt; font-weight: bold; line-height: 1.2; }
+  .kop-teks p { margin: 2px 0; font-size: 11.5pt; line-height: 1.3; }
   .data-surat { 
     width: 100%; 
-    margin-bottom: 15px; 
+    margin-bottom: 18px; 
     border-collapse: collapse; 
-    font-size: 12pt; 
+    font-size: 13pt; 
   }
-  .data-surat td { padding: 1px 0; }
+  .data-surat td { padding: 2px 0; vertical-align: top; }
   .isi-surat-wrapper { 
-    margin-left: 13%; 
-    font-size: 12pt; 
-    line-height: 1.6; 
+    margin-left: 14%; 
+    font-size: 13pt; 
+    line-height: 1.7; 
   }
-  .isi-surat-wrapper .isi-paragraf { text-align: justify; }
+  .isi-paragraf { text-align: justify; }
   .jadwal { 
-    margin: 12px 0; 
+    margin: 15px 0; 
     width: 100%; 
     border-collapse: collapse; 
-    font-size: 12pt;
+    font-size: 13pt;
   }
-  .jadwal td { padding: 2px 0; vertical-align: top; }
-  .jadwal .label { width: 140px; }
+  .jadwal td { padding: 3px 0; vertical-align: top; }
+  .jadwal .label { width: 150px; }
   .tanda-tangan { 
-    margin-top: 35px; 
+    margin-top: 45px; 
     width: 100%; 
-    font-size: 12pt; 
-    padding-left: 35%; 
+    font-size: 13pt; 
+    padding-left: 40%; 
     position: relative;
   }
   .tanda-tangan .jabatan { 
@@ -1226,11 +1236,15 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
   }
   .ttd-gabung { 
     position: absolute;
-    left: 58%;
+    left: 55%;
     top: 0;
     transform: translateX(-50%);
-    height: 170px; 
+    height: 180px; 
     z-index: 2;
+  }
+  @media print {
+    @page { margin: 0; }
+    body { margin: 0; }
   }
 </style>
 </head>
@@ -1249,13 +1263,13 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
 </div>
 <table class="data-surat">
   <tr>
-    <td style="width: 80px;">Nomor</td>
-    <td>:</td>
+    <td style="width: 90px;">Nomor</td>
+    <td style="width: 10px;">:</td>
     <td>${formSurat.noSurat}</td>
-    <td style="text-align:right;">Bakalan, ${formSurat.tanggalSurat}</td>
+    <td style="text-align:right; width: 220px;">Bakalan, ${formatTanggal(formSurat.tanggalSurat)}</td>
   </tr>
   <tr>
-    <td>Lamp</td>
+    <td>Lampiran</td>
     <td>:</td>
     <td>-</td>
   </tr>
@@ -1278,7 +1292,7 @@ ${jenisSurat==='undangan'?`Selanjutnya, sehubungan dalam rangka kegiatan yang ak
 ${jenisSurat==='undangan'?`
 <table class="jadwal">
   <tr>
-    <td class="label">Hari/ tanggal</td>
+    <td class="label">Hari / Tanggal</td>
     <td>:</td>
     <td>${formSurat.hari}</td>
   </tr>
@@ -1315,11 +1329,17 @@ Wassalâmu‘alaikum Wr. Wb.
 </html>
     `;
 
-    const cetakSurat = () => {
-      const win = window.open('', '_blank');
-      win.document.write(htmlSurat);
-      win.document.close();
-      setTimeout(() => win.print(), 500);
+    const unduhSurat = () => {
+      const blob = new Blob([htmlSurat], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Surat_${jenisSurat}_${formSurat.noSurat.replace(/\//g,'-')}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Surat berhasil diunduh! Buka file lalu Cetak langsung dari browser.');
     };
 
     return (
@@ -1350,12 +1370,11 @@ Wassalâmu‘alaikum Wr. Wb.
             <div><label className="block text-xs font-bold mb-1">Isi Edaran</label><textarea name="isiEdaran" value={formSurat.isiEdaran} onChange={handleSuratChange} rows={6} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Dengan ini diberitahukan kepada seluruh wali santri bahwa..." required /></div>
           )}
 
-          <button onClick={cetakSurat} className="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 rounded-xl text-xs shadow">🖨️ Lihat & Cetak Surat</button>
+          <button onClick={unduhSurat} className="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 rounded-xl text-xs shadow">⬇️ Unduh & Cetak Surat</button>
         </div>
       </div>
     );
   }
-
   return null;
 }function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, settings, appsScriptUrl, setAppsScriptUrl, loadDatabase }) {
   const [showPasswordMap, setShowPasswordMap] = useState({});
