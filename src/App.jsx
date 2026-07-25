@@ -1145,7 +1145,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
     );
   }
 
-   // === HALAMAN BUAT SURAT (MARGIN PAS & UKURAN PENUH A4) ===
+    // === HALAMAN BUAT SURAT (SUDAH DIPERBAIKI SEMUA) ===
   if (activeTab === 'buat_surat') {
     const [jenisSurat, setJenisSurat] = useState('undangan');
     const [formSurat, setFormSurat] = useState({
@@ -1245,6 +1245,13 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
       print-color-adjust: exact; 
       -webkit-print-color-adjust: exact; 
     }
+    /* HAPUS HEADER & FOOTER BROWSER SECARA PAKSA */
+    @page { 
+      @top-left { content: none; }
+      @top-right { content: none; }
+      @bottom-left { content: none; }
+      @bottom-right { content: none; }
+    }
   }
 </style>
 </head>
@@ -1270,7 +1277,9 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
     <tr><td>Hal</td><td>:</td><td><b>${jenisSurat==='undangan'?'UNDANGAN':'EDARAN'}</b></td></tr>
   </table>
   <div class="isi-surat-wrapper">
-    Kepada Yth.<br><br>${formSurat.kepada}<br><br>Di -<br>Tempat<br><br>
+    Kepada Yth.<br>
+    ${formSurat.kepada}<br>
+    Di - Tempat<br><br>
     Assalâmualaikum Wr. Wb.<br>
     <div class="isi-paragraf">
       Salam silaturrahmi kami sampaikan, semoga kita senantiasa dalam lindungan serta kasih sayang Allah SWT. Shalawat beserta salam semoga selalu tercurah limpahkan kepada Nabi Muhammad SAW.<br><br>
@@ -1297,14 +1306,14 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
 </body>
 </html>`;
 
-      const win = window.open('', '_blank', 'width=950,height=800,scrollbars=yes');
+      const win = window.open('', '_blank', 'width=950,height=800,scrollbars=yes,location=no,menubar=no,toolbar=no');
       win.document.write(isiPenuh);
       win.document.close();
 
       setTimeout(() => {
         win.focus();
         win.print();
-        showToast('✅ Margin sudah disesuaikan: Atas 1cm, Bawah 2cm, Kiri 3cm, Kanan 2cm');
+        showToast('✅ Siap dicetak: tanpa header/footer & jarak sudah rapi');
       }, 700);
     };
 
@@ -1323,7 +1332,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
             <div><label className="block text-xs font-bold mb-1">Nomor Surat</label><input name="noSurat" value={formSurat.noSurat} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="001/TPQ-VII/2026" required /></div>
             <div><label className="block text-xs font-bold mb-1">Tanggal Surat</label><input type="date" name="tanggalSurat" value={formSurat.tanggalSurat} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" required /></div>
           </div>
-          <div><label className="block text-xs font-bold mb-1">Kepada Yth.</label><textarea name="kepada" value={formSurat.kepada} onChange={handleSuratChange} rows={3} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Yth. Bapak/Ibu Wali Santri&#10;Di Tempat" required /></div>
+          <div><label className="block text-xs font-bold mb-1">Kepada Yth.</label><textarea name="kepada" value={formSurat.kepada} onChange={handleSuratChange} rows={3} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Yth. Bapak/Ibu Wali Santri" required /></div>
 
           {jenisSurat==='undangan' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
