@@ -1145,7 +1145,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
     );
   }
 
-   // === HALAMAN BUAT SURAT (SUDAH DIPERBAIKI) ===
+    // === HALAMAN BUAT SURAT (LANGSUNG FILE PDF) ===
   if (activeTab === 'buat_surat') {
     const [jenisSurat, setJenisSurat] = useState('undangan');
     const [formSurat, setFormSurat] = useState({
@@ -1156,7 +1156,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
       setFormSurat({...formSurat, [e.target.name]: e.target.value});
     };
 
-    // Ubah format tanggal jadi: 25 Juli 2026
+    // Format tanggal otomatis: 25 Juli 2026
     const formatTanggal = (tgl) => {
       if (!tgl) return '';
       const bln = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -1164,182 +1164,100 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
       return `${d.getDate()} ${bln[d.getMonth()]} ${d.getFullYear()}`;
     };
 
-    const htmlSurat = `
+    const unduhLangsungPDF = () => {
+      // Isi lengkap surat dengan setting cetak sempurna
+      const isiPenuh = `
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Surat TPQ Al Ikhlas</title>
+<title>Surat TPQ</title>
 <style>
-  @page { size: A4; margin: 0; }
+  @page { size: A4 portrait; margin: 0; }
   html, body { 
-    width: 210mm; 
-    min-height: 297mm; 
-    margin: 0 auto; 
+    width: 210mm; min-height: 297mm; margin: 0 auto; 
     padding: 18mm 20mm 25mm 25mm; 
-    box-sizing: border-box;
     font-family: Arial, sans-serif; 
-    font-size: 13pt; 
-    line-height: 1.6; 
+    font-size: 13pt; line-height: 1.6; 
   }
-  .kop-wrapper { 
-    display: flex; 
-    align-items: center; 
-    border-bottom: 2px solid black; 
-    padding-bottom: 8px; 
-    margin-bottom: 15px; 
-  }
-  .kop-logo { width: 22%; text-align: left; }
+  .kop-wrapper { display: flex; align-items: center; border-bottom: 2px solid black; padding-bottom: 8px; margin-bottom: 15px; }
+  .kop-logo { width: 22%; }
   .kop-logo img { height: 120px; }
   .kop-teks { width: 78%; text-align: center; }
-  .kop-teks h3 { margin: 0; font-size: 13pt; line-height: 1.2; }
-  .kop-teks h2 { margin: 3px 0; font-size: 16pt; font-weight: bold; line-height: 1.2; }
-  .kop-teks p { margin: 2px 0; font-size: 11.5pt; line-height: 1.3; }
-  .data-surat { 
-    width: 100%; 
-    margin-bottom: 18px; 
-    border-collapse: collapse; 
-    font-size: 13pt; 
-  }
+  .kop-teks h3 { margin: 0; font-size: 13pt; }
+  .kop-teks h2 { margin: 3px 0; font-size: 16pt; font-weight: bold; }
+  .kop-teks p { margin: 2px 0; font-size: 11.5pt; }
+  .data-surat { width: 100%; margin-bottom: 18px; border-collapse: collapse; font-size: 13pt; }
   .data-surat td { padding: 2px 0; vertical-align: top; }
-  .isi-surat-wrapper { 
-    margin-left: 14%; 
-    font-size: 13pt; 
-    line-height: 1.7; 
-  }
+  .isi-surat-wrapper { margin-left: 14%; font-size: 13pt; line-height: 1.7; }
   .isi-paragraf { text-align: justify; }
-  .jadwal { 
-    margin: 15px 0; 
-    width: 100%; 
-    border-collapse: collapse; 
-    font-size: 13pt;
-  }
+  .jadwal { margin: 15px 0; width: 100%; border-collapse: collapse; font-size: 13pt; }
   .jadwal td { padding: 3px 0; vertical-align: top; }
   .jadwal .label { width: 150px; }
-  .tanda-tangan { 
-    margin-top: 45px; 
-    width: 100%; 
-    font-size: 13pt; 
-    padding-left: 40%; 
-    position: relative;
-  }
-  .tanda-tangan .jabatan { 
-    margin: 0; 
-    padding: 0;
-    text-align: center;
-  }
-  .tanda-tangan .nama-pejabat { 
-    margin: 0; 
-    padding: 0;
-    font-weight: bold; 
-    text-align: center;
-  }
-  .ttd-gabung { 
-    position: absolute;
-    left: 55%;
-    top: 0;
-    transform: translateX(-50%);
-    height: 180px; 
-    z-index: 2;
-  }
+  .tanda-tangan { margin-top: 45px; width: 100%; padding-left: 40%; position: relative; }
+  .jabatan { text-align: center; margin:0; }
+  .nama-pejabat { text-align: center; font-weight: bold; margin:0; }
+  .ttd-gabung { position: absolute; left: 55%; top:0; transform: translateX(-50%); height: 180px; }
   @media print {
-    @page { margin: 0; }
-    body { margin: 0; }
+    @page { margin: 0; size: A4; }
+    body { margin: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   }
 </style>
 </head>
 <body>
-<div class="kop-wrapper">
-  <div class="kop-logo">
-    <img src="https://raw.githubusercontent.com/tpqalikhlasbakalan/web-tpq/main/logo.png" alt="Logo TPQ Al Ikhlas">
+  <div class="kop-wrapper">
+    <div class="kop-logo"><img src="https://raw.githubusercontent.com/tpqalikhlasbakalan/web-tpq/main/logo.png"></div>
+    <div class="kop-teks">
+      <h3>YAYASAN MABIN AN NAHDLIYAH LANGITAN</h3>
+      <h2>TPQ AL IKHLAS BAKALAN</h2>
+      <p>NIC: B. 1a.05.1158</p>
+      <p>Nomor : AHU-0023193.AH.01.04. Tahun 2016</p>
+      <p>Alamat: Dusun Bakalan RT.003/ RW.001 Kec. Tikung Kabupaten Lamongan</p>
+    </div>
   </div>
-  <div class="kop-teks">
-    <h3>YAYASAN MABIN AN NAHDLIYAH LANGITAN</h3>
-    <h2>TPQ AL IKHLAS BAKALAN</h2>
-    <p>NIC: B. 1a.05.1158</p>
-    <p>Nomor : AHU-0023193.AH.01.04. Tahun 2016</p>
-    <p>Alamat: Dusun Bakalan RT.003/ RW.001 Kec. Tikung Kabupaten Lamongan</p>
+  <table class="data-surat">
+    <tr><td style="width:90px">Nomor</td><td>:</td><td>${formSurat.noSurat}</td><td style="text-align:right;width:220px">Bakalan, ${formatTanggal(formSurat.tanggalSurat)}</td></tr>
+    <tr><td>Lampiran</td><td>:</td><td>-</td></tr>
+    <tr><td>Hal</td><td>:</td><td><b>${jenisSurat==='undangan'?'UNDANGAN':'EDARAN'}</b></td></tr>
+  </table>
+  <div class="isi-surat-wrapper">
+    Kepada Yth.<br><br>${formSurat.kepada}<br><br>Di -<br>Tempat<br><br>
+    Assalâmualaikum Wr. Wb.<br>
+    <div class="isi-paragraf">
+      Salam silaturrahmi kami sampaikan, semoga kita senantiasa dalam lindungan serta kasih sayang Allah SWT. Shalawat beserta salam semoga selalu tercurah limpahkan kepada Nabi Muhammad SAW.<br><br>
+      ${jenisSurat==='undangan'?`Selanjutnya, sehubungan dalam rangka kegiatan yang akan dilaksanakan. Maka kami bermaksud mengundang Bapak/Ibu pada:`:formSurat.isiEdaran}
+    </div>
+    ${jenisSurat==='undangan'?`
+    <table class="jadwal">
+      <tr><td class="label">Hari / Tanggal</td><td>:</td><td>${formSurat.hari}</td></tr>
+      <tr><td>Pukul</td><td>:</td><td>${formSurat.pukul}</td></tr>
+      <tr><td>Tempat</td><td>:</td><td>${formSurat.tempat}</td></tr>
+      <tr><td>Agenda</td><td>:</td><td>${formSurat.agenda}</td></tr>
+    </table>`:''}
+    <div class="isi-paragraf">
+      Demikian ${jenisSurat==='undangan'?'Undangan ini':'Edaran ini'} kami sampaikan. Atas perhatian dan kerjasamanya kami ucapkan terima kasih.<br><br>
+      Wallâhul Muwaffiq Ilâ Aqwamith Tharîq<br>Wassalâmu‘alaikum Wr. Wb.
+    </div>
   </div>
-</div>
-<table class="data-surat">
-  <tr>
-    <td style="width: 90px;">Nomor</td>
-    <td style="width: 10px;">:</td>
-    <td>${formSurat.noSurat}</td>
-    <td style="text-align:right; width: 220px;">Bakalan, ${formatTanggal(formSurat.tanggalSurat)}</td>
-  </tr>
-  <tr>
-    <td>Lampiran</td>
-    <td>:</td>
-    <td>-</td>
-  </tr>
-  <tr>
-    <td>Hal</td>
-    <td>:</td>
-    <td><b>${jenisSurat==='undangan'?'UNDANGAN':'EDARAN'}</b></td>
-  </tr>
-</table>
-<div class="isi-surat-wrapper">
-Kepada Yth.<br><br>
-${formSurat.kepada}<br><br>
-Di -<br>
-Tempat<br><br>
-Assalâmualaikum Wr. Wb.<br>
-<div class="isi-paragraf">
-Salam silaturrahmi kami sampaikan, semoga kita senantiasa dalam lindungan serta kasih sayang Allah SWT. Shalawat beserta salam semoga selalu tercurah limpahkan kepada Nabi Muhammad SAW.<br><br>
-${jenisSurat==='undangan'?`Selanjutnya, sehubungan dalam rangka kegiatan yang akan dilaksanakan. Maka kami bermaksud mengundang Bapak/Ibu pada:`:formSurat.isiEdaran}
-</div>
-${jenisSurat==='undangan'?`
-<table class="jadwal">
-  <tr>
-    <td class="label">Hari / Tanggal</td>
-    <td>:</td>
-    <td>${formSurat.hari}</td>
-  </tr>
-  <tr>
-    <td>Pukul</td>
-    <td>:</td>
-    <td>${formSurat.pukul}</td>
-  </tr>
-  <tr>
-    <td>Tempat</td>
-    <td>:</td>
-    <td>${formSurat.tempat}</td>
-  </tr>
-  <tr>
-    <td>Agenda</td>
-    <td>:</td>
-    <td>${formSurat.agenda}</td>
-  </tr>
-</table>
-`:''}
-<div class="isi-paragraf">
-Demikian ${jenisSurat==='undangan'?'Undangan ini':'Edaran ini'} kami sampaikan. Atas perhatian dan kerjasamanya kami ucapkan terima kasih.<br><br>
-Wallâhul Muwaffiq Ilâ Aqwamith Tharîq<br>
-Wassalâmu‘alaikum Wr. Wb.
-</div>
-</div>
-<div class="tanda-tangan">
-  <p class="jabatan">Kepala TPQ Al Ikhlas Bakalan</p>
-  <img src="https://raw.githubusercontent.com/tpqalikhlasbakalan/web-tpq/main/ttd%20+%20stempel.png" class="ttd-gabung" alt="Stempel dan Tanda Tangan">
-  <br><br><br><br>
-  <p class="nama-pejabat">ABD. ADZIM</p>
-</div>
+  <div class="tanda-tangan">
+    <p class="jabatan">Kepala TPQ Al Ikhlas Bakalan</p>
+    <img src="https://raw.githubusercontent.com/tpqalikhlasbakalan/web-tpq/main/ttd%20+%20stempel.png" class="ttd-gabung">
+    <br><br><br><br>
+    <p class="nama-pejabat">ABD. ADZIM</p>
+  </div>
 </body>
-</html>
-    `;
+</html>`;
 
-    const unduhSurat = () => {
-      const blob = new Blob([htmlSurat], { type: 'text/html;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Surat_${jenisSurat}_${formSurat.noSurat.replace(/\//g,'-')}.html`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      showToast('Surat berhasil diunduh! Buka file lalu Cetak langsung dari browser.');
+      // Buka jendela baru siap cetak
+      const win = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
+      win.document.write(isiPenuh);
+      win.document.close();
+
+      setTimeout(() => {
+        win.focus();
+        win.print();
+        showToast('👉 Pilih Tujuan: "Simpan sebagai PDF" → Klik Simpan. Hasilnya langsung file PDF!');
+      }, 700);
     };
 
     return (
@@ -1370,7 +1288,7 @@ Wassalâmu‘alaikum Wr. Wb.
             <div><label className="block text-xs font-bold mb-1">Isi Edaran</label><textarea name="isiEdaran" value={formSurat.isiEdaran} onChange={handleSuratChange} rows={6} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Dengan ini diberitahukan kepada seluruh wali santri bahwa..." required /></div>
           )}
 
-          <button onClick={unduhSurat} className="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 rounded-xl text-xs shadow">⬇️ Unduh & Cetak Surat</button>
+          <button onClick={unduhLangsungPDF} className="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 rounded-xl text-xs shadow">📄 Cetak & Simpan PDF</button>
         </div>
       </div>
     );
