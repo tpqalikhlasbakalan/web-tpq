@@ -1167,7 +1167,7 @@ if (activeTab === 'buat_surat') {
   };
 
   const unduhLangsungPDF = () => {
-    const isiPenuh = `
+  const isiPenuh = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -1177,89 +1177,51 @@ if (activeTab === 'buat_surat') {
   @page { 
     size: A4 portrait; 
     margin: 1cm 2cm 2cm 3cm;
+    @top-left { content: "" !important; }
+    @top-center { content: "" !important; }
+    @top-right { content: "" !important; }
+    @bottom-left { content: "" !important; }
+    @bottom-center { content: "" !important; }
+    @bottom-right { content: "" !important; }
   }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { 
-    width: 210mm; 
-    min-height: 297mm; 
-    font-family: Arial, sans-serif; 
-    font-size: 13pt; 
-    line-height: 1.65; 
-    color: black;
-    background: white;
-  }
-  .kop-wrapper { 
-    display: flex; 
-    align-items: center; 
-    border-bottom: 2px solid black; 
-    padding-bottom: 8px; 
-    margin-bottom: 18px; 
-  }
-  .kop-logo { width: 20%; }
-  .kop-logo img { height: 130px; width: auto; }
-  .kop-teks { width: 80%; text-align: center; }
-  .kop-teks h3 { margin: 0; font-size: 13pt; line-height: 1.2; }
-  .kop-teks h2 { margin: 3px 0; font-size: 17pt; font-weight: bold; line-height: 1.2; }
-  .kop-teks p { margin: 2px 0; font-size: 11.5pt; line-height: 1.3; }
-  .data-surat { 
-    width: 100%; 
-    margin-bottom: 20px; 
-    border-collapse: collapse; 
-    font-size: 13pt; 
-  }
-  .data-surat td { padding: 2px 0; vertical-align: top; }
-  .isi-surat-wrapper { 
-    margin-left: 12%; 
-    font-size: 13pt; 
-    line-height: 1.7; 
-  }
-  .isi-paragraf { text-align: justify; }
-  .jadwal { 
-    margin: 18px 0; 
-    width: 100%; 
-    border-collapse: collapse; 
-    font-size: 13pt;
-  }
-  .jadwal td { padding: 3px 0; vertical-align: top; }
-  .jadwal .label { width: 150px; }
-  .tanda-tangan { 
-    margin-top: 50px; 
-    width: 100%; 
-    padding-left: 42%; 
-    position: relative;
-  }
-  .jabatan { text-align: center; margin:0; font-size: 13pt; }
-  .nama-pejabat { text-align: center; font-weight: bold; margin:0; font-size: 13pt; }
-  .ttd-gabung { 
-    position: absolute;
-    left: 55%;
-    top:0;
-    transform: translateX(-50%);
-    height: 190px; 
-    width: auto;
-  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:210mm; min-height:297mm; font-family:Arial,sans-serif; font-size:13pt; line-height:1.65; background:#fff; color:#000; }
+  .kop-wrapper { display:flex; align-items:center; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:18px; }
+  .kop-logo { width:20%; }
+  .kop-logo img { height:130px; }
+  .kop-teks { width:80%; text-align:center; }
+  .kop-teks h3 { margin:0; font-size:13pt; }
+  .kop-teks h2 { margin:3px 0; font-size:17pt; font-weight:bold; }
+  .kop-teks p { margin:2px 0; font-size:11.5pt; }
+  .data-surat { width:100%; margin-bottom:20px; border-collapse:collapse; font-size:13pt; }
+  .data-surat td { padding:2px 0; vertical-align:top; }
+  .isi-surat-wrapper { margin-left:12%; font-size:13pt; line-height:1.7; }
+  .isi-paragraf { text-align:justify; }
+  .jadwal { margin:18px 0; width:100%; border-collapse:collapse; font-size:13pt; }
+  .jadwal td { padding:3px 0; vertical-align:top; }
+  .jadwal .label { width:150px; }
+  .tanda-tangan { margin-top:50px; width:100%; padding-left:42%; position:relative; }
+  .jabatan { text-align:center; margin:0; }
+  .nama-pejabat { text-align:center; font-weight:bold; margin:0; }
+  .ttd-gabung { position:absolute; left:55%; top:0; transform:translateX(-50%); height:190px; }
   @media print {
     @page { 
-      margin: 1cm 2cm 2cm 3cm !important; 
-      size: A4 portrait !important; 
-      @top-left { content: none !important; }
-      @top-center { content: none !important; }
-      @top-right { content: none !important; }
-      @bottom-left { content: none !important; }
-      @bottom-center { content: none !important; }
-      @bottom-right { content: none !important; }
+      margin:1cm 2cm 2cm 3cm !important; 
+      size:A4 portrait !important;
+      @top-left { content:none !important; }
+      @top-center { content:none !important; }
+      @top-right { content:none !important; }
+      @bottom-left { content:none !important; }
+      @bottom-center { content:none !important; }
+      @bottom-right { content:none !important; }
     }
-    body { 
-      print-color-adjust: exact !important; 
-      -webkit-print-color-adjust: exact !important; 
-      background: white !important;
-    }
+    body { print-color-adjust:exact !important; -webkit-print-color-adjust:exact !important; background:#fff !important; }
   }
 </style>
 </head>
 <body>
   <div class="kop-wrapper">
-    <div class="kop-logo"><img src="https://raw.githubusercontent.com/tpqalikhlasbakalan/web-tpq/main/logo.png" alt="Logo TPQ"></div>
+    <div class="kop-logo"><img src="https://raw.githubusercontent.com/tpqalikhlasbakalan/web-tpq/main/logo.png"></div>
     <div class="kop-teks">
       <h3>YAYASAN MABIN AN NAHDLIYAH LANGITAN</h3>
       <h2>TPQ AL IKHLAS BAKALAN</h2>
@@ -1270,9 +1232,7 @@ if (activeTab === 'buat_surat') {
   </div>
   <table class="data-surat">
     <tr>
-      <td style="width:90px">Nomor</td>
-      <td style="width:10px">:</td>
-      <td>${formSurat.noSurat}</td>
+      <td style="width:90px">Nomor</td><td>:</td><td>${formSurat.noSurat}</td>
       <td style="text-align:right;width:230px">Bakalan, ${formatTanggal(formSurat.tanggalSurat)}</td>
     </tr>
     <tr><td>Lampiran</td><td>:</td><td>-</td></tr>
@@ -1301,23 +1261,23 @@ if (activeTab === 'buat_surat') {
   </div>
   <div class="tanda-tangan">
     <p class="jabatan">Kepala TPQ Al Ikhlas Bakalan</p>
-    <img src="https://raw.githubusercontent.com/tpqalikhlasbakalan/web-tpq/main/ttd%20+%20stempel.png" class="ttd-gabung" alt="Stempel & Tanda Tangan">
+    <img src="https://raw.githubusercontent.com/tpqalikhlasbakalan/web-tpq/main/ttd%20+%20stempel.png" class="ttd-gabung">
     <br><br><br><br>
     <p class="nama-pejabat">ABD. ADZIM</p>
   </div>
 </body>
 </html>`;
 
-    const win = window.open('', '_blank', 'width=950,height=800,scrollbars=yes');
-    win.document.write(isiPenuh);
-    win.document.close();
+  const win = window.open('', '_blank', 'width=950,height=800,scrollbars=yes');
+  win.document.write(isiPenuh);
+  win.document.close();
 
-    setTimeout(() => {
-      win.focus();
-      win.print();
-      showToast('✅ Siap dicetak tanpa watermark & rapi');
-    }, 700);
-  };
+  setTimeout(() => {
+    win.focus();
+    win.print();
+    showToast('✅ Jangan lupa: Ubah Header/Footer jadi TIDAK ADA di pengaturan cetak');
+  }, 700);
+};
 
   return (
     <div className="animate-fade-in space-y-6">
