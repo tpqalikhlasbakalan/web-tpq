@@ -1165,7 +1165,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
       return `${d.getDate()} ${bln[d.getMonth()]} ${d.getFullYear()}`;
     };
 
-    const unduhLangsungPDF = () => {
+        const unduhLangsungPDF = () => {
       const isiPenuh = `
 <!DOCTYPE html>
 <html>
@@ -1185,7 +1185,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
     font-size: 13pt; 
     line-height: 1.65; 
     color: black;
-    background: white;
+    background: white !important;
   }
   .kop-wrapper { 
     display: flex; 
@@ -1237,22 +1237,30 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
     height: 190px; 
     width: auto;
   }
+
+  /* === PENGATURAN PENGHAPUS WATERMARK & HEADER FOOTER === */
   @media print {
     @page { 
       margin: 1cm 2cm 2cm 3cm !important; 
       size: A4 portrait !important; 
+      
+      /* Hapus semua bagian atas dan bawah */
+      @top-left { content: none !important; }
+      @top-center { content: none !important; }
+      @top-right { content: none !important; }
+      @bottom-left { content: none !important; }
+      @bottom-center { content: none !important; }
+      @bottom-right { content: none !important; }
     }
+
     body { 
-      print-color-adjust: exact; 
-      -webkit-print-color-adjust: exact; 
+      print-color-adjust: exact !important; 
+      -webkit-print-color-adjust: exact !important; 
+      background: white !important;
     }
-    /* HAPUS HEADER & FOOTER BROWSER SECARA PAKSA */
-    @page { 
-      @top-left { content: none; }
-      @top-right { content: none; }
-      @bottom-left { content: none; }
-      @bottom-right { content: none; }
-    }
+
+    /* Hapus elemen tambahan browser */
+    header, footer, .url, .date, .time, .watermark { display: none !important; }
   }
 </style>
 </head>
@@ -1307,50 +1315,16 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
 </body>
 </html>`;
 
-      const win = window.open('', '_blank', 'width=950,height=800,scrollbars=yes,location=no,menubar=no,toolbar=no');
+      const win = window.open('', '_blank', 'width=950,height=800,scrollbars=yes,location=no,menubar=no,toolbar=no,status=no');
       win.document.write(isiPenuh);
       win.document.close();
 
       setTimeout(() => {
         win.focus();
         win.print();
-        showToast('✅ Siap dicetak: tanpa header/footer & jarak sudah rapi');
+        showToast('✅ Siap dicetak: tanpa watermark, tanggal, jam & alamat situs');
       }, 700);
     };
-
-    return (
-      <div className="animate-fade-in space-y-6">
-        <BackButton onClick={() => setActiveTab('dashboard')} />
-        <div className="bg-white p-6 rounded-2xl shadow-sm border">
-          <h2 className="text-lg font-bold mb-6 flex items-center text-sky-800"><ClipboardList className="mr-2"/> Buat Surat Resmi TPQ</h2>
-
-          <div className="flex gap-3 mb-6">
-            <button onClick={() => setJenisSurat('undangan')} className={`px-5 py-2.5 rounded-xl text-xs font-bold ${jenisSurat==='undangan'?'bg-sky-600 text-white shadow':'bg-gray-100 text-gray-700'}`}>📄 Undangan</button>
-            <button onClick={() => setJenisSurat('edaran')} className={`px-5 py-2.5 rounded-xl text-xs font-bold ${jenisSurat==='edaran'?'bg-sky-600 text-white shadow':'bg-gray-100 text-gray-700'}`}>📃 Edaran / Pemberitahuan</button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div><label className="block text-xs font-bold mb-1">Nomor Surat</label><input name="noSurat" value={formSurat.noSurat} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="001/TPQ-VII/2026" required /></div>
-            <div><label className="block text-xs font-bold mb-1">Tanggal Surat</label><input type="date" name="tanggalSurat" value={formSurat.tanggalSurat} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" required /></div>
-          </div>
-          <div><label className="block text-xs font-bold mb-1">Kepada Yth.</label><textarea name="kepada" value={formSurat.kepada} onChange={handleSuratChange} rows={3} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Yth. Bapak/Ibu Wali Santri" required /></div>
-
-          {jenisSurat==='undangan' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><label className="block text-xs font-bold mb-1">Hari & Tanggal Acara</label><input name="hari" value={formSurat.hari} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Sabtu, 26 Juli 2026" required /></div>
-              <div><label className="block text-xs font-bold mb-1">Pukul</label><input name="pukul" value={formSurat.pukul} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="08.00 WIB s.d Selesai" required /></div>
-              <div><label className="block text-xs font-bold mb-1">Tempat</label><input name="tempat" value={formSurat.tempat} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Aula TPQ Al Ikhlas" required /></div>
-              <div><label className="block text-xs font-bold mb-1">Agenda / Kegiatan</label><input name="agenda" value={formSurat.agenda} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Rapat Pertemuan Wali Santri" required /></div>
-            </div>
-          ) : (
-            <div><label className="block text-xs font-bold mb-1">Isi Edaran</label><textarea name="isiEdaran" value={formSurat.isiEdaran} onChange={handleSuratChange} rows={6} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Dengan ini diberitahukan kepada seluruh wali santri bahwa..." required /></div>
-          )}
-
-          <button onClick={unduhLangsungPDF} className="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 rounded-xl text-xs shadow">📄 Cetak & Simpan PDF</button>
-        </div>
-      </div>
-    );
-  }
   return null;
 }function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, settings, appsScriptUrl, setAppsScriptUrl, loadDatabase }) {
   const [showPasswordMap, setShowPasswordMap] = useState({});
