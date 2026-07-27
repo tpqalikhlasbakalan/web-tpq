@@ -1146,6 +1146,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
   }
 
     // === HALAMAN BUAT SURAT (SUDAH DIPERBAIKI SEMUA) ===
+    // === HALAMAN BUAT SURAT (SUDAH DIPERBAIKI SEMUA) ===
   if (activeTab === 'buat_surat') {
     const [jenisSurat, setJenisSurat] = useState('undangan');
     const [formSurat, setFormSurat] = useState({
