@@ -461,8 +461,16 @@ export default function App() {
         {currentUser.role === 'kepala_tpq' && (
           <KepalaView activeTab={activeTab} setActiveTab={setActiveTab} user={currentUser} users={users} setUsers={setUsers} progress={progress} targets={targets} savings={savings} settings={settings} updateTable={updateTable} showToast={showToast} simulatedWeekend={simulatedWeekend} setSimulatedWeekend={setSimulatedWeekend} appsScriptUrl={appsScriptUrl} setAppsScriptUrl={setAppsScriptUrl} isSyncing={isSyncing} loadDatabase={loadDatabase} />
         )}
-        {currentUser.role === 'bendahara' && (
-          <BendaharaView activeTab={activeTab} setActiveTab={setActiveTab} users={users} savings={savings} settings={settings} updateTable={updateTable} showToast={showToast} />
+                {currentUser.role === 'bendahara' && (
+          <BendaharaView 
+            activeTab={activeTab} 
+            setActiveTab={setActiveTab} 
+            users={users || []} 
+            savings={savings || []} 
+            settings={settings || INITIAL_DATA.settings} 
+            updateTable={updateTable} 
+            showToast={showToast} 
+          />
         )}
         {currentUser.role === 'admin' && (
           <AdminView activeTab={activeTab} setActiveTab={setActiveTab} users={users} updateTable={updateTable} showToast={showToast} settings={settings} appsScriptUrl={appsScriptUrl} setAppsScriptUrl={setAppsScriptUrl} loadDatabase={loadDatabase} />
@@ -1313,6 +1321,85 @@ if (activeTab === 'buat_surat') {
   );
 }
   return null;
+function BendaharaView({ activeTab, setActiveTab, users = [], savings = [], settings = INITIAL_DATA.settings, updateTable, showToast }) {
+  // Ambil data santri dengan aman
+  const santriList = Array.isArray(users) ? users.filter(u => u && u.role === 'santri') : [];
+  const semuaTabungan = Array.isArray(savings) ? savings : [];
+
+  const menus = [
+    { 
+      id: 'input_tabungan', 
+      label: 'Input Tabungan Santri', 
+      icon: DollarSign, 
+      color: 'bg-amber-100 text-amber-700', 
+      desc: 'Catat setoran & penarikan tabungan santri.' 
+    },
+    { 
+      id: 'kelola_syahriah', 
+      label: 'Kelola Syahriah', 
+      icon: CreditCard, 
+      color: 'bg-yellow-100 text-yellow-700', 
+      desc: 'Pantau pembayaran & tagihan iuran bulanan.' 
+    }
+  ];
+
+  // Menu Utama Bendahara
+  if (activeTab === 'dashboard') return (
+    <div className="animate-fade-in space-y-6">
+      <h2 className="text-xl font-black text-gray-800">Panel Bendahara TPQ</h2>
+      <MenuGrid menus={menus} onSelect={setActiveTab} />
+    </div>
+  );
+
+  // Halaman Input Tabungan
+  if (activeTab === 'input_tabungan') {
+    return (
+      <div className="animate-fade-in">
+        <BackButton onClick={() => setActiveTab('dashboard')} />
+        <SavingsInputView 
+          users={users} 
+          savings={savings} 
+          updateTable={updateTable} 
+          showToast={showToast} 
+          recorderId={currentUser?.id || ''} 
+        />
+      </div>
+    );
+  }
+
+  // Halaman Kelola Syahriah
+  if (activeTab === 'kelola_syahriah') {
+    return (
+      <div className="animate-fade-in">
+        <BackButton onClick={() => setActiveTab('dashboard')} />
+        <div className="bg-white p-6 rounded-2xl shadow-sm border">
+          <h2 className="text-lg font-bold mb-6 flex items-center text-yellow-800">
+            <CreditCard className="mr-2"/> Daftar Syahriah & Tagihan
+          </h2>
+          {santriList.length === 0 ? (
+            <p className="text-xs text-gray-400 italic">Belum ada data santri yang terdaftar.</p>
+          ) : (
+            <div className="space-y-2">
+              {santriList.map(s => (
+                <div key={s.id} className="p-3.5 bg-gray-50 rounded-xl border flex justify-between items-center text-xs">
+                  <div>
+                    <p className="font-bold">{s.name}</p>
+                    <p className="text-gray-500">Jilid: {s.jilid || 'Jilid 1'}</p>
+                  </div>
+                  <span className={`px-2 py-1 rounded text-[10px] font-bold ${s.hasAlarm ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                    {s.hasAlarm ? '🔴 BELUM LUNAS' : '✅ LUNAS'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
 }function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, settings, appsScriptUrl, setAppsScriptUrl, loadDatabase }) {
   const [showPasswordMap, setShowPasswordMap] = useState({});
   const [resettingUser, setResettingUser] = useState(null);
