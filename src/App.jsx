@@ -462,16 +462,17 @@ export default function App() {
           <KepalaView activeTab={activeTab} setActiveTab={setActiveTab} user={currentUser} users={users} setUsers={setUsers} progress={progress} targets={targets} savings={savings} settings={settings} updateTable={updateTable} showToast={showToast} simulatedWeekend={simulatedWeekend} setSimulatedWeekend={setSimulatedWeekend} appsScriptUrl={appsScriptUrl} setAppsScriptUrl={setAppsScriptUrl} isSyncing={isSyncing} loadDatabase={loadDatabase} />
         )}
                 {currentUser.role === 'bendahara' && (
-          <BendaharaView 
-            activeTab={activeTab} 
-            setActiveTab={setActiveTab} 
-            users={users || []} 
-            savings={savings || []} 
-            settings={settings || INITIAL_DATA.settings} 
-            updateTable={updateTable} 
-            showToast={showToast} 
-          />
-        )}
+  <BendaharaView 
+    activeTab={activeTab} 
+    setActiveTab={setActiveTab} 
+    users={users || []} 
+    savings={savings || []} 
+    settings={settings || INITIAL_DATA.settings} 
+    updateTable={updateTable} 
+    showToast={showToast}
+    currentUser={currentUser} // ✅ DITAMBAHKAN
+  />
+)}
         {currentUser.role === 'admin' && (
           <AdminView activeTab={activeTab} setActiveTab={setActiveTab} users={users} updateTable={updateTable} showToast={showToast} settings={settings} appsScriptUrl={appsScriptUrl} setAppsScriptUrl={setAppsScriptUrl} loadDatabase={loadDatabase} />
         )}
@@ -1321,7 +1322,7 @@ if (activeTab === 'buat_surat') {
   );
 }
   return null;
-function BendaharaView({ activeTab, setActiveTab, users = [], savings = [], settings = INITIAL_DATA.settings, updateTable, showToast }) {
+function BendaharaView({ activeTab, setActiveTab, users = [], savings = [], settings = INITIAL_DATA.settings, updateTable, showToast, currentUser }) {
   // Ambil data santri dengan aman
   const santriList = Array.isArray(users) ? users.filter(u => u && u.role === 'santri') : [];
   const semuaTabungan = Array.isArray(savings) ? savings : [];
