@@ -1322,8 +1322,124 @@ if (activeTab === 'buat_surat') {
   );
 }
   return null;
+// ==================================================
+// FUNGSI PENAMPUNG INPUT TABUNGAN (DITAMBAHKAN)
+// ==================================================
+function SavingsInputView({ users, savings, updateTable, showToast, recorderId }) {
+  const [form, setForm] = useState({ 
+    santriId: '', 
+    date: new Date().toISOString().slice(0,10), 
+    amount: '', 
+    type: 'setor', 
+    description: '' 
+  });
+  const santriList = users.filter(u => u.role === 'santri');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.santriId || !form.amount) {
+      showToast('Lengkapi data santri dan nominal!', 'error');
+      return;
+    }
+    const newSavings = {
+      id: Date.now().toString(),
+      santriId: form.santriId,
+      date: form.date,
+      amount: parseInt(form.amount),
+      type: form.type,
+      description: form.description,
+      inputBy: recorderId
+    };
+    await updateTable('savings', [newSavings, ...savings]);
+    showToast('Data tabungan berhasil disimpan!');
+    setForm({ 
+      santriId: '', 
+      date: new Date().toISOString().slice(0,10), 
+      amount: '', 
+      type: 'setor', 
+      description: '' 
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border">
+        <h3 className="text-lg font-bold mb-4 flex items-center text-amber-800">
+          <DollarSign className="mr-2"/> Input Mutasi Tabungan Santri
+        </h3>
+        <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+          <div>
+            <label className="block text-xs font-bold mb-1 text-gray-700">Pilih Santri</label>
+            <select
+              value={form.santriId}
+              onChange={(e) => setForm({...form, santriId: e.target.value})}
+              className="w-full p-2.5 border rounded-xl text-xs font-semibold"
+              required
+            >
+              <option value="">-- Pilih Nama Santri --</option>
+              {santriList.map(s => (
+                <option key={s.id} value={s.id}>{s.name} ({s.jilid})</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold mb-1 text-gray-700">Tanggal</label>
+              <input
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm({...form, date: e.target.value})}
+                className="w-full p-2.5 border rounded-xl text-xs"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold mb-1 text-gray-700">Jenis</label>
+              <select
+                value={form.type}
+                onChange={(e) => setForm({...form, type: e.target.value})}
+                className="w-full p-2.5 border rounded-xl text-xs font-bold"
+              >
+                <option value="setor">Setoran</option>
+                <option value="tarik">Penarikan</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold mb-1 text-gray-700">Nominal (Rp)</label>
+            <input
+              type="number"
+              value={form.amount}
+              onChange={(e) => setForm({...form, amount: e.target.value})}
+              className="w-full p-2.5 border rounded-xl text-xs"
+              min="1000"
+              placeholder="Contoh: 10000"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold mb-1 text-gray-700">Keterangan</label>
+            <input
+              type="text"
+              value={form.description}
+              onChange={(e) => setForm({...form, description: e.target.value})}
+              className="w-full p-2.5 border rounded-xl text-xs"
+              placeholder="Opsional"
+            />
+          </div>
+          <button type="submit" className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl text-xs shadow">
+            Simpan Data
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ==================================================
+// FUNGSI BENDARAVIEW (SUDAH DIPERBAIKI & TERHUBUNG)
+// ==================================================
 function BendaharaView({ activeTab, setActiveTab, users = [], savings = [], settings = INITIAL_DATA.settings, updateTable, showToast, currentUser }) {
-  // Ambil data santri dengan aman
   const santriList = Array.isArray(users) ? users.filter(u => u && u.role === 'santri') : [];
   const semuaTabungan = Array.isArray(savings) ? savings : [];
 
@@ -1344,7 +1460,6 @@ function BendaharaView({ activeTab, setActiveTab, users = [], savings = [], sett
     }
   ];
 
-  // Menu Utama Bendahara
   if (activeTab === 'dashboard') return (
     <div className="animate-fade-in space-y-6">
       <h2 className="text-xl font-black text-gray-800">Panel Bendahara TPQ</h2>
@@ -1352,7 +1467,6 @@ function BendaharaView({ activeTab, setActiveTab, users = [], savings = [], sett
     </div>
   );
 
-  // Halaman Input Tabungan
   if (activeTab === 'input_tabungan') {
     return (
       <div className="animate-fade-in">
@@ -1368,7 +1482,6 @@ function BendaharaView({ activeTab, setActiveTab, users = [], savings = [], sett
     );
   }
 
-  // Halaman Kelola Syahriah
   if (activeTab === 'kelola_syahriah') {
     return (
       <div className="animate-fade-in">
