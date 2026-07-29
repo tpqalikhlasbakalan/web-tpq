@@ -470,7 +470,7 @@ export default function App() {
     settings={settings || INITIAL_DATA.settings} 
     updateTable={updateTable} 
     showToast={showToast}
-    currentUser={currentUser} // ✅ DITAMBAHKAN
+    currentUser={currentUser} // ✅ Sudah lengkap
   />
 )}
         {currentUser.role === 'admin' && (
@@ -1440,6 +1440,7 @@ function SavingsInputView({ users, savings, updateTable, showToast, recorderId }
 // FUNGSI BENDARAVIEW (SUDAH DIPERBAIKI & TERHUBUNG)
 // ==================================================
 function BendaharaView({ activeTab, setActiveTab, users = [], savings = [], settings = INITIAL_DATA.settings, updateTable, showToast, currentUser }) {
+  // Pastikan data pasti berupa array
   const santriList = Array.isArray(users) ? users.filter(u => u && u.role === 'santri') : [];
   const semuaTabungan = Array.isArray(savings) ? savings : [];
 
@@ -1460,6 +1461,7 @@ function BendaharaView({ activeTab, setActiveTab, users = [], savings = [], sett
     }
   ];
 
+  // Tampilkan Menu Utama
   if (activeTab === 'dashboard') return (
     <div className="animate-fade-in space-y-6">
       <h2 className="text-xl font-black text-gray-800">Panel Bendahara TPQ</h2>
@@ -1467,6 +1469,7 @@ function BendaharaView({ activeTab, setActiveTab, users = [], savings = [], sett
     </div>
   );
 
+  // Halaman Input Tabungan
   if (activeTab === 'input_tabungan') {
     return (
       <div className="animate-fade-in">
@@ -1482,6 +1485,7 @@ function BendaharaView({ activeTab, setActiveTab, users = [], savings = [], sett
     );
   }
 
+  // Halaman Kelola Syahriah
   if (activeTab === 'kelola_syahriah') {
     return (
       <div className="animate-fade-in">
@@ -1512,6 +1516,7 @@ function BendaharaView({ activeTab, setActiveTab, users = [], savings = [], sett
     );
   }
 
+  // Jika tab tidak dikenali, kembali ke dashboard
   return null;
 }
 function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, settings, appsScriptUrl, setAppsScriptUrl, loadDatabase }) {
