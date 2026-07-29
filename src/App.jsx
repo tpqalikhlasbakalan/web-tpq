@@ -984,7 +984,7 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
   return null;
 }
 
-function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend, appsScriptUrl, setAppsScriptUrl, isSyncing, loadDatabase }) {
+}function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend, appsScriptUrl, setAppsScriptUrl, isSyncing, loadDatabase }) {
   const handleAccKenaikan = async (progressId, santriId) => {
     const santri = users.find(u => String(u.id) === String(santriId));
     if (!santri) return;
