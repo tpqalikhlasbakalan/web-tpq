@@ -249,6 +249,120 @@ const MenuGrid = ({ menus, onSelect }) => (
   </div>
 );
 
+// ==================================================
+// FUNGSI PENAMPUNG INPUT TABUNGAN
+// ==================================================
+function SavingsInputView({ users, savings, updateTable, showToast, recorderId }) {
+  const [form, setForm] = useState({ 
+    santriId: '', 
+    date: new Date().toISOString().slice(0,10), 
+    amount: '', 
+    type: 'setor', 
+    description: '' 
+  });
+  const santriList = users.filter(u => u.role === 'santri');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.santriId || !form.amount) {
+      showToast('Lengkapi data santri dan nominal!', 'error');
+      return;
+    }
+    const newSavings = {
+      id: Date.now().toString(),
+      santriId: form.santriId,
+      date: form.date,
+      amount: parseInt(form.amount),
+      type: form.type,
+      description: form.description,
+      inputBy: recorderId
+    };
+    await updateTable('savings', [newSavings, ...savings]);
+    showToast('Data tabungan berhasil disimpan!');
+    setForm({ 
+      santriId: '', 
+      date: new Date().toISOString().slice(0,10), 
+      amount: '', 
+      type: 'setor', 
+      description: '' 
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border">
+        <h3 className="text-lg font-bold mb-4 flex items-center text-amber-800">
+          <DollarSign className="mr-2"/> Input Mutasi Tabungan Santri
+        </h3>
+        <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+          <div>
+            <label className="block text-xs font-bold mb-1 text-gray-700">Pilih Santri</label>
+            <select
+              value={form.santriId}
+              onChange={(e) => setForm({...form, santriId: e.target.value})}
+              className="w-full p-2.5 border rounded-xl text-xs font-semibold"
+              required
+            >
+              <option value="">-- Pilih Nama Santri --</option>
+              {santriList.map(s => (
+                <option key={s.id} value={s.id}>{s.name} ({s.jilid})</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold mb-1 text-gray-700">Tanggal</label>
+              <input
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm({...form, date: e.target.value})}
+                className="w-full p-2.5 border rounded-xl text-xs"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold mb-1 text-gray-700">Jenis</label>
+              <select
+                value={form.type}
+                onChange={(e) => setForm({...form, type: e.target.value})}
+                className="w-full p-2.5 border rounded-xl text-xs font-bold"
+              >
+                <option value="setor">Setoran</option>
+                <option value="tarik">Penarikan</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold mb-1 text-gray-700">Nominal (Rp)</label>
+            <input
+              type="number"
+              value={form.amount}
+              onChange={(e) => setForm({...form, amount: e.target.value})}
+              className="w-full p-2.5 border rounded-xl text-xs"
+              min="1000"
+              placeholder="Contoh: 10000"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold mb-1 text-gray-700">Keterangan</label>
+            <input
+              type="text"
+              value={form.description}
+              onChange={(e) => setForm({...form, description: e.target.value})}
+              className="w-full p-2.5 border rounded-xl text-xs"
+              placeholder="Opsional"
+            />
+          </div>
+          <button type="submit" className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl text-xs shadow">
+            Simpan Data
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [toast, setToast] = useState({ message: '', type: '' });
@@ -461,18 +575,18 @@ export default function App() {
         {currentUser.role === 'kepala_tpq' && (
           <KepalaView activeTab={activeTab} setActiveTab={setActiveTab} user={currentUser} users={users} setUsers={setUsers} progress={progress} targets={targets} savings={savings} settings={settings} updateTable={updateTable} showToast={showToast} simulatedWeekend={simulatedWeekend} setSimulatedWeekend={setSimulatedWeekend} appsScriptUrl={appsScriptUrl} setAppsScriptUrl={setAppsScriptUrl} isSyncing={isSyncing} loadDatabase={loadDatabase} />
         )}
-                {currentUser.role === 'bendahara' && (
-  <BendaharaView 
-    activeTab={activeTab} 
-    setActiveTab={setActiveTab} 
-    users={users || []} 
-    savings={savings || []} 
-    settings={settings || INITIAL_DATA.settings} 
-    updateTable={updateTable} 
-    showToast={showToast}
-    currentUser={currentUser} // ✅ Sudah lengkap
-  />
-)}
+        {currentUser.role === 'bendahara' && (
+          <BendaharaView 
+            activeTab={activeTab} 
+            setActiveTab={setActiveTab} 
+            users={users || []} 
+            savings={savings || []} 
+            settings={settings || INITIAL_DATA.settings} 
+            updateTable={updateTable} 
+            showToast={showToast}
+            currentUser={currentUser}
+          />
+        )}
         {currentUser.role === 'admin' && (
           <AdminView activeTab={activeTab} setActiveTab={setActiveTab} users={users} updateTable={updateTable} showToast={showToast} settings={settings} appsScriptUrl={appsScriptUrl} setAppsScriptUrl={setAppsScriptUrl} loadDatabase={loadDatabase} />
         )}
@@ -482,10 +596,8 @@ export default function App() {
 }
 
 function SantriView({ activeTab, setActiveTab, user, users, progress, targets, savings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
-  // ✅ SEMUA riwayat tampil (termasuk yang belum disetujui)
-const semuaProgresSaya = progress.filter(p => String(p.santriId) === String(user.id));
-// ✅ Khusus yang menunggu persetujuan (untuk kunci input & notif)
-const progresMenungguAcc = progress.filter(p => String(p.santriId) === String(user.id) && p.status === 'belum_disetujui');
+  const semuaProgresSaya = progress.filter(p => String(p.santriId) === String(user.id));
+  const progresMenungguAcc = progress.filter(p => String(p.santriId) === String(user.id) && p.status === 'belum_disetujui');
   const myTargets = targets.filter(t => t.level === user.jilid);
   const mySavings = savings.filter(s => String(s.santriId) === String(user.id));
   const totalDeposit = mySavings.filter(s => s.type === 'setor').reduce((acc, curr) => acc + curr.amount, 0);
@@ -494,21 +606,19 @@ const progresMenungguAcc = progress.filter(p => String(p.santriId) === String(us
   const activeWeekendNotification = isAccNeeded(user.lastAccDate, simulatedWeekend);
 
   const menus = [
-  // ✅ Menu baru: Persetujuan Wali (posisi paling atas)
-  { 
-    id: 'persetujuan_wali', 
-    label: progresMenungguAcc.length > 0 
-      ? `🔴 Persetujuan Wali (${progresMenungguAcc.length})` 
-      : '✍️ Persetujuan Wali Santri', 
-    icon: CheckSquare, 
-    color: progresMenungguAcc.length > 0 ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-blue-50 text-blue-600', 
-    desc: 'Setujui setoran guru agar proses mengaji bisa dilanjutkan.' 
-  },
-  // Menu lama tetap ada, hanya ubah keterangannya
-  { id: 'progres_mengaji', label: 'Progres Mengaji Saya', icon: BookOpen, color: 'bg-emerald-100 text-emerald-600', desc: 'Riwayat semua catatan setoran Anda (belum & sudah disetujui).' },
-  { id: 'riwayat_pembayaran', label: 'Riwayat Pembayaran', icon: CreditCard, color: 'bg-indigo-100 text-indigo-600', desc: 'Lihat status tagihan dan riwayat pembayaran iuran bulanan Anda.' },
-  { id: 'riwayat_tabungan', label: 'Riwayat Tabungan', icon: DollarSign, color: 'bg-amber-100 text-amber-600', desc: 'Lihat riwayat setoran, penarikan, dan saldo tabungan Anda.' }
-];
+    { 
+      id: 'persetujuan_wali', 
+      label: progresMenungguAcc.length > 0 
+        ? `🔴 Persetujuan Wali (${progresMenungguAcc.length})` 
+        : '✍️ Persetujuan Wali Santri', 
+      icon: CheckSquare, 
+      color: progresMenungguAcc.length > 0 ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-blue-50 text-blue-600', 
+      desc: 'Setujui setoran guru agar proses mengaji bisa dilanjutkan.' 
+    },
+    { id: 'progres_mengaji', label: 'Progres Mengaji Saya', icon: BookOpen, color: 'bg-emerald-100 text-emerald-600', desc: 'Riwayat semua catatan setoran Anda (belum & sudah disetujui).' },
+    { id: 'riwayat_pembayaran', label: 'Riwayat Pembayaran', icon: CreditCard, color: 'bg-indigo-100 text-indigo-600', desc: 'Lihat status tagihan dan riwayat pembayaran iuran bulanan Anda.' },
+    { id: 'riwayat_tabungan', label: 'Riwayat Tabungan', icon: DollarSign, color: 'bg-amber-100 text-amber-600', desc: 'Lihat riwayat setoran, penarikan, dan saldo tabungan Anda.' }
+  ];
 
   if (activeTab === 'dashboard') return (
     <div className="space-y-6 animate-fade-in">
@@ -522,7 +632,6 @@ const progresMenungguAcc = progress.filter(p => String(p.santriId) === String(us
         </div>
       </div>
 
-      {/* 🔴 NOTIF ALARM TAGIHAN - PINDAH & DITAMBAHKAN DI DASHBOARD (SESUAI PERMINTAAN) */}
       {user.hasAlarm && (
         <div className="bg-red-50 border border-red-200 p-5 rounded-2xl flex items-start space-x-3.5 shadow-sm animate-pulse">
           <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
@@ -543,7 +652,6 @@ const progresMenungguAcc = progress.filter(p => String(p.santriId) === String(us
         </div>
       )}
 
-      {/* 🟡 NOTIF VERIFIKASI MINGGUAN (TETAP ADA) */}
       {activeWeekendNotification && (
         <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl flex items-start space-x-3.5 shadow-sm">
           <Bell className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -557,7 +665,6 @@ const progresMenungguAcc = progress.filter(p => String(p.santriId) === String(us
 
       <MenuGrid menus={menus} onSelect={setActiveTab} />
 
-      {/* Target Kompetensi (tetap sama) */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <div className="flex justify-between items-center mb-4 border-b pb-3">
           <h3 className="font-bold text-gray-800 text-sm sm:text-base flex items-center"><Award className="mr-1.5 text-emerald-600"/> Target Kompetensi Jilid Aktif ({user.jilid})</h3>
@@ -579,32 +686,34 @@ const progresMenungguAcc = progress.filter(p => String(p.santriId) === String(us
       </div>
     </div>
   );
+
   if (activeTab === 'progres_mengaji') return (
-  <div className="animate-fade-in space-y-6">
-    <BackButton onClick={() => setActiveTab('dashboard')} />
-    <div className="bg-white p-6 rounded-2xl shadow-sm border">
-      <h3 className="font-bold text-gray-800 mb-4">📋 Riwayat Semua Setoran Mengaji</h3>
-      <p className="text-xs text-gray-500 mb-4">🔒 = Belum Disetujui · ✅ = Sudah Disetujui Wali</p>
-      
-      {semuaProgresSaya.length === 0 ? (
-        <p className="text-xs text-gray-400 italic">Belum ada riwayat setoran.</p>
-      ) : (
-        <div className="space-y-3">
-          {semuaProgresSaya.map(p => (
-            <div key={p.id} className={`p-4 rounded-xl border ${p.status === 'belum_disetujui' ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${p.status === 'belum_disetujui' ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
-                {p.status === 'belum_disetujui' ? '🔒 MENUNGGU PERSETUJUAN' : '✅ SUDAH DISETUJUI'}
-              </span>
-              <p className="font-bold mt-2">{p.surah} ayat {p.ayat} · {p.nilai}</p>
-              <p className="text-xs text-gray-500 mt-1">Tanggal: {p.tanggal}</p>
-            </div>
-          ))}
-        </div>
-      )}
+    <div className="animate-fade-in space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <div className="bg-white p-6 rounded-2xl shadow-sm border">
+        <h3 className="font-bold text-gray-800 mb-4">📋 Riwayat Semua Setoran Mengaji</h3>
+        <p className="text-xs text-gray-500 mb-4">🔒 = Belum Disetujui · ✅ = Sudah Disetujui Wali</p>
+        
+        {semuaProgresSaya.length === 0 ? (
+          <p className="text-xs text-gray-400 italic">Belum ada riwayat setoran.</p>
+        ) : (
+          <div className="space-y-3">
+            {semuaProgresSaya.map(p => (
+              <div key={p.id} className={`p-4 rounded-xl border ${p.status === 'belum_disetujui' ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${p.status === 'belum_disetujui' ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
+                  {p.status === 'belum_disetujui' ? '🔒 MENUNGGU PERSETUJUAN' : '✅ SUDAH DISETUJUI'}
+                </span>
+                <p className="font-bold mt-2">{p.surah} ayat {p.ayat} · {p.nilai}</p>
+                <p className="text-xs text-gray-500 mt-1">Tanggal: {p.date}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
-  </div>
-);
-  if (activeTab === 'riwayat_pembayaran') return (
+  );
+
+    if (activeTab === 'riwayat_pembayaran') return (
     <div className="animate-fade-in">
       <BackButton onClick={() => setActiveTab('dashboard')} />
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -663,10 +772,7 @@ const progresMenungguAcc = progress.filter(p => String(p.santriId) === String(us
       </div>
     </div>
   );
-    // ... KODE riwayat_tabungan kamu di atas tetap utuh seperti aslinya ...
 
-
-  // ✅ TARUH KODE HALAMAN PERSETUJUAN INI DI SINI (ANTARA riwayat_tabungan DAN return null)
   if (activeTab === 'persetujuan_wali') {
     const setujuiSemua = async () => {
       const waktuTtd = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'full', timeStyle: 'long' });
@@ -699,7 +805,7 @@ const progresMenungguAcc = progress.filter(p => String(p.santriId) === String(us
                 {progresMenungguAcc.map(p => (
                   <div key={p.id} className="p-4 bg-amber-50 rounded-xl border border-amber-200">
                     <p className="font-bold">{p.surah} ayat {p.ayat} · {p.nilai}</p>
-                    <p className="text-xs text-gray-500">Tanggal: {p.tanggal}</p>
+                    <p className="text-xs text-gray-500">Tanggal: {p.date}</p>
                   </div>
                 ))}
               </div>
@@ -709,12 +815,10 @@ const progresMenungguAcc = progress.filter(p => String(p.santriId) === String(us
       </div>
     );
   }
-  // ✅ AKHIR KODE HALAMAN PERSETUJUAN
 
-
-  // ⚠️ BARIS INI TETAP DI PALING AKHIR, JANGAN DIUBAH
   return null;
 }
+
 function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
   const [selectedSantri, setSelectedSantri] = useState(null);
   const [santriTerpilih, setSantriTerpilih] = useState('');
@@ -781,7 +885,6 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
   const menus = [
     { id: 'isi_progres', label: 'Input Setoran Harian', icon: ClipboardList, color: 'bg-emerald-100 text-emerald-600', desc: 'Catat setoran harian mengaji santri bimbingan Anda.' },
     { id: 'nilai_target', label: 'Penilaian Kompetensi', icon: CheckSquare, color: 'bg-indigo-100 text-indigo-600', desc: 'Centang target kurikulum kompetensi jilid aktif santri.' },
-    // ✅ MENU AJUKAN KENAIKAN JILID SUDAH ADA DI SINI
     { id: 'pengajuan_kenaikan', label: 'Ajukan Naik Jilid / Juz', icon: Award, color: 'bg-orange-100 text-orange-600', desc: 'Ajukan kelayakan santri untuk ujian kenaikan jilid.' },
     { id: 'klaim_santri', label: 'Klaim Kelas Santri Baru', icon: UserPlus, color: 'bg-purple-100 text-purple-600', desc: 'Klaim santri yang belum ditugaskan guru.' }
   ];
@@ -820,7 +923,7 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div><label className="block text-xs font-bold mb-1 text-gray-600">Surah / Halaman</label><input type="text" name="surah" required className="p-2.5 border rounded-xl w-full text-xs font-bold" placeholder="An-Naba" /></div>
-              <div><label className="block text-xs font-bold mb-1 text-gray-600">Ayat / Baris</label><input type="text" name="ayat" required className="p-2.5 border rounded-xl w-full text-xs" placeholder="1-5" /></div>
+              <div><label className="block text-xs font-bold mb-1 text-gray-600">Ayat / Baris</label><input type="text" name="ayat" required className="p-2.5 border rounded-xl w-full text-xs font-bold" placeholder="1-5" /></div>
             </div>
             <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold w-full py-3 rounded-xl text-xs shadow">Simpan Progres</button>
           </form>
@@ -870,7 +973,6 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
     </div>
   );
 
-  // ✅ HALAMAN AJUKAN KENAIKAN JILID - SUDAH BENAR POSISINYA
   if (activeTab === 'pengajuan_kenaikan') {
     const daftarSantri = users.filter(u => 
       u.role === 'santri' && String(u.guruId || '') === String(user.id)
@@ -923,17 +1025,17 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold mb-1 text-gray-600">Tanggal Ujian</label>
+                  <label className="block text-xs font-bold mb-1 text-gray-700">Tanggal Ujian</label>
                   <input type="date" name="date" defaultValue={new Date().toISOString().slice(0,10)} required className="p-2.5 border rounded-xl w-full text-xs" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold mb-1 text-gray-600">Ujian Terakhir</label>
+                  <label className="block text-xs font-bold mb-1 text-gray-700">Ujian Terakhir</label>
                   <input type="text" name="surah" required className="p-2.5 border rounded-xl w-full text-xs font-semibold" placeholder="Contoh: Juz 30 / Surah Al-Baqarah" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold mb-1 text-gray-600">Catatan Penilaian</label>
+                <label className="block text-xs font-bold mb-1 text-gray-700">Catatan Penilaian</label>
                 <input type="text" name="ayat" required className="p-2.5 border rounded-xl w-full text-xs" placeholder="Contoh: Bacaan lancar, tajwid sempurna" />
               </div>
 
@@ -957,7 +1059,6 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
     );
   }
 
-  // ✅ MENU KLAIM SANTRI - POSISI SUDAH BENAR
   if (activeTab === 'klaim_santri') {
     const unclaimedSantri = users.filter(s => s.role === 'santri' && (!s.guruId || String(s.guruId).trim() === '' || s.guruId === 'null'));
     return (
@@ -980,7 +1081,6 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
     );
   }
 
-  // ✅ PENUTUP FUNGSI SUDAH BENAR
   return null;
 }
 
@@ -1063,7 +1163,7 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
     const activeRoles = settings.savingInputRoles || ['guru', 'bendahara'];
     return (
       <div className="animate-fade-in space-y-6">
-                <BackButton onClick={() => setActiveTab('dashboard')} />
+        <BackButton onClick={() => setActiveTab('dashboard')} />
         <div className="bg-white p-6 rounded-2xl shadow-sm border max-w-xl">
           <h2 className="text-lg font-bold mb-2 flex items-center text-red-800"><Shield className="mr-2"/> Otorisasi Hak Akses Tabungan</h2>
           <p className="text-xs text-gray-500 mb-6">Tentukan role staf yang boleh input tabungan santri.</p>
@@ -1154,45 +1254,32 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
     );
   }
 
-    // === HALAMAN BUAT SURAT (SUDAH DIPERBAIKI SEMUA) ===
-    // === HALAMAN BUAT SURAT (SUDAH DIPERBAIKI SEMUA) ===
-  // === HALAMAN BUAT SURAT (VERSI SIAP DEPLOY & TANPA ERROR) ===
-if (activeTab === 'buat_surat') {
-  const [jenisSurat, setJenisSurat] = useState('undangan');
-  const [formSurat, setFormSurat] = useState({
-    noSurat: '', tanggalSurat: '', kepada: '', hari: '', pukul: '', tempat: '', agenda: '', isiEdaran: ''
-  });
+  if (activeTab === 'buat_surat') {
+    const [jenisSurat, setJenisSurat] = useState('undangan');
+    const [formSurat, setFormSurat] = useState({
+      noSurat: '', tanggalSurat: '', kepada: '', hari: '', pukul: '', tempat: '', agenda: '', isiEdaran: ''
+    });
 
-  const handleSuratChange = (e) => {
-    setFormSurat({...formSurat, [e.target.name]: e.target.value});
-  };
+    const handleSuratChange = (e) => {
+      setFormSurat({...formSurat, [e.target.name]: e.target.value});
+    };
 
-  // Format tanggal otomatis: 27 Juli 2026
-  const formatTanggal = (tgl) => {
-    if (!tgl) return '';
-    const bln = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-    const d = new Date(tgl);
-    return `${d.getDate()} ${bln[d.getMonth()]} ${d.getFullYear()}`;
-  };
+    const formatTanggal = (tgl) => {
+      if (!tgl) return '';
+      const bln = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+      const d = new Date(tgl);
+      return `${d.getDate()} ${bln[d.getMonth()]} ${d.getFullYear()}`;
+    };
 
-  const unduhLangsungPDF = () => {
-  const isiPenuh = `
+    const unduhLangsungPDF = () => {
+    const isiPenuh = `
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <title>Surat TPQ Al Ikhlas</title>
 <style>
-  @page { 
-    size: A4 portrait; 
-    margin: 1cm 2cm 2cm 3cm;
-    @top-left { content: "" !important; }
-    @top-center { content: "" !important; }
-    @top-right { content: "" !important; }
-    @bottom-left { content: "" !important; }
-    @bottom-center { content: "" !important; }
-    @bottom-right { content: "" !important; }
-  }
+  @page { size: A4 portrait; margin: 1cm 2cm 2cm 3cm; }
   * { margin:0; padding:0; box-sizing:border-box; }
   html,body { width:210mm; min-height:297mm; font-family:Arial,sans-serif; font-size:13pt; line-height:1.65; background:#fff; color:#000; }
   .kop-wrapper { display:flex; align-items:center; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:18px; }
@@ -1213,19 +1300,6 @@ if (activeTab === 'buat_surat') {
   .jabatan { text-align:center; margin:0; }
   .nama-pejabat { text-align:center; font-weight:bold; margin:0; }
   .ttd-gabung { position:absolute; left:55%; top:0; transform:translateX(-50%); height:190px; }
-  @media print {
-    @page { 
-      margin:1cm 2cm 2cm 3cm !important; 
-      size:A4 portrait !important;
-      @top-left { content:none !important; }
-      @top-center { content:none !important; }
-      @top-right { content:none !important; }
-      @bottom-left { content:none !important; }
-      @bottom-center { content:none !important; }
-      @bottom-right { content:none !important; }
-    }
-    body { print-color-adjust:exact !important; -webkit-print-color-adjust:exact !important; background:#fff !important; }
-  }
 </style>
 </head>
 <body>
@@ -1237,401 +1311,204 @@ if (activeTab === 'buat_surat') {
       <p>NIC: B. 1a.05.1158</p>
       <p>Nomor : AHU-0023193.AH.01.04. Tahun 2016</p>
       <p>Alamat: Dusun Bakalan RT.003/ RW.001 Kec. Tikung Kabupaten Lamongan</p>
-    </div>
+        </div>
   </div>
+
   <table class="data-surat">
     <tr>
-      <td style="width:90px">Nomor</td><td>:</td><td>${formSurat.noSurat}</td>
-      <td style="text-align:right;width:230px">Bakalan, ${formatTanggal(formSurat.tanggalSurat)}</td>
+      <td width="150">Nomor</td>
+      <td>: ${formSurat.noSurat || '-'}</td>
     </tr>
-    <tr><td>Lampiran</td><td>:</td><td>-</td></tr>
-    <tr><td>Hal</td><td>:</td><td><b>${jenisSurat==='undangan'?'UNDANGAN':'EDARAN'}</b></td></tr>
+    <tr>
+      <td>Tanggal</td>
+      <td>: ${formatTanggal(formSurat.tanggalSurat) || formatTanggal(new Date().toISOString().slice(0,10))}</td>
+    </tr>
+    <tr>
+      <td>Perihal</td>
+      <td>: ${jenisSurat === 'undangan' ? 'UNDANGAN' : 'EDARAN PEMBERITAHUAN'}</td>
+    </tr>
   </table>
+
   <div class="isi-surat-wrapper">
-    Kepada Yth.<br>
-    ${formSurat.kepada}<br>
-    Di - Tempat<br><br>
-    Assalâmualaikum Wr. Wb.<br>
-    <div class="isi-paragraf">
-      Salam silaturrahmi kami sampaikan, semoga kita senantiasa dalam lindungan serta kasih sayang Allah SWT. Shalawat beserta salam semoga selalu tercurah limpahkan kepada Nabi Muhammad SAW.<br><br>
-      ${jenisSurat==='undangan'?`Selanjutnya, sehubungan dalam rangka kegiatan yang akan dilaksanakan. Maka kami bermaksud mengundang Bapak/Ibu pada:`:formSurat.isiEdaran}
-    </div>
-    ${jenisSurat==='undangan'?`
+    <p>Kepada Yth.<br>
+    Bapak/Ibu ${formSurat.kepada || 'Wali Santri TPQ Al Ikhlas Bakalan'}<br>
+    di Tempat</p>
+    <br>
+    <p class="isi-paragraf">Assalamu’alaikum Warahmatullahi Wabarakatuh.</p>
+    <br>
+    ${jenisSurat === 'undangan' ? `
+    <p class="isi-paragraf">Diberitahukan dengan hormat, sehubungan dengan kegiatan <strong>${formSurat.agenda || 'Kegiatan Rutin TPQ'}</strong>, maka kami mengundang Bapak/Ibu untuk hadir pada acara yang akan dilaksanakan pada:</p>
+    <br>
     <table class="jadwal">
-      <tr><td class="label">Hari / Tanggal</td><td>:</td><td>${formSurat.hari}</td></tr>
-      <tr><td>Pukul</td><td>:</td><td>${formSurat.pukul}</td></tr>
-      <tr><td>Tempat</td><td>:</td><td>${formSurat.tempat}</td></tr>
-      <tr><td>Agenda</td><td>:</td><td>${formSurat.agenda}</td></tr>
-    </table>`:''}
-    <div class="isi-paragraf">
-      Demikian ${jenisSurat==='undangan'?'Undangan ini':'Edaran ini'} kami sampaikan. Atas perhatian dan kerjasamanya kami ucapkan terima kasih.<br><br>
-      Wallâhul Muwaffiq Ilâ Aqwamith Tharîq<br>Wassalâmu‘alaikum Wr. Wb.
-    </div>
+      <tr><td class="label">Hari/Tanggal</td><td>: ${formSurat.hari || '-'} / ${formatTanggal(formSurat.tanggalSurat) || '-'}</td></tr>
+      <tr><td class="label">Pukul</td><td>: ${formSurat.pukul || '-'} WIB</td></tr>
+      <tr><td class="label">Tempat</td><td>: ${formSurat.tempat || 'Lokasi TPQ Al Ikhlas Bakalan'}</td></tr>
+    </table>
+    <br>
+    <p class="isi-paragraf">Demikian undangan ini kami sampaikan, atas perhatian dan kehadirannya kami ucapkan terima kasih.</p>
+    ` : `
+    <p class="isi-paragraf">${formSurat.isiEdaran || 'Isi edaran pemberitahuan akan disampaikan di sini.'}</p>
+    <br>
+    <p class="isi-paragraf">Demikian pemberitahuan ini kami sampaikan, agar dapat dimaklumi dan dilaksanakan sebagaimana mestinya. Atas perhatiannya kami ucapkan terima kasih.</p>
+    `}
+    <br>
+    <p class="isi-paragraf">Wassalamu’alaikum Warahmatullahi Wabarakatuh.</p>
   </div>
+
   <div class="tanda-tangan">
-    <p class="jabatan">Kepala TPQ Al Ikhlas Bakalan</p>
-    <img src="https://raw.githubusercontent.com/tpqalikhlasbakalan/web-tpq/main/ttd%20+%20stempel.png" class="ttd-gabung">
-    <br><br><br><br>
-    <p class="nama-pejabat">ABD. ADZIM</p>
+    <p class="jabatan">Kepala TPQ Al Ikhlas</p>
+    <div class="ttd-gabung">
+      <br><br><br><br>
+      <p class="nama-pejabat">Ust. Abd Adzim</p>
+    </div>
   </div>
 </body>
 </html>`;
 
-  const win = window.open('', '_blank', 'width=950,height=800,scrollbars=yes');
-  win.document.write(isiPenuh);
-  win.document.close();
-
-  setTimeout(() => {
-    win.focus();
-    win.print();
-    showToast('✅ Jangan lupa: Ubah Header/Footer jadi TIDAK ADA di pengaturan cetak');
-  }, 700);
-};
+    const blob = new Blob([isiPenuh], { type: 'text/html;charset=utf-8' });
+    const urlFile = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = urlFile;
+    a.download = `${jenisSurat.toUpperCase()}_TPQ_Al_Ikhlas_${new Date().toISOString().slice(0,10)}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(urlFile);
+    showToast('Surat berhasil dibuat dan siap dicetak!');
+  };
 
   return (
     <div className="animate-fade-in space-y-6">
       <BackButton onClick={() => setActiveTab('dashboard')} />
       <div className="bg-white p-6 rounded-2xl shadow-sm border">
-        <h2 className="text-lg font-bold mb-6 flex items-center text-sky-800"><ClipboardList className="mr-2"/> Buat Surat Resmi TPQ</h2>
-
+        <h2 className="text-lg font-bold mb-6 flex items-center text-sky-800"><ClipboardList className="mr-2"/> Pembuatan Surat Resmi</h2>
+        
         <div className="flex gap-3 mb-6">
-          <button onClick={() => setJenisSurat('undangan')} className={`px-5 py-2.5 rounded-xl text-xs font-bold ${jenisSurat==='undangan'?'bg-sky-600 text-white shadow':'bg-gray-100 text-gray-700'}`}>📄 Undangan</button>
-          <button onClick={() => setJenisSurat('edaran')} className={`px-5 py-2.5 rounded-xl text-xs font-bold ${jenisSurat==='edaran'?'bg-sky-600 text-white shadow':'bg-gray-100 text-gray-700'}`}>📃 Edaran / Pemberitahuan</button>
+          <button onClick={() => setJenisSurat('undangan')} className={`px-4 py-2 rounded-xl text-xs font-bold transition ${jenisSurat === 'undangan' ? 'bg-sky-600 text-white' : 'bg-gray-100 text-gray-700'}`}>Undangan</button>
+          <button onClick={() => setJenisSurat('edaran')} className={`px-4 py-2 rounded-xl text-xs font-bold transition ${jenisSurat === 'edaran' ? 'bg-sky-600 text-white' : 'bg-gray-100 text-gray-700'}`}>Edaran</button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div><label className="block text-xs font-bold mb-1">Nomor Surat</label><input name="noSurat" value={formSurat.noSurat} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="001/TPQ-VII/2026" required /></div>
-          <div><label className="block text-xs font-bold mb-1">Tanggal Surat</label><input type="date" name="tanggalSurat" value={formSurat.tanggalSurat} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" required /></div>
+          <div>
+            <label className="block text-xs font-bold mb-1 text-gray-700">Nomor Surat</label>
+            <input type="text" name="noSurat" value={formSurat.noSurat} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="042/TPQ-AI/VII/2026" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold mb-1 text-gray-700">Tanggal Surat</label>
+            <input type="date" name="tanggalSurat" value={formSurat.tanggalSurat} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold mb-1 text-gray-700">Kepada</label>
+            <input type="text" name="kepada" value={formSurat.kepada} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Wali Santri / Guru / Tamu" />
+          </div>
+          {jenisSurat === 'undangan' && (
+            <>
+              <div>
+                <label className="block text-xs font-bold mb-1 text-gray-700">Hari</label>
+                <input type="text" name="hari" value={formSurat.hari} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Senin, 03 Agustus 2026" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold mb-1 text-gray-700">Pukul</label>
+                <input type="text" name="pukul" value={formSurat.pukul} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="08.00 s.d Selesai" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold mb-1 text-gray-700">Tempat</label>
+                <input type="text" name="tempat" value={formSurat.tempat} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Aula TPQ Al Ikhlas" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold mb-1 text-gray-700">Agenda Kegiatan</label>
+                <input type="text" name="agenda" value={formSurat.agenda} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Pembagian Raport Semester Ganjil" />
+              </div>
+            </>
+          )}
+          {jenisSurat === 'edaran' && (
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold mb-1 text-gray-700">Isi Edaran</label>
+              <textarea name="isiEdaran" value={formSurat.isiEdaran} onChange={handleSuratChange} rows="4" className="w-full p-2.5 border rounded-xl text-xs" placeholder="Tuliskan isi pemberitahuan secara lengkap..."></textarea>
+            </div>
+          )}
         </div>
-        <div><label className="block text-xs font-bold mb-1">Kepada Yth.</label><textarea name="kepada" value={formSurat.kepada} onChange={handleSuratChange} rows={3} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Yth. Bapak/Ibu Wali Santri" required /></div>
 
-        {jenisSurat==='undangan' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div><label className="block text-xs font-bold mb-1">Hari & Tanggal Acara</label><input name="hari" value={formSurat.hari} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Sabtu, 26 Juli 2026" required /></div>
-            <div><label className="block text-xs font-bold mb-1">Pukul</label><input name="pukul" value={formSurat.pukul} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="08.00 WIB s.d Selesai" required /></div>
-            <div><label className="block text-xs font-bold mb-1">Tempat</label><input name="tempat" value={formSurat.tempat} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Aula TPQ Al Ikhlas" required /></div>
-            <div><label className="block text-xs font-bold mb-1">Agenda / Kegiatan</label><input name="agenda" value={formSurat.agenda} onChange={handleSuratChange} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Rapat Pertemuan Wali Santri" required /></div>
-          </div>
-        ) : (
-          <div><label className="block text-xs font-bold mb-1">Isi Edaran</label><textarea name="isiEdaran" value={formSurat.isiEdaran} onChange={handleSuratChange} rows={6} className="w-full p-2.5 border rounded-xl text-xs" placeholder="Dengan ini diberitahukan kepada seluruh wali santri bahwa..." required /></div>
-        )}
-
-        <button onClick={unduhLangsungPDF} className="mt-6 w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 rounded-xl text-xs shadow">📄 Cetak & Simpan PDF</button>
+        <button onClick={unduhLangsungPDF} className="w-full mt-6 bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 rounded-xl text-xs shadow">
+          📄 BUAT & UNDUH SURAT (SIAP CETAK)
+        </button>
       </div>
     </div>
   );
-}
+  }
+
   return null;
-// ==================================================
-// FUNGSI PENAMPUNG INPUT TABUNGAN (DITAMBAHKAN)
-// ==================================================
-function SavingsInputView({ users, savings, updateTable, showToast, recorderId }) {
-  const [form, setForm] = useState({ 
-    santriId: '', 
-    date: new Date().toISOString().slice(0,10), 
-    amount: '', 
-    type: 'setor', 
-    description: '' 
-  });
-  const santriList = users.filter(u => u.role === 'santri');
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.santriId || !form.amount) {
-      showToast('Lengkapi data santri dan nominal!', 'error');
-      return;
-    }
-    const newSavings = {
-      id: Date.now().toString(),
-      santriId: form.santriId,
-      date: form.date,
-      amount: parseInt(form.amount),
-      type: form.type,
-      description: form.description,
-      inputBy: recorderId
-    };
-    await updateTable('savings', [newSavings, ...savings]);
-    showToast('Data tabungan berhasil disimpan!');
-    setForm({ 
-      santriId: '', 
-      date: new Date().toISOString().slice(0,10), 
-      amount: '', 
-      type: 'setor', 
-      description: '' 
-    });
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white p-6 rounded-2xl shadow-sm border">
-        <h3 className="text-lg font-bold mb-4 flex items-center text-amber-800">
-          <DollarSign className="mr-2"/> Input Mutasi Tabungan Santri
-        </h3>
-        <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
-          <div>
-            <label className="block text-xs font-bold mb-1 text-gray-700">Pilih Santri</label>
-            <select
-              value={form.santriId}
-              onChange={(e) => setForm({...form, santriId: e.target.value})}
-              className="w-full p-2.5 border rounded-xl text-xs font-semibold"
-              required
-            >
-              <option value="">-- Pilih Nama Santri --</option>
-              {santriList.map(s => (
-                <option key={s.id} value={s.id}>{s.name} ({s.jilid})</option>
-              ))}
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold mb-1 text-gray-700">Tanggal</label>
-              <input
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm({...form, date: e.target.value})}
-                className="w-full p-2.5 border rounded-xl text-xs"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold mb-1 text-gray-700">Jenis</label>
-              <select
-                value={form.type}
-                onChange={(e) => setForm({...form, type: e.target.value})}
-                className="w-full p-2.5 border rounded-xl text-xs font-bold"
-              >
-                <option value="setor">Setoran</option>
-                <option value="tarik">Penarikan</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-bold mb-1 text-gray-700">Nominal (Rp)</label>
-            <input
-              type="number"
-              value={form.amount}
-              onChange={(e) => setForm({...form, amount: e.target.value})}
-              className="w-full p-2.5 border rounded-xl text-xs"
-              min="1000"
-              placeholder="Contoh: 10000"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold mb-1 text-gray-700">Keterangan</label>
-            <input
-              type="text"
-              value={form.description}
-              onChange={(e) => setForm({...form, description: e.target.value})}
-              className="w-full p-2.5 border rounded-xl text-xs"
-              placeholder="Opsional"
-            />
-          </div>
-          <button type="submit" className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl text-xs shadow">
-            Simpan Data
-          </button>
-        </form>
-      </div>
-    </div>
-  );
 }
 
-// ==================================================
-// FUNGSI BENDARAVIEW (SUDAH DIPERBAIKI & TERHUBUNG)
-// ==================================================
-function BendaharaView({ activeTab, setActiveTab, users = [], savings = [], settings = INITIAL_DATA.settings, updateTable, showToast, currentUser }) {
-  // Pastikan data pasti berupa array
-  const santriList = Array.isArray(users) ? users.filter(u => u && u.role === 'santri') : [];
-  const semuaTabungan = Array.isArray(savings) ? savings : [];
+function BendaharaView({ activeTab, setActiveTab, users, savings, settings, updateTable, showToast, currentUser }) {
+  const santriList = users.filter(u => u.role === 'santri');
+  const [searchSantri, setSearchSantri] = useState('');
+  const [filterStatus, setFilterStatus] = useState('semua');
+
+  const santriTerfilter = santriList.filter(s => {
+    const cocokNama = s.name.toLowerCase().includes(searchSantri.toLowerCase());
+    if (filterStatus === 'semua') return cocokNama;
+    if (filterStatus === 'tagihan') return cocokNama && s.hasAlarm;
+    if (filterStatus === 'lunas') return cocokNama && !s.hasAlarm;
+    return cocokNama;
+  });
+
+  const totalKas = savings.reduce((a, b) => a + (b.type === 'setor' ? b.amount : -b.amount), 0);
+  const totalSetoran = savings.filter(s => s.type === 'setor').reduce((a, b) => a + b.amount, 0);
+  const totalPenarikan = savings.filter(s => s.type === 'tarik').reduce((a, b) => a + b.amount, 0);
 
   const menus = [
-    { 
-      id: 'input_tabungan', 
-      label: 'Input Tabungan Santri', 
-      icon: DollarSign, 
-      color: 'bg-amber-100 text-amber-700', 
-      desc: 'Catat setoran & penarikan tabungan santri.' 
-    },
-    { 
-      id: 'kelola_syahriah', 
-      label: 'Kelola Syahriah', 
-      icon: CreditCard, 
-      color: 'bg-yellow-100 text-yellow-700', 
-      desc: 'Pantau pembayaran & tagihan iuran bulanan.' 
-    }
+    { id: 'input_tabungan', label: 'Input Mutasi Tabungan', icon: DollarSign, color: 'bg-amber-100 text-amber-700', desc: 'Catat setoran & penarikan tabungan santri.' },
+    { id: 'rekap_tabungan', label: 'Rekap Saldo Tabungan', icon: Database, color: 'bg-blue-100 text-blue-700', desc: 'Lihat saldo akhir seluruh santri secara ringkas.' },
+    { id: 'kelola_syahriah', label: 'Kelola Syahriah', icon: CreditCard, color: 'bg-red-100 text-red-700', desc: 'Tandai pembayaran & atur alarm tagihan.' },
+    { id: 'laporan_kas', label: 'Laporan Kas', icon: ClipboardList, color: 'bg-gray-100 text-gray-700', desc: 'Ringkasan total masuk, keluar, dan saldo kas.' }
   ];
 
-  // Tampilkan Menu Utama
   if (activeTab === 'dashboard') return (
     <div className="animate-fade-in space-y-6">
       <h2 className="text-xl font-black text-gray-800">Panel Bendahara TPQ</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white p-5 rounded-2xl border"><p className="text-[10px] text-gray-400 font-bold uppercase">Total Setoran Masuk</p><h3 className="text-lg font-black text-emerald-600 mt-1">Rp {totalSetoran.toLocaleString('id-ID')}</h3></div>
+        <div className="bg-white p-5 rounded-2xl border"><p className="text-[10px] text-gray-400 font-bold uppercase">Total Penarikan Keluar</p><h3 className="text-lg font-black text-red-600 mt-1">Rp {totalPenarikan.toLocaleString('id-ID')}</h3></div>
+        <div className="bg-white p-5 rounded-2xl border"><p className="text-[10px] text-gray-400 font-bold uppercase">Saldo Kas Saat Ini</p><h3 className="text-lg font-black text-blue-700 mt-1">Rp {totalKas.toLocaleString('id-ID')}</h3></div>
+      </div>
       <MenuGrid menus={menus} onSelect={setActiveTab} />
     </div>
   );
 
-  // Halaman Input Tabungan
-  if (activeTab === 'input_tabungan') {
-    return (
-      <div className="animate-fade-in">
-        <BackButton onClick={() => setActiveTab('dashboard')} />
-        <SavingsInputView 
-          users={users} 
-          savings={savings} 
-          updateTable={updateTable} 
-          showToast={showToast} 
-          recorderId={currentUser?.id || ''} 
-        />
-      </div>
-    );
-  }
-
-  // Halaman Kelola Syahriah
-  if (activeTab === 'kelola_syahriah') {
-    return (
-      <div className="animate-fade-in">
-        <BackButton onClick={() => setActiveTab('dashboard')} />
-        <div className="bg-white p-6 rounded-2xl shadow-sm border">
-          <h2 className="text-lg font-bold mb-6 flex items-center text-yellow-800">
-            <CreditCard className="mr-2"/> Daftar Syahriah & Tagihan
-          </h2>
-          {santriList.length === 0 ? (
-            <p className="text-xs text-gray-400 italic">Belum ada data santri yang terdaftar.</p>
-          ) : (
-            <div className="space-y-2">
-              {santriList.map(s => (
-                <div key={s.id} className="p-3.5 bg-gray-50 rounded-xl border flex justify-between items-center text-xs">
-                  <div>
-                    <p className="font-bold">{s.name}</p>
-                    <p className="text-gray-500">Jilid: {s.jilid || 'Jilid 1'}</p>
-                  </div>
-                  <span className={`px-2 py-1 rounded text-[10px] font-bold ${s.hasAlarm ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                    {s.hasAlarm ? '🔴 BELUM LUNAS' : '✅ LUNAS'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Jika tab tidak dikenali, kembali ke dashboard
-  return null;
-}
-function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, settings, appsScriptUrl, setAppsScriptUrl, loadDatabase }) {
-  const [showPasswordMap, setShowPasswordMap] = useState({});
-  const [resettingUser, setResettingUser] = useState(null);
-  const [newPasswordVal, setNewPasswordVal] = useState('');
-  const [deletingUser, setDeletingUser] = useState(null);
-  const [showScriptModal, setShowScriptModal] = useState(false);
-  const [selectedFormRole, setSelectedFormRole] = useState('santri');
-
-  const togglePass = (id) => setShowPasswordMap(p => ({ ...p, [id]: !p[id] }));
-  const triggerReset = (u) => { setResettingUser(u); setNewPasswordVal(''); };
-  const submitReset = async () => {
-    if (!newPasswordVal.trim()) { showToast('Sandi tidak boleh kosong!', 'error'); return; }
-    const updated = users.map(u => String(u.id) === String(resettingUser.id) ? { ...u, password: newPasswordVal.trim() } : u);
-    await updateTable('users', updated);
-    showToast(`Password ${resettingUser.name} diubah!`);
-    setResettingUser(null);
-  };
-  const triggerDelete = (u) => setDeletingUser(u);
-  const confirmDelete = async () => {
-    await updateTable('users', users.filter(u => String(u.id) !== String(deletingUser.id)));
-    showToast('Akun dihapus permanen.');
-    setDeletingUser(null);
-  };
-
-  const handleAddUser = async (e) => {
-    e.preventDefault();
-    const f = e.target;
-    const role = f.elements.role.value;
-    const newUser = { id: Date.now().toString(), username: f.elements.username.value.trim().toLowerCase(), password: f.elements.password.value, role, name: f.elements.name.value.trim(), guruId: null, jilid: role === 'santri' ? (f.elements.jilid?.value || 'Jilid 1') : null, hasAlarm: false, lastAccDate: '', completedTargets: [], historyBayar: [] };
-    if (users.some(u => String(u.username).toLowerCase() === newUser.username)) { showToast('Username sudah dipakai!', 'error'); return; }
-    await updateTable('users', [...users, newUser]);
-    showToast('Akun baru berhasil ditambahkan!');
-    f.reset(); setSelectedFormRole('santri');
-  };
-
-  const handleSaveSettings = async (e) => {
-    e.preventDefault();
-    const newUrl = e.target.appsScriptUrl.value.trim();
-    setAppsScriptUrl(newUrl);
-    try { localStorage.setItem('tpq_apps_script_url', newUrl); } catch(err){}
-    await updateTable('settings', { ...settings, tpqName: e.target.tpqName.value, logoUrl: e.target.logoUrl.value }, newUrl);
-    showToast('Pengaturan tersimpan!');
-    setTimeout(() => loadDatabase(newUrl), 600);
-  };
-
-  const codeScript = `function doGet(e){var a=e.parameter.action,s=SpreadsheetApp.getActiveSpreadsheet();if(a==="getAll"){var d={};["users","progress","targets","savings","settings"].forEach(function(n){var sh=s.getSheetByName(n);if(sh){var r=sh.getDataRange().getValues();if(r.length>1){var h=r[0];d[n]=r.slice(1).map(function(row){var o={};h.forEach(function(k,i){var v=row[i];if(v===""){o[k]="";return;}try{if(typeof v==="string"&&(v==="true"||v==="false"||v[0]==="["||v[0]==="{"))o[k]=JSON.parse(v);else o[k]=v;}catch(e){o[k]=v;}});return o;});}else d[n]=[];}});if(d.settings&&d.settings.length>0)d.settings=d.settings[0];else d.settings={tpqName:"TPQ Al-Ikhlas",logoUrl:"",savingInputRoles:["guru","bendahara"]};return ContentService.createTextOutput(JSON.stringify({status:"success",data:d})).setMimeType(ContentService.MimeType.JSON);}}function doPost(e){try{var p=JSON.parse(e.postData.contents),t=p.table,d=p.data,s=SpreadsheetApp.getActiveSpreadsheet(),sh=s.getSheetByName(t);if(!sh)sh=s.insertSheet(t);sh.clear();if(t==="settings"&&!Array.isArray(d))d=[d];if(d.length>0){var k={};d.forEach(function(i){Object.keys(i).forEach(function(x){k[x]=!0;})});var keys=Object.keys(k);sh.appendRow(keys);var rows=d.map(function(i){return keys.map(function(x){var v=i[x];return v===undefined||v===null?"":typeof v==="object"?JSON.stringify(v):String(v);});});if(rows.length>0)sh.getRange(2,1,rows.length,keys.length).setValues(rows);}return ContentService.createTextOutput(JSON.stringify({status:"success"})).setMimeType(ContentService.MimeType.JSON);}catch(err){return ContentService.createTextOutput(JSON.stringify({status:"error",message:err.toString()})).setMimeType(ContentService.MimeType.JSON);}}`;
-  const copyScript = () => { const el = document.createElement('textarea'); el.value = codeScript; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); showToast('Script disalin!'); };
-
-  const menus = [
-    { id: 'pengaturan', label: 'Profil & Database Sheets', icon: Settings, color: 'bg-gray-100 text-gray-700', desc: 'Integrasi Google Sheets & branding TPQ.' },
-    { id: 'hak_akses', label: 'Kelola Hak Akses', icon: Shield, color: 'bg-purple-100 text-purple-700', desc: 'Tambah user, reset sandi, hapus akun.' }
-  ];
-
-  if (activeTab === 'dashboard') return <div className="animate-fade-in"><h2 className="text-xl font-black text-gray-800 mb-6">Control Panel Admin Utama</h2><MenuGrid menus={menus} onSelect={setActiveTab} /></div>;
-
-  if (activeTab === 'pengaturan') return (
-    <div className="animate-fade-in space-y-6">
-      <BackButton onClick={() => setActiveTab('dashboard')} />
-      <div className="bg-white p-6 rounded-2xl shadow-sm border">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-          <div><h2 className="text-lg font-bold flex items-center"><Settings className="mr-2"/> Pengaturan Lembaga & Database</h2><p className="text-xs text-gray-500 mt-1">Integrasi Google Sheets & logo.</p></div>
-          <button onClick={() => setShowScriptModal(true)} className="mt-4 md:mt-0 bg-blue-50 text-blue-700 hover:bg-blue-100 border text-xs font-bold px-4 py-2.5 rounded-xl flex items-center"><Database size={16} className="mr-2"/> Dapatkan Kode Apps Script</button>
-        </div>
-        {showScriptModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl border flex flex-col max-h-[85vh]">
-              <div className="p-6 border-b flex justify-between items-center"><div><h3 className="font-extrabold">Google Apps Script</h3><p className="text-xs text-gray-400 mt-0.5">Pasang di Ekstensi → Apps Script, deploy sbg Web App: Anyone.</p></div><button onClick={() => setShowScriptModal(false)} className="text-gray-400 hover:text-gray-600"><X size={20}/></button></div>
-              <pre className="p-6 overflow-y-auto flex-1 bg-gray-900 text-gray-100 font-mono text-xs whitespace-pre">{codeScript}</pre>
-              <div className="p-4 border-t bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-3 rounded-b-3xl">
-                <span className="text-[11px] text-gray-500 font-semibold">Execute as: <strong>Me</strong> · Who has access: <strong>Anyone</strong></span>
-                <div className="flex items-center space-x-2"><button onClick={copyScript} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center shadow"><Copy size={14} className="mr-1.5"/> Salin Script</button><button onClick={() => setShowScriptModal(false)} className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold px-4 py-2 rounded-xl text-xs">Tutup</button></div>
-              </div>
-            </div>
-          </div>
-        )}
-        <form onSubmit={handleSaveSettings} className="space-y-4 max-w-xl bg-gray-50 p-5 rounded-2xl border">
-          <div><label className="block text-xs font-bold mb-1">Nama Lembaga</label><input type="text" name="tpqName" defaultValue={settings.tpqName || ''} required className="p-2.5 border rounded-xl w-full text-xs font-bold" /></div>
-          <div><label className="block text-xs font-bold mb-1">URL Logo (Opsional)</label><input type="url" name="logoUrl" defaultValue={settings.logoUrl || ''} className="p-2.5 border rounded-xl w-full text-xs" placeholder="https://..." /></div>
-          <div><label className="block text-xs font-bold mb-1">URL Apps Script</label><input type="url" name="appsScriptUrl" defaultValue={appsScriptUrl} required className="p-2.5 border rounded-xl w-full text-xs font-mono" /></div>
-          <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold w-full py-3 rounded-xl text-xs shadow">Simpan Pengaturan</button>
-        </form>
-      </div>
-    </div>
+  if (activeTab === 'input_tabungan') return (
+    <div className="animate-fade-in"><BackButton onClick={() => setActiveTab('dashboard')} /><SavingsInputView users={users} savings={savings} updateTable={updateTable} showToast={showToast} recorderId={currentUser.id} /></div>
   );
 
-  if (activeTab === 'hak_akses') return (
-    <div className="animate-fade-in space-y-6">
-      <BackButton onClick={() => setActiveTab('dashboard')} />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  if (activeTab === 'rekap_tabungan') {
+    const rekapPerSantri = santriList.map(s => {
+      const mutasi = savings.filter(m => String(m.santriId) === String(s.id));
+      const masuk = mutasi.filter(x => x.type === 'setor').reduce((a,b) => a+b.amount,0);
+      const keluar = mutasi.filter(x => x.type === 'tarik').reduce((a,b) => a+b.amount,0);
+      return { ...s, saldo: masuk - keluar };
+    });
+    return (
+      <div className="animate-fade-in space-y-6">
+        <BackButton onClick={() => setActiveTab('dashboard')} />
         <div className="bg-white p-6 rounded-2xl shadow-sm border">
-          <h2 className="text-sm font-bold mb-4 flex items-center border-b pb-2"><UserPlus size={16} className="mr-2 text-purple-600"/> Tambah Akun Baru</h2>
-          <form onSubmit={handleAddUser} className="space-y-3">
-            <div><label className="block text-[11px] font-bold mb-1">Nama Lengkap</label><input name="name" type="text" required className="p-2.5 border rounded-xl bg-gray-50 text-xs w-full" /></div>
-            <div><label className="block text-[11px] font-bold mb-1">Username</label><input name="username" type="text" required className="p-2.5 border rounded-xl bg-gray-50 text-xs w-full" /></div>
-            <div><label className="block text-[11px] font-bold mb-1">Password</label><input name="password" type="text" required className="p-2.5 border rounded-xl bg-gray-50 text-xs w-full" /></div>
-            <div><label className="block text-[11px] font-bold mb-1">Peran</label><select name="role" value={selectedFormRole} onChange={(e) => setSelectedFormRole(e.target.value)} className="p-2.5 border rounded-xl bg-gray-50 text-xs w-full font-bold"><option value="santri">Santri</option><option value="guru">Guru</option><option value="bendahara">Bendahara</option><option value="kepala_tpq">Kepala TPQ</option><option value="admin">Admin</option></select></div>
-            {selectedFormRole === 'santri' && <div><label className="block text-[11px] font-bold mb-1">Jilid Awal</label><select name="jilid" defaultValue="Jilid 1" className="p-2.5 border rounded-xl bg-gray-50 text-xs w-full font-semibold">{JILID_LEVELS.map(j => <option key={j} value={j}>{j}</option>)}</select></div>}
-            <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-xs shadow mt-2">Daftarkan Pengguna</button>
-          </form>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border lg:col-span-2">
-          <h2 className="text-sm font-bold mb-4 flex items-center border-b pb-2"><Users size={16} className="mr-2 text-purple-600"/> Daftar Akun ({users.length})</h2>
+          <h2 className="text-lg font-bold mb-4 flex items-center text-blue-800"><Database className="mr-2"/> Rekap Saldo Tabungan Santri</h2>
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead><tr className="bg-gray-50 font-bold text-gray-600 uppercase border-b"><th className="p-3">Nama</th><th className="p-3">Username</th><th className="p-3">Peran</th><th className="p-3">Password</th><th className="p-3 text-center">Aksi</th></tr></thead>
+            <table className="w-full text-xs">
+              <thead className="bg-gray-50 font-bold text-gray-600 uppercase">
+                <tr>
+                  <th className="p-3 text-left">No</th>
+                  <th className="p-3 text-left">Nama Santri</th>
+                  <th className="p-3 text-left">Jilid</th>
+                  <th className="p-3 text-right">Saldo Tabungan</th>
+                </tr>
+              </thead>
               <tbody>
-                {users.map(u => (
-                  <tr key={u.id} className="border-b hover:bg-gray-50">
-                    <td className="p-3 font-bold">{u.name}{u.role === 'santri' && <span className="block text-[10px] text-gray-400 font-normal">{u.jilid}</span>}</td>
-                    <td className="p-3 font-mono">{u.username}</td>
-                    <td className="p-3"><span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-purple-50 text-purple-700 border">{getRoleName(u.role)}</span></td>
-                    <td className="p-3 font-mono"><div className="flex items-center space-x-1"><span>{showPasswordMap[u.id] ? u.password : '••••••'}</span><button onClick={() => togglePass(u.id)} className="text-gray-400 hover:text-gray-600 p-1">{showPasswordMap[u.id] ? <EyeOff size={12}/> : <Eye size={12}/>}</button></div></td>
-                    <td className="p-3 text-center"><div className="flex justify-center space-x-1"><button onClick={() => triggerReset(u)} className="p-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg" title="Reset Sandi"><Unlock size={13}/></button><button onClick={() => triggerDelete(u)} className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg" title="Hapus"><Trash2 size={13}/></button></div></td>
+                {rekapPerSantri.sort((a,b) => a.name.localeCompare(b.name)).map((s, i) => (
+                  <tr key={s.id} className="border-b hover:bg-gray-50">
+                    <td className="p-3">{i+1}</td>
+                    <td className="p-3 font-semibold">{s.name}</td>
+                    <td className="p-3">{s.jilid}</td>
+                    <td className={`p-3 font-bold text-right ${s.saldo >=0 ? 'text-emerald-700' : 'text-red-600'}`}>Rp {s.saldo.toLocaleString('id-ID')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1639,27 +1516,198 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
           </div>
         </div>
       </div>
-      {resettingUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm border">
-            <h3 className="font-extrabold text-sm mb-1">Reset Password</h3>
-            <p className="text-xs text-gray-500 mb-4">User: <strong>{resettingUser.name}</strong> (@{resettingUser.username})</p>
-            <input type="text" value={newPasswordVal} onChange={(e) => setNewPasswordVal(e.target.value)} placeholder="Sandi baru..." className="w-full p-2.5 border rounded-xl bg-gray-50 text-xs font-mono mb-4 outline-none focus:ring-2 focus:ring-amber-500" />
-            <div className="flex justify-end space-x-2"><button onClick={() => setResettingUser(null)} className="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-bold">Batal</button><button onClick={submitReset} className="px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold shadow">Simpan</button></div>
+    );
+  }
+
+  if (activeTab === 'kelola_syahriah') return (
+    <div className="animate-fade-in space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <div className="bg-white p-6 rounded-2xl shadow-sm border">
+        <h2 className="text-lg font-bold mb-4 flex items-center text-red-800"><CreditCard className="mr-2"/> Pengelolaan Syahriah Bulanan</h2>
+        
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+            <input type="text" value={searchSantri} onChange={(e) => setSearchSantri(e.target.value)} placeholder="Cari nama santri..." className="w-full pl-9 p-2.5 border rounded-xl text-xs" />
           </div>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="p-2.5 border rounded-xl text-xs font-bold">
+            <option value="semua">Semua Santri</option>
+            <option value="tagihan">Ada Tagihan</option>
+            <option value="lunas">Sudah Lunas</option>
+          </select>
         </div>
-      )}
-      {deletingUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm border">
-            <h3 className="font-extrabold text-sm text-red-600 mb-1 flex items-center"><AlertTriangle size={16} className="mr-1.5"/> Hapus Akun?</h3>
-            <p className="text-xs text-gray-600 my-3">Yakin hapus <strong>{deletingUser.name}</strong> (@{deletingUser.username}) permanen?</p>
-            <div className="flex justify-end space-x-2 mt-4"><button onClick={() => setDeletingUser(null)} className="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-bold">Batal</button><button onClick={confirmDelete} className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold shadow">Hapus Permanen</button></div>
-          </div>
+
+        <div className="space-y-2">
+          {santriTerfilter.map(s => (
+            <div key={s.id} className="p-4 border rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs">
+              <div>
+                <p className="font-bold text-sm">{s.name}</p>
+                <p className="text-gray-500">Jilid: {s.jilid}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`px-3 py-1 rounded-full font-bold ${s.hasAlarm ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                  {s.hasAlarm ? '⚠️ BELUM LUNAS' : '✅ LUNAS'}
+                </span>
+                <button onClick={async () => {
+                  const ubah = users.map(u => String(u.id) === String(s.id) ? {
+                    ...u, hasAlarm: !s.hasAlarm, historyBayar: s.hasAlarm ? s.historyBayar : [...(s.historyBayar||[]), new Date().toISOString().slice(0,10)]
+                  } : u);
+                  await updateTable('users', ubah);
+                  showToast(s.hasAlarm ? 'Tagihan ditandai belum lunas!' : 'Pembayaran dicatat sebagai lunas!');
+                }} className={`px-3 py-1.5 rounded-xl font-bold text-white ${s.hasAlarm ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-600 hover:bg-amber-700'}`}>
+                  {s.hasAlarm ? 'LUNASKAN' : 'TANDAI TUNGGAKAN'}
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
     </div>
   );
+
+  if (activeTab === 'laporan_kas') return (
+    <div className="animate-fade-in space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <div className="bg-white p-6 rounded-2xl shadow-sm border">
+        <h2 className="text-lg font-bold mb-6 flex items-center text-gray-800"><ClipboardList className="mr-2"/> Laporan Rekapitulasi Kas</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+          <div className="bg-emerald-50 p-5 rounded-xl border border-emerald-200 text-center">
+            <p className="text-xs font-bold text-emerald-700 uppercase">Total Pemasukan</p>
+            <p className="text-xl font-black text-emerald-800 mt-1">Rp {totalSetoran.toLocaleString('id-ID')}</p>
+          </div>
+          <div className="bg-red-50 p-5 rounded-xl border border-red-200 text-center">
+            <p className="text-xs font-bold text-red-700 uppercase">Total Pengeluaran</p>
+            <p className="text-xl font-black text-red-800 mt-1">Rp {totalPenarikan.toLocaleString('id-ID')}</p>
+          </div>
+          <div className="bg-blue-50 p-5 rounded-xl border border-blue-200 text-center">
+            <p className="text-xs font-bold text-blue-700 uppercase">Saldo Akhir Kas</p>
+            <p className="text-xl font-black text-blue-800 mt-1">Rp {totalKas.toLocaleString('id-ID')}</p>
+          </div>
+        </div>
+        <div className="bg-gray-50 p-4 rounded-xl border">
+          <p className="text-xs text-gray-500 text-center">Laporan ini memuat seluruh transaksi tabungan santri yang telah dicatat oleh Bendahara dan Pengajar yang berwenang.</p>
+        </div>
+      </div>
+    </div>
+  );
+
   return null;
 }
+
+function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, settings, appsScriptUrl, setAppsScriptUrl, loadDatabase }) {
+  const [daftarPengguna, setDaftarPengguna] = useState(users);
+  const [formAkun, setFormAkun] = useState({ id: '', username: '', password: '', name: '', role: 'santri', jilid: 'Jilid 1', guruId: '' });
+  const [modeEdit, setModeEdit] = useState(false);
+  const [urlSementara, setUrlSementara] = useState(appsScriptUrl);
+
+  useEffect(() => { setDaftarPengguna(users); }, [users]);
+
+  const resetForm = () => {
+    setFormAkun({ id: '', username: '', password: '', name: '', role: 'santri', jilid: 'Jilid 1', guruId: '' });
+    setModeEdit(false);
+  };
+
+  const simpanAkun = async (e) => {
+    e.preventDefault();
+    if (modeEdit) {
+      const hasil = daftarPengguna.map(a => String(a.id) === String(formAkun.id) ? { ...a, ...formAkun } : a);
+      await updateTable('users', hasil);
+      showToast('Data akun berhasil diperbarui!');
+    } else {
+      const baru = { ...formAkun, id: Date.now().toString() };
+      await updateTable('users', [baru, ...daftarPengguna]);
+      showToast('Akun baru berhasil dibuat!');
+    }
+    resetForm();
+  };
+
+  const editAkun = (akun) => { setFormAkun({ ...akun }); setModeEdit(true); window.scrollTo({top:0, behavior:'smooth'}); };
+  const hapusAkun = async (id) => { if (!confirm('Yakin akan menghapus akun ini?')) return; await updateTable('users', daftarPengguna.filter(a => String(a.id) !== String(id))); showToast('Akun telah dihapus!'); };
+  const simpanUrl = async () => { setAppsScriptUrl(urlSementara); localStorage.setItem('tpq_apps_script_url', urlSementara); await loadDatabase(urlSementara); showToast('URL Google Apps Script telah diperbarui!'); };
+  const simpanIdentitas = async (e) => { e.preventDefault(); const data = { ...settings, tpqName: e.target.tpqName.value, logoUrl: e.target.logoUrl.value }; await updateTable('settings', data); showToast('Identitas TPQ disimpan!'); };
+
+  const menus = [
+    { id: 'kelola_akun', label: 'Manajemen Akun', icon: Users, color: 'bg-purple-100 text-purple-700', desc: 'Tambah, ubah, hapus akun pengguna sistem.' },
+    { id: 'pengaturan_sistem', label: 'Pengaturan Sistem', icon: Settings, color: 'bg-gray-100 text-gray-700', desc: 'Identitas TPQ & koneksi Google Sheets.' }
+  ];
+
+  if (activeTab === 'dashboard') return <div className="animate-fade-in"><h2 className="text-xl font-black text-gray-800 mb-6">Panel Administrator Sistem</h2><MenuGrid menus={menus} onSelect={setActiveTab} /></div>;
+
+  if (activeTab === 'pengaturan' || activeTab === 'pengaturan_sistem') return (
+    <div className="animate-fade-in space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <div className="bg-white p-6 rounded-2xl shadow-sm border">
+        <h2 className="text-lg font-bold mb-6 flex items-center text-gray-800"><Settings className="mr-2"/> Pengaturan Umum & Koneksi</h2>
+        <form onSubmit={simpanIdentitas} className="space-y-4 mb-8">
+          <div><label className="block text-xs font-bold mb-1 text-gray-700">Nama TPQ</label><input type="text" name="tpqName" defaultValue={settings.tpqName} className="w-full p-2.5 border rounded-xl text-xs" required /></div>
+          <div><label className="block text-xs font-bold mb-1 text-gray-700">Link Logo (Opsional)</label><input type="text" name="logoUrl" defaultValue={settings.logoUrl} className="w-full p-2.5 border rounded-xl text-xs" placeholder="https://..." /></div>
+          <button type="submit" className="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2.5 rounded-xl text-xs">Simpan Identitas TPQ</button>
+        </form>
+        <div className="border-t pt-6">
+          <h3 className="font-bold text-sm mb-3">Koneksi Google Apps Script</h3>
+          <div className="flex gap-2">
+            <input type="text" value={urlSementara} onChange={(e) => setUrlSementara(e.target.value)} className="flex-1 p-2.5 border rounded-xl text-xs font-mono" />
+            <button onClick={simpanUrl} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 rounded-xl text-xs">Simpan & Hubungkan</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (activeTab === 'hak_akses' || activeTab === 'kelola_akun') return (
+    <div className="animate-fade-in space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <div className="bg-white p-6 rounded-2xl shadow-sm border">
+        <h2 className="text-lg font-bold mb-6 flex items-center text-purple-800"><Users className="mr-2"/> Kelola Akun Pengguna</h2>
+        <form onSubmit={simpanAkun} className="bg-gray-50 p-4 rounded-xl border mb-8 space-y-3">
+          <h4 className="font-bold text-xs text-gray-700">{modeEdit ? 'UBAH DATA AKUN' : 'TAMBAH AKUN BARU'}</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div><label className="block text-[10px] font-bold mb-1 text-gray-600">Nama Lengkap</label><input type="text" value={formAkun.name} onChange={(e) => setFormAkun({...formAkun, name:e.target.value})} className="w-full p-2 border rounded-lg text-xs" required /></div>
+            <div><label className="block text-[10px] font-bold mb-1 text-gray-600">Username</label><input type="text" value={formAkun.username} onChange={(e) => setFormAkun({...formAkun, username:e.target.value})} className="w-full p-2 border rounded-lg text-xs" required /></div>
+            <div><label className="block text-[10px] font-bold mb-1 text-gray-600">Password</label><input type="text" value={formAkun.password} onChange={(e) => setFormAkun({...formAkun, password:e.target.value})} className="w-full p-2 border rounded-lg text-xs" required /></div>
+            <div><label className="block text-[10px] font-bold mb-1 text-gray-600">Peran / Akses</label><select value={formAkun.role} onChange={(e) => setFormAkun({...formAkun, role:e.target.value})} className="w-full p-2 border rounded-lg text-xs">
+              <option value="admin">Admin</option>
+              <option value="kepala_tpq">Kepala TPQ</option>
+              <option value="guru">Guru</option>
+              <option value="bendahara">Bendahara</option>
+              <option value="santri">Santri</option>
+            </select></div>
+            {formAkun.role === 'santri' && (<><div><label className="block text-[10px] font-bold mb-1 text-gray-600">Jilid</label><select value={formAkun.jilid} onChange={(e) => setFormAkun({...formAkun, jilid:e.target.value})} className="w-full p-2 border rounded-lg text-xs">{JILID_LEVELS.map(j => <option key={j} value={j}>{j}</option>)}</select></div>
+            <div><label className="block text-[10px] font-bold mb-1 text-gray-600">ID Guru Wali</label><input type="text" value={formAkun.guruId} onChange={(e) => setFormAkun({...formAkun, guruId:e.target.value})} className="w-full p-2 border rounded-lg text-xs" placeholder="Isi ID akun guru" /></div></>)}
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2 rounded-lg text-xs">{modeEdit ? 'Perbarui' : 'Simpan Baru'}</button>
+            {modeEdit && <button type="button" onClick={resetForm} className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold px-4 py-2 rounded-lg text-xs">Batal</button>}
+          </div>
+        </form>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead className="bg-gray-50 font-bold text-gray-600 uppercase">
+              <tr>
+                <th className="p-2 text-left">Nama</th>
+                <th className="p-2 text-left">Username</th>
+                <th className="p-2 text-left">Peran</th>
+                <th className="p-2 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {daftarPengguna.sort((a,b) => a.name.localeCompare(b.name)).map(a => (
+                <tr key={a.id} className="border-b hover:bg-gray-50">
+                  <td className="p-2 font-semibold">{a.name}</td>
+                  <td className="p-2">{a.username}</td>
+                  <td className="p-2 capitalize">{getRoleName(a.role)}</td>
+                  <td className="p-2 text-center">
+                    <button onClick={() => editAkun(a)} className="text-blue-600 hover:text-blue-800 mx-1"><Edit size={14}/></button>
+                    <button onClick={() => hapusAkun(a.id)} className="text-red-600 hover:text-red-800 mx-1"><Trash2 size={14}/></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  return null;
 }
