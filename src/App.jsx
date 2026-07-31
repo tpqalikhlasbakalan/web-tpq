@@ -905,21 +905,27 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
   );
 
   if (activeTab === 'input_tabungan_guru' && isSavingAuthorized) return (
-  <div className="animate-fade-in space-y-6">
-    <BackButton onClick={() => setActiveTab('dashboard')} />
+  <div className="animate-fade-in space-y-6 p-4">
+    <button 
+      onClick={() => setActiveTab('dashboard')}
+      className="flex items-center gap-2 text-gray-700 hover:text-amber-700 font-medium mb-4"
+    >
+      <ArrowLeft size={16} /> Kembali ke Menu Utama
+    </button>
+
     <div className="bg-white p-6 rounded-2xl shadow-sm border">
-      <h2 className="text-lg font-bold mb-6 flex items-center text-blue-800">
-        <CreditCard className="mr-2"/> Input Setoran & Riwayat Tabungan
+      <h2 className="text-xl font-bold mb-6 flex items-center text-amber-800">
+        <DollarSign className="mr-2"/> Input Mutasi Tabungan Santri
       </h2>
 
       {users.length === 0 ? (
-        <div className="p-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs">
+        <div className="p-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-sm">
           <h4 className="font-bold flex items-center"><Info size={16} className="mr-1.5"/> Belum Ada Data Santri</h4>
           <p className="mt-1">Silakan tambahkan data santri terlebih dahulu.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* === KOLOM KIRI: PILIH SANTRI === */}
+          {/* === KOLOM KIRI: DAFTAR SANTRI === */}
           <div className="bg-gray-50 p-4 rounded-xl border">
             <h3 className="text-sm font-bold text-gray-700 mb-3 border-b pb-2 uppercase">Daftar Santri</h3>
             <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
@@ -927,14 +933,14 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
                 <button
                   key={u.id}
                   onClick={() => setSelectedSantri(u)}
-                  className={`w-full p-3 rounded-xl text-left text-xs border transition-all ${
+                  className={`w-full p-3 rounded-xl text-left text-sm border transition-all ${
                     selectedSantri?.id === u.id
-                      ? 'bg-blue-600 text-white font-bold border-blue-600 shadow-md'
-                      : 'bg-white text-gray-700 border-gray-200 hover:bg-blue-50 hover:border-blue-200'
+                      ? 'bg-amber-600 text-white font-bold border-amber-600 shadow-md'
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-amber-50 hover:border-amber-200'
                   }`}
                 >
-                  <p className="font-semibold text-sm">{u?.name || 'Nama tidak tersedia'}</p>
-                  <p className="mt-0.5 opacity-80">Saldo: Rp {Number(u?.saldo_awal || 0).toLocaleString('id-ID')}</p>
+                  <p className="font-semibold">{u?.name || 'Nama tidak tersedia'}</p>
+                  <p className="mt-0.5 opacity-80 text-xs">Saldo: Rp {Number(u?.saldo_awal || 0).toLocaleString('id-ID')}</p>
                 </button>
               ))}
             </div>
@@ -943,104 +949,122 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
           {/* === KOLOM KANAN: INPUT + RIWAYAT === */}
           <div className="md:col-span-2 space-y-6">
             {!selectedSantri ? (
-              <div className="p-10 text-center text-gray-400 text-xs italic bg-gray-50 border border-dashed rounded-xl">
-                Silakan pilih nama santri di sebelah kiri.
+              <div className="p-10 text-center text-gray-400 text-sm italic bg-gray-50 border border-dashed rounded-xl">
+                Silakan pilih nama santri di sebelah kiri terlebih dahulu.
               </div>
             ) : (
               <>
                 {/* INFO SANTRI */}
-                <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
-                  <p className="text-[10px] text-blue-700 font-bold uppercase">Santri Terpilih</p>
+                <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
+                  <p className="text-[11px] text-amber-700 font-bold uppercase">Santri Terpilih</p>
                   <h3 className="font-extrabold text-lg mt-0.5">{selectedSantri?.name || '-'}</h3>
-                  <p className="text-xs text-gray-600 mt-1">Saldo Saat Ini: <strong>Rp {Number(selectedSantri?.saldo_awal || 0).toLocaleString('id-ID')}</strong></p>
+                  <p className="text-sm text-gray-600 mt-1">Saldo Saat Ini: <strong>Rp {Number(selectedSantri?.saldo_awal || 0).toLocaleString('id-ID')}</strong></p>
                 </div>
 
-                {/* FORM INPUT */}
+                {/* FORM INPUT MUTASI */}
                 <form onSubmit={async (e) => {
                   e.preventDefault();
+                  const jenis = e.target.jenis.value;
                   const nominal = Number(e.target.nominal.value.replace(/\./g,''));
                   const tanggal = e.target.tanggal.value;
-                  const keterangan = e.target.keterangan.value.trim() || 'Setoran Tabungan';
+                  const keterangan = e.target.keterangan.value.trim() || `${jenis} Tabungan`;
 
                   if (!nominal || nominal <= 0) {
                     showToast('Masukkan nominal yang benar!', 'error');
                     return;
                   }
 
-                  // Data riwayat baru yang disimpan
-                  const riwayatBaru = {
+                  // Hitung saldo baru
+                  let saldoBaru;
+                  if (jenis === 'Setoran') {
+                    saldoBaru = (selectedSantri.saldo_awal || 0) + nominal;
+                  } else {
+                    if ((selectedSantri.saldo_awal || 0) < nominal) {
+                      showToast('Saldo tidak cukup untuk penarikan!', 'error');
+                      return;
+                    }
+                    saldoBaru = (selectedSantri.saldo_awal || 0) - nominal;
+                  }
+
+                  // Simpan riwayat mutasi
+                  const mutasiBaru = {
                     id: Date.now(),
                     userId: selectedSantri.id,
                     tanggal: tanggal,
+                    jenis: jenis,
                     nominal: nominal,
                     keterangan: keterangan,
                     dicatatOleh: user.id
                   };
 
-                  // Update saldo santri
-                  const saldoBaru = (selectedSantri.saldo_awal || 0) + nominal;
+                  // Update data
                   const dataUserBaru = users.map(item => 
                     item.id === selectedSantri.id ? {...item, saldo_awal: saldoBaru} : item
                   );
 
-                  // Simpan data
-                  await updateTable('savings', [...(savings || []), riwayatBaru]);
+                  await updateTable('savings', [...(savings || []), mutasiBaru]);
                   await updateTable('users', dataUserBaru);
                   setSelectedSantri({...selectedSantri, saldo_awal: saldoBaru});
-                  showToast('Setoran berhasil dicatat!');
+                  showToast(`Mutasi ${jenis} berhasil dicatat!`);
                   e.target.reset();
                 }} className="space-y-4 bg-gray-50 p-5 rounded-2xl border">
-                  <h4 className="font-bold text-sm text-gray-700 border-b pb-2">➕ Input Setoran Baru</h4>
+                  <h4 className="font-bold text-sm text-gray-700 border-b pb-2">Input Mutasi Baru</h4>
+                  
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold mb-1 text-gray-600">Tanggal</label>
-                      <input type="date" name="tanggal" defaultValue={new Date().toISOString().substring(0,10)} required className="p-2.5 border rounded-xl w-full text-xs" />
+                      <input type="date" name="tanggal" defaultValue={new Date().toISOString().substring(0,10)} required className="p-2.5 border rounded-xl w-full text-sm" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold mb-1 text-gray-600">Nominal (Rp)</label>
-                      <input type="text" name="nominal" required className="p-2.5 border rounded-xl w-full text-xs font-bold" placeholder="10.000" />
+                      <label className="block text-xs font-bold mb-1 text-gray-600">Jenis</label>
+                      <select name="jenis" className="p-2.5 border rounded-xl w-full text-sm font-medium" required>
+                        <option>Setoran</option>
+                        <option>Penarikan</option>
+                      </select>
                     </div>
                   </div>
+
+                  <div>
+                    <label className="block text-xs font-bold mb-1 text-gray-600">Nominal (Rp)</label>
+                    <input type="text" name="nominal" required className="p-2.5 border rounded-xl w-full text-sm font-medium" placeholder="Contoh: 10000" />
+                  </div>
+
                   <div>
                     <label className="block text-xs font-bold mb-1 text-gray-600">Keterangan</label>
-                    <input type="text" name="keterangan" className="p-2.5 border rounded-xl w-full text-xs font-bold" placeholder="Setoran Rutin" />
+                    <input type="text" name="keterangan" className="p-2.5 border rounded-xl w-full text-sm font-medium" placeholder="Opsional" />
                   </div>
-                  <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold w-full py-3 rounded-xl text-xs shadow">
-                    Simpan Setoran
+
+                  <button type="submit" className="bg-amber-600 hover:bg-amber-700 text-white font-bold w-full py-3 rounded-xl text-sm shadow">
+                    Simpan Data
                   </button>
                 </form>
 
-                {/* === BAGIAN RIWAYAT TABUNGAN === */}
+                {/* === RIWAYAT MUTASI === */}
                 <div className="border-t pt-6">
                   <h3 className="text-sm font-bold mb-4 flex items-center text-gray-800">
-                    <ListChecks className="mr-2"/> Riwayat Setoran Tabungan
+                    <ListChecks className="mr-2"/> Riwayat Mutasi Tabungan
                   </h3>
                   {(() => {
-                    // 🔍 Cek data & filter riwayat
                     const idSantri = selectedSantri?.id;
-                    console.log("Semua data tabungan:", savings); // Cek di F12 > Console
-                    console.log("ID Santri Terpilih:", idSantri);
-
                     if (!savings || savings.length === 0) {
-                      return <p className="text-xs text-gray-500 italic">Belum ada data tabungan yang disimpan.</p>;
+                      return <p className="text-sm text-gray-500 italic">Belum ada riwayat mutasi.</p>;
                     }
 
                     const riwayatSantri = savings.filter(item => String(item.userId) === String(idSantri));
-                    console.log("Riwayat untuk santri ini:", riwayatSantri);
-
+                    
                     if (riwayatSantri.length === 0) {
-                      return <p className="text-xs text-gray-500 italic">Belum ada riwayat setoran untuk santri ini.</p>;
+                      return <p className="text-sm text-gray-500 italic">Belum ada riwayat untuk santri ini.</p>;
                     }
 
-                    // Tampilkan tabel
                     return (
                       <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
-                          <thead className="bg-gray-50 font-bold text-gray-600 uppercase">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 font-bold text-gray-600 uppercase text-xs">
                             <tr>
                               <th className="p-2 text-left">Tanggal</th>
+                              <th className="p-2 text-left">Jenis</th>
                               <th className="p-2 text-left">Keterangan</th>
-                              <th className="p-2 text-right">Nominal Masuk</th>
+                              <th className="p-2 text-right">Nominal</th>
                               <th className="p-2 text-center">Aksi</th>
                             </tr>
                           </thead>
@@ -1050,21 +1074,35 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
                               .map((data, i) => (
                               <tr key={data.id || i} className="border-b hover:bg-gray-50">
                                 <td className="p-2">{data.tanggal || '-'}</td>
-                                <td className="p-2 font-semibold">{data.keterangan || '-'}</td>
-                                <td className="p-2 text-right font-bold text-green-700">Rp {Number(data.nominal || 0).toLocaleString('id-ID')}</td>
+                                <td className="p-2">
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                                    data.jenis === 'Setoran' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                  }`}>{data.jenis}</span>
+                                </td>
+                                <td className="p-2 font-medium">{data.keterangan || '-'}</td>
+                                <td className="p-2 text-right font-bold">
+                                  Rp {Number(data.nominal || 0).toLocaleString('id-ID')}
+                                </td>
                                 <td className="p-2 text-center">
                                   <button 
                                     onClick={async () => {
-                                      if(!confirm('Yakin hapus? Saldo akan dikurangi!')) return;
-                                      const sisaSaldo = (selectedSantri.saldo_awal || 0) - (data.nominal || 0);
+                                      if(!confirm('Yakin hapus mutasi ini? Saldo akan dikembalikan/dikurangi!')) return;
+                                      
+                                      let saldoBaruHapus;
+                                      if (data.jenis === 'Setoran') {
+                                        saldoBaruHapus = (selectedSantri.saldo_awal || 0) - (data.nominal || 0);
+                                      } else {
+                                        saldoBaruHapus = (selectedSantri.saldo_awal || 0) + (data.nominal || 0);
+                                      }
+
                                       await updateTable('savings', savings.filter(x => x.id !== data.id));
-                                      await updateTable('users', users.map(u => u.id === selectedSantri.id ? {...u, saldo_awal: sisaSaldo} : u));
-                                      setSelectedSantri({...selectedSantri, saldo_awal: sisaSaldo});
-                                      showToast('Riwayat dihapus & saldo dikembalikan');
+                                      await updateTable('users', users.map(u => u.id === selectedSantri.id ? {...u, saldo_awal: saldoBaruHapus} : u));
+                                      setSelectedSantri({...selectedSantri, saldo_awal: saldoBaruHapus});
+                                      showToast('Mutasi telah dihapus!');
                                     }}
                                     className="text-red-500 hover:text-red-700"
                                   >
-                                    <Trash2 size={14} />
+                                    <Trash2 size={16} />
                                   </button>
                                 </td>
                               </tr>
