@@ -916,7 +916,7 @@ if (activeTab === 'input_tabungan') return (
 
     <div className="bg-white p-6 rounded-2xl shadow-sm border">
       <h2 className="text-xl font-bold mb-6 flex items-center text-amber-800">
-        <DollarSign className="mr-2"/> Input Mutasi Tabungan Santri
+        <DollarSign className="mr-2"/> Input & Riwayat Tabungan Santri
       </h2>
 
       {users.length === 0 ? (
@@ -926,11 +926,11 @@ if (activeTab === 'input_tabungan') return (
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* === KOLOM KIRI: DAFTAR SANTRI === */}
+          {/* === KOLOM KIRI: PILIH SANTRI === */}
           <div className="bg-gray-50 p-4 rounded-xl border">
             <h3 className="text-sm font-bold text-gray-700 mb-3 border-b pb-2 uppercase">Daftar Santri</h3>
             <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
-              {users.filter(u=>u.role==='santri').map(u => (
+              {users.filter(u => u.role === 'santri').map(u => (
                 <button
                   key={u.id}
                   onClick={() => setSelectedSantri(u)}
@@ -951,50 +951,50 @@ if (activeTab === 'input_tabungan') return (
           <div className="md:col-span-2 space-y-6">
             {!selectedSantri ? (
               <div className="p-10 text-center text-gray-400 text-sm italic bg-gray-50 border border-dashed rounded-xl">
-                Silakan pilih nama santri di sebelah kiri terlebih dahulu.
+                Silakan pilih nama santri di sebelah kiri untuk melihat riwayat & melakukan input.
               </div>
             ) : (
               <>
-                {/* INFO SANTRI */}
+                {/* INFO SANTRI TERPILIH */}
                 <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
                   <p className="text-[11px] text-amber-700 font-bold uppercase">Santri Terpilih</p>
                   <h3 className="font-extrabold text-lg mt-0.5">{selectedSantri?.name || '-'}</h3>
                   <p className="text-sm text-gray-600 mt-1">Saldo Saat Ini: <strong>Rp {Number(selectedSantri?.saldo_awal || 0).toLocaleString('id-ID')}</strong></p>
                 </div>
 
-                {/* FORM INPUT MUTASI */}
+                {/* FORM INPUT MUTASI BARU */}
                 <form onSubmit={async (e) => {
                   e.preventDefault();
                   const jenis = e.target.jenis.value;
-                  const nominal = Number(e.target.nominal.value.replace(/\./g,''));
+                  const nominalBersih = Number(e.target.nominal.value.replace(/\./g,'').replace(/\D/g,''));
                   const tanggal = e.target.tanggal.value;
                   const keterangan = e.target.keterangan.value.trim() || `${jenis} Tabungan`;
 
-                  if (!nominal || nominal <= 0) {
+                  if (!nominalBersih || nominalBersih <= 0) {
                     showToast('Masukkan nominal yang benar!', 'error');
                     return;
                   }
 
                   let saldoBaru;
                   if (jenis === 'Setoran') {
-                    saldoBaru = (selectedSantri.saldo_awal || 0) + nominal;
+                    saldoBaru = (selectedSantri.saldo_awal || 0) + nominalBersih;
                   } else {
-                    if ((selectedSantri.saldo_awal || 0) < nominal) {
+                    if ((selectedSantri.saldo_awal || 0) < nominalBersih) {
                       showToast('Saldo tidak cukup untuk penarikan!', 'error');
                       return;
                     }
-                    saldoBaru = (selectedSantri.saldo_awal || 0) - nominal;
+                    saldoBaru = (selectedSantri.saldo_awal || 0) - nominalBersih;
                   }
 
-                  // ✅ MENYESUAIKAN FORMAT DATA LAMA (pakai santriId, amount, date)
                   const mutasiBaru = {
                     id: Date.now().toString(),
                     santriId: selectedSantri.id,
                     date: tanggal,
                     type: jenis === 'Setoran' ? 'setor' : 'tarik',
-                    amount: nominal,
+                    amount: nominalBersih,
                     description: keterangan,
-                    inputBy: user.id
+                    inputBy: user.id,
+                    inputAt: new Date().toISOString()
                   };
 
                   const dataUserBaru = users.map(item => 
@@ -1015,7 +1015,7 @@ if (activeTab === 'input_tabungan') return (
                       <input type="date" name="tanggal" defaultValue={new Date().toISOString().substring(0,10)} required className="p-2.5 border rounded-xl w-full text-sm" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold mb-1 text-gray-600">Jenis</label>
+                      <label className="block text-xs font-bold mb-1 text-gray-600">Jenis Transaksi</label>
                       <select name="jenis" className="p-2.5 border rounded-xl w-full text-sm font-medium" required>
                         <option>Setoran</option>
                         <option>Penarikan</option>
@@ -1025,7 +1025,17 @@ if (activeTab === 'input_tabungan') return (
 
                   <div>
                     <label className="block text-xs font-bold mb-1 text-gray-600">Nominal (Rp)</label>
-                    <input type="text" name="nominal" required className="p-2.5 border rounded-xl w-full text-sm font-medium" placeholder="Contoh: 10000" />
+                    <input 
+                      type="text" 
+                      name="nominal" 
+                      required 
+                      className="p-2.5 border rounded-xl w-full text-sm font-medium" 
+                      placeholder="Contoh: 50.000 atau 50000"
+                      onInput={(e) => {
+                        const val = e.target.value.replace(/\D/g,'');
+                        e.target.value = val ? Number(val).toLocaleString('id-ID') : '';
+                      }}
+                    />
                   </div>
 
                   <div>
@@ -1034,23 +1044,23 @@ if (activeTab === 'input_tabungan') return (
                   </div>
 
                   <button type="submit" className="bg-amber-600 hover:bg-amber-700 text-white font-bold w-full py-3 rounded-xl text-sm shadow">
-                    Simpan Data
+                    Simpan & Perbarui Saldo
                   </button>
                 </form>
 
-                {/* === RIWAYAT MUTASI === */}
+                {/* === RIWAYAT MUTASI PER SANTRI (UNTUK KOREKSI) === */}
                 <div className="border-t pt-6">
                   <h3 className="text-sm font-bold mb-4 flex items-center text-gray-800">
-                    <ListChecks className="mr-2"/> Riwayat Mutasi Tabungan
+                    <ListChecks className="mr-2"/> Riwayat Lengkap Tabungan
                   </h3>
                   {(() => {
-                    const idSantri = selectedSantri?.id;
+                    const idSantri = String(selectedSantri?.id);
                     if (!savings || savings.length === 0) {
                       return <p className="text-sm text-gray-500 italic">Belum ada riwayat mutasi.</p>;
                     }
 
-                    // ✅ MENYESUAIKAN FORMAT DATA LAMA (santriId)
-                    const riwayatSantri = savings.filter(item => String(item.santriId) === String(idSantri));
+                    // Filter khusus santri yang dipilih
+                    const riwayatSantri = savings.filter(item => String(item.santriId) === idSantri);
                     
                     if (riwayatSantri.length === 0) {
                       return <p className="text-sm text-gray-500 italic">Belum ada riwayat untuk santri ini.</p>;
@@ -1065,19 +1075,21 @@ if (activeTab === 'input_tabungan') return (
                               <th className="p-2 text-left">Jenis</th>
                               <th className="p-2 text-left">Keterangan</th>
                               <th className="p-2 text-right">Nominal</th>
-                              <th className="p-2 text-center">Aksi</th>
+                              <th className="p-2 text-center">Koreksi</th>
                             </tr>
                           </thead>
                           <tbody>
                             {[...riwayatSantri]
-                              .sort((a,b) => new Date(b.date) - new Date(a.date))
+                              .sort((a,b) => new Date(b.date) - new Date(a.date)) // Urut terbaru di atas
                               .map((data, i) => (
                               <tr key={data.id || i} className="border-b hover:bg-gray-50">
                                 <td className="p-2">{data.date || '-'}</td>
                                 <td className="p-2">
                                   <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                                     data.type === 'setor' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                                  }`}>{data.type === 'setor' ? 'Setoran' : 'Penarikan'}</span>
+                                  }`}>
+                                    {data.type === 'setor' ? 'Setoran' : 'Penarikan'}
+                                  </span>
                                 </td>
                                 <td className="p-2 font-medium">{data.description || '-'}</td>
                                 <td className="p-2 text-right font-bold">
@@ -1086,21 +1098,30 @@ if (activeTab === 'input_tabungan') return (
                                 <td className="p-2 text-center">
                                   <button 
                                     onClick={async () => {
-                                      if(!confirm('Yakin hapus mutasi ini? Saldo akan dikembalikan/dikurangi!')) return;
+                                      if(!confirm('Yakin hapus transaksi ini? Saldo akan dikembalikan otomatis!')) return;
                                       
-                                      let saldoBaruHapus;
+                                      let saldoKoreksi;
                                       if (data.type === 'setor') {
-                                        saldoBaruHapus = (selectedSantri.saldo_awal || 0) - (data.amount || 0);
+                                        saldoKoreksi = (selectedSantri.saldo_awal || 0) - (data.amount || 0);
                                       } else {
-                                        saldoBaruHapus = (selectedSantri.saldo_awal || 0) + (data.amount || 0);
+                                        saldoKoreksi = (selectedSantri.saldo_awal || 0) + (data.amount || 0);
+                                      }
+
+                                      // Cegah saldo minus saat koreksi
+                                      if (saldoKoreksi < 0) {
+                                        showToast('Tidak bisa dihapus: saldo akan menjadi kurang dari nol!', 'error');
+                                        return;
                                       }
 
                                       await updateTable('savings', savings.filter(x => x.id !== data.id));
-                                      await updateTable('users', users.map(u => u.id === selectedSantri.id ? {...u, saldo_awal: saldoBaruHapus} : u));
-                                      setSelectedSantri({...selectedSantri, saldo_awal: saldoBaruHapus});
-                                      showToast('Mutasi telah dihapus!');
+                                      await updateTable('users', users.map(u => 
+                                        u.id === selectedSantri.id ? {...u, saldo_awal: saldoKoreksi} : u
+                                      ));
+                                      setSelectedSantri({...selectedSantri, saldo_awal: saldoKoreksi});
+                                      showToast('Transaksi sudah dikoreksi & saldo diperbarui!');
                                     }}
-                                    className="text-red-500 hover:text-red-700"
+                                    className="text-red-500 hover:text-red-700 p-1 rounded"
+                                    title="Hapus & Koreksi Saldo"
                                   >
                                     <Trash2 size={16} />
                                   </button>
