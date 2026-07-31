@@ -250,44 +250,50 @@ const MenuGrid = ({ menus, onSelect }) => (
   </div>
 );
 
-// ==================================================
-// FUNGSI PENAMPUNG INPUT TABUNGAN (SUDAH DIPERBAIKI)
+// FUNGSI PENAMPUNG INPUT TABUNGAN (SUDAH DISINKRONKAN)
 // ==================================================
 function SavingsInputView({ users, savings, updateTable, showToast, recorderId }) {
-  // State baru untuk menyimpan santri yang dipilih
   const [selectedSantri, setSelectedSantri] = useState(null);
   const santriList = users.filter(u => u.role === 'santri');
 
-  // Fungsi simpan data sudah disesuaikan agar otomatis update saldo
+  // 🔧 FUNGSI SINKRONISASI: Hitung saldo dari riwayat tabungan
+  const hitungSaldoAktual = (idSantri) => {
+    return savings
+      .filter(item => String(item.santriId) === String(idSantri))
+      .reduce((total, trx) => {
+        return trx.type === 'setor' ? total + trx.amount : total - trx.amount;
+      }, 0);
+  };
+
+  // Saat santri diklik → tampilkan saldo yang sudah dihitung ulang
+  const pilihSantri = (santri) => {
+    const saldoBenar = hitungSaldoAktual(santri.id);
+    setSelectedSantri({...santri, saldo_awal: saldoBenar});
+  };
+
+  // Simpan transaksi + perbarui saldo di data santri
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedSantri || !e.target.amount.value) {
-      showToast('Pilih santri dan masukkan nominal!', 'error');
+      showToast('Pilih santri & masukkan nominal!', 'error');
       return;
     }
 
     const jenis = e.target.type.value;
     const nominal = parseInt(e.target.amount.value);
     const tanggal = e.target.date.value;
-    const keterangan = e.target.description.value.trim() || `${jenis === 'setor' ? 'Setoran' : 'Penarikan'} Tabungan`;
+    const keterangan = e.target.description.value.trim() || (jenis === 'setor' ? 'Setoran' : 'Penarikan');
 
-    if (nominal <= 0) {
-      showToast('Nominal harus lebih dari nol!', 'error');
-      return;
+    if (nominal <= 0) return showToast('Nominal tidak valid!', 'error');
+    if (jenis === 'tarik' && hitungSaldoAktual(selectedSantri.id) < nominal) {
+      return showToast('Saldo tidak cukup!', 'error');
     }
 
-    let saldoBaru;
-    if (jenis === 'setor') {
-      saldoBaru = (selectedSantri.saldo_awal || 0) + nominal;
-    } else {
-      if ((selectedSantri.saldo_awal || 0) < nominal) {
-        showToast('Saldo tidak cukup untuk penarikan!', 'error');
-        return;
-      }
-      saldoBaru = (selectedSantri.saldo_awal || 0) - nominal;
-    }
+    const saldoBaru = jenis === 'setor' 
+      ? hitungSaldoAktual(selectedSantri.id) + nominal 
+      : hitungSaldoAktual(selectedSantri.id) - nominal;
 
-    const newSavings = {
+    const transaksiBaru = {
       id: Date.now().toString(),
       santriId: selectedSantri.id,
       date: tanggal,
@@ -297,64 +303,89 @@ function SavingsInputView({ users, savings, updateTable, showToast, recorderId }
       inputBy: recorderId
     };
 
-    // Simpan transaksi & perbarui saldo santri sekaligus
-    await updateTable('savings', [newSavings, ...savings]);
+    // Simpan transaksi & perbarui saldo di data santri
+    await updateTable('savings', [transaksiBaru, ...savings]);
     await updateTable('users', users.map(u => 
       u.id === selectedSantri.id ? {...u, saldo_awal: saldoBaru} : u
     ));
 
     setSelectedSantri({...selectedSantri, saldo_awal: saldoBaru});
-    showToast('Data tabungan berhasil disimpan!');
+    showToast('Tersimpan! Saldo sudah disinkronkan.');
     e.target.reset();
+  };
+
+  // Sinkronisasi saldo saat hapus transaksi
+  const hapusTransaksi = async (dataTrx) => {
+    if(!confirm('Yakin hapus? Saldo akan dikembalikan otomatis!')) return;
+
+    const saldoKoreksi = dataTrx.type === 'setor' 
+      ? hitungSaldoAktual(selectedSantri.id) - dataTrx.amount 
+      : hitungSaldoAktual(selectedSantri.id) + dataTrx.amount;
+
+    if (saldoKoreksi < 0) return showToast('Tidak bisa dihapus (saldo akan minus)!', 'error');
+
+    await updateTable('savings', savings.filter(x => x.id !== dataTrx.id));
+    await updateTable('users', users.map(u => 
+      u.id === selectedSantri.id ? {...u, saldo_awal: saldoKoreksi} : u
+    ));
+
+    setSelectedSantri({...selectedSantri, saldo_awal: saldoKoreksi});
+    showToast('Dihapus! Saldo sudah diperbaiki.');
   };
 
   return (
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-2xl shadow-sm border">
         <h3 className="text-lg font-bold mb-6 flex items-center text-amber-800">
-          <DollarSign className="mr-2"/> Input & Riwayat Mutasi Tabungan Santri
+          <DollarSign className="mr-2"/> Input & Riwayat Tabungan (Tersinkron)
         </h3>
 
         {santriList.length === 0 ? (
           <div className="p-6 bg-amber-50 border border-amber-200 rounded-xl">
-            <p className="text-amber-900 text-sm">Belum ada data santri. Silakan tambahkan dulu.</p>
+            <p className="text-amber-900 text-sm">Belum ada data santri.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* KOLOM KIRI: DAFTAR SANTRI */}
+            {/* === KOLOM KIRI: DAFTAR SANTRI (SALDO SUDAH BENAR) === */}
             <div className="bg-gray-50 p-4 rounded-xl border">
               <h4 className="text-xs font-bold text-gray-700 mb-3 border-b pb-2 uppercase">Daftar Santri</h4>
               <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
-                {santriList.map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => setSelectedSantri(s)}
-                    className={`w-full p-3 rounded-xl text-left text-sm border transition-all ${
-                      selectedSantri?.id === s.id
-                        ? 'bg-amber-600 text-white font-bold border-amber-600 shadow-md'
-                        : 'bg-white text-gray-700 border-gray-200 hover:bg-amber-50 hover:border-amber-200'
-                    }`}
-                  >
-                    <p className="font-semibold">{s.name} {s.jilid ? `(${s.jilid})` : ''}</p>
-                    <p className="mt-0.5 opacity-80 text-xs">Saldo: Rp {Number(s.saldo_awal || 0).toLocaleString('id-ID')}</p>
-                  </button>
-                ))}
+                {santriList.map(s => {
+                  const saldoBenar = hitungSaldoAktual(s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => pilihSantri(s)}
+                      className={`w-full p-3 rounded-xl text-left text-sm border transition-all ${
+                        selectedSantri?.id === s.id
+                          ? 'bg-amber-600 text-white font-bold border-amber-600 shadow-md'
+                          : 'bg-white text-gray-700 border-gray-200 hover:bg-amber-50 hover:border-amber-200'
+                      }`}
+                    >
+                      <p className="font-semibold">{s.name} {s.jilid ? `(${s.jilid})` : ''}</p>
+                      <p className="mt-0.5 opacity-80 text-xs">
+                        Saldo: Rp {saldoBenar.toLocaleString('id-ID')}
+                      </p>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* KOLOM KANAN: FORM + RIWAYAT */}
+            {/* === KOLOM KANAN === */}
             <div className="md:col-span-2 space-y-6">
               {!selectedSantri ? (
                 <div className="p-10 text-center text-gray-400 text-sm italic bg-gray-50 border border-dashed rounded-xl">
-                  Silakan klik nama santri di sebelah kiri terlebih dahulu
+                  Klik nama santri untuk melihat saldo & riwayat
                 </div>
               ) : (
                 <>
-                  {/* Info Santri */}
                   <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
                     <p className="text-[11px] text-amber-700 font-bold uppercase">Santri Terpilih</p>
                     <h4 className="font-extrabold text-lg mt-0.5">{selectedSantri.name}</h4>
-                    <p className="text-sm text-gray-600 mt-1">Saldo Saat Ini: <strong>Rp {Number(selectedSantri.saldo_awal || 0).toLocaleString('id-ID')}</strong></p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Saldo Aktual: <strong>Rp {hitungSaldoAktual(selectedSantri.id).toLocaleString('id-ID')}</strong>
+                    </p>
                   </div>
 
                   {/* Form Input */}
@@ -382,15 +413,15 @@ function SavingsInputView({ users, savings, updateTable, showToast, recorderId }
                       <input type="text" name="description" placeholder="Opsional" className="w-full p-2.5 border rounded-xl text-xs" />
                     </div>
                     <button type="submit" className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl text-xs shadow">
-                      Simpan Data
+                      Simpan & Sinkronkan Saldo
                     </button>
                   </form>
 
-                  {/* Tabel Riwayat */}
+                  {/* Riwayat Tabungan */}
                   <div className="border-t pt-6">
-                    <h5 className="text-sm font-bold mb-4 text-gray-800">Riwayat Transaksi Tabungan</h5>
+                    <h5 className="text-sm font-bold mb-4 text-gray-800">Riwayat Transaksi</h5>
                     {(() => {
-                      const riwayat = savings.filter(item => String(item.santriId) === String(selectedSantri.id));
+                      const riwayat = savings.filter(i => String(i.santriId) === String(selectedSantri.id));
                       if (riwayat.length === 0) return <p className="text-sm text-gray-500 italic">Belum ada riwayat.</p>;
                       return (
                         <div className="overflow-x-auto">
@@ -401,7 +432,7 @@ function SavingsInputView({ users, savings, updateTable, showToast, recorderId }
                                 <th className="p-2 text-left">Jenis</th>
                                 <th className="p-2 text-left">Keterangan</th>
                                 <th className="p-2 text-right">Nominal</th>
-                                <th className="p-2 text-center">Hapus</th>
+                                <th className="p-2 text-center">Aksi</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -416,20 +447,7 @@ function SavingsInputView({ users, savings, updateTable, showToast, recorderId }
                                   <td className="p-2">{r.description||'-'}</td>
                                   <td className="p-2 text-right font-bold">Rp {Number(r.amount).toLocaleString('id-ID')}</td>
                                   <td className="p-2 text-center">
-                                    <button 
-                                      onClick={async () => {
-                                        if(!confirm('Yakin hapus? Saldo akan dikembalikan!')) return;
-                                        let saldoKoreksi = r.type==='setor' 
-                                          ? (selectedSantri.saldo_awal - r.amount) 
-                                          : (selectedSantri.saldo_awal + r.amount);
-                                        if (saldoKoreksi < 0) return showToast('Tidak bisa dihapus!', 'error');
-                                        await updateTable('savings', savings.filter(x=>x.id!==r.id));
-                                        await updateTable('users', users.map(u=>u.id===selectedSantri.id?{...u,saldo_awal:saldoKoreksi}:u));
-                                        setSelectedSantri({...selectedSantri, saldo_awal:saldoKoreksi});
-                                        showToast('Data sudah dikoreksi!');
-                                      }}
-                                      className="text-red-500 hover:text-red-700"
-                                    >🗑️</button>
+                                    <button onClick={() => hapusTransaksi(r)} className="text-red-500 hover:text-red-700">🗑️</button>
                                   </td>
                                 </tr>
                               ))}
