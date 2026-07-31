@@ -914,18 +914,19 @@ if (activeTab === 'input_tabungan') return (
     </button>
 
     <div className="bg-white p-6 rounded-2xl shadow-sm border">
-      <h2 className="text-xl font-bold mb-6 flex items-center text-amber-800">
-        <DollarSign className="mr-2"/> Input & Riwayat Mutasi Tabungan Santri
+      <h2 className="text-xl font-bold mb-6 text-amber-800">
+        Input & Riwayat Tabungan Santri
       </h2>
 
+      {/* Cek apakah sudah ada data santri */}
       {users.filter(u => u.role === 'santri').length === 0 ? (
         <div className="p-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-sm">
-          <h4 className="font-bold flex items-center"><Info size={16} className="mr-1.5"/> Belum Ada Data Santri</h4>
-          <p className="mt-1">Silakan tambahkan data santri terlebih dahulu di menu Data Santri.</p>
+          <h4 className="font-bold">Belum Ada Data Santri</h4>
+          <p className="mt-1">Silakan tambahkan data santri terlebih dahulu.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* === KOLOM KIRI: PILIH SANTRI === */}
+          {/* === KOLOM KIRI: DAFTAR SANTRI === */}
           <div className="bg-gray-50 p-4 rounded-xl border">
             <h3 className="text-sm font-bold text-gray-700 mb-3 border-b pb-2 uppercase">Daftar Santri</h3>
             <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
@@ -946,22 +947,22 @@ if (activeTab === 'input_tabungan') return (
             </div>
           </div>
 
-          {/* === KOLOM KANAN: INPUT + RIWAYAT === */}
+          {/* === KOLOM KANAN: MUNCUL SETELAH SANTRI DIPILIH === */}
           <div className="md:col-span-2 space-y-6">
             {!selectedSantri ? (
               <div className="p-10 text-center text-gray-400 text-sm italic bg-gray-50 border border-dashed rounded-xl">
-                Silakan pilih nama santri di sebelah kiri untuk melihat riwayat & melakukan input.
+                Silakan klik nama santri di sebelah kiri terlebih dahulu
               </div>
             ) : (
               <>
-                {/* INFO SANTRI TERPILIH */}
+                {/* Info Santri Terpilih */}
                 <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
                   <p className="text-[11px] text-amber-700 font-bold uppercase">Santri Terpilih</p>
                   <h3 className="font-extrabold text-lg mt-0.5">{selectedSantri?.name || '-'}</h3>
                   <p className="text-sm text-gray-600 mt-1">Saldo Saat Ini: <strong>Rp {Number(selectedSantri?.saldo_awal || 0).toLocaleString('id-ID')}</strong></p>
                 </div>
 
-                {/* FORM INPUT MUTASI BARU */}
+                {/* Form Input Tabungan */}
                 <form onSubmit={async (e) => {
                   e.preventDefault();
                   const jenis = e.target.jenis.value;
@@ -1013,7 +1014,7 @@ if (activeTab === 'input_tabungan') return (
                       <input type="date" name="tanggal" defaultValue={new Date().toISOString().substring(0,10)} required className="p-2.5 border rounded-xl w-full text-sm" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold mb-1 text-gray-600">Jenis Transaksi</label>
+                      <label className="block text-xs font-bold mb-1 text-gray-600">Jenis</label>
                       <select name="jenis" className="p-2.5 border rounded-xl w-full text-sm font-medium" required>
                         <option>Setoran</option>
                         <option>Penarikan</option>
@@ -1028,7 +1029,7 @@ if (activeTab === 'input_tabungan') return (
                       name="nominal" 
                       required 
                       className="p-2.5 border rounded-xl w-full text-sm font-medium" 
-                      placeholder="Contoh: 50.000 atau 50000"
+                      placeholder="Contoh: 10000"
                       onInput={(e) => {
                         const val = e.target.value.replace(/\D/g,'');
                         e.target.value = val ? Number(val).toLocaleString('id-ID') : '';
@@ -1046,17 +1047,18 @@ if (activeTab === 'input_tabungan') return (
                   </button>
                 </form>
 
-                {/* === RIWAYAT MUTASI PER SANTRI === */}
+                {/* === TABEL RIWAYAT MUTASI === */}
                 <div className="border-t pt-6">
-                  <h3 className="text-sm font-bold mb-4 flex items-center text-gray-800">
-                    <ListChecks className="mr-2"/> Riwayat Lengkap Tabungan
+                  <h3 className="text-sm font-bold mb-4 text-gray-800">
+                    Riwayat Transaksi Tabungan
                   </h3>
                   {(() => {
                     const idSantri = String(selectedSantri?.id);
                     if (!savings || savings.length === 0) {
-                      return <p className="text-sm text-gray-500 italic">Belum ada riwayat mutasi.</p>;
+                      return <p className="text-sm text-gray-500 italic">Belum ada riwayat transaksi.</p>;
                     }
 
+                    // Filter khusus santri yang dipilih
                     const riwayatSantri = savings.filter(item => String(item.santriId) === idSantri);
                     
                     if (riwayatSantri.length === 0) {
@@ -1072,12 +1074,12 @@ if (activeTab === 'input_tabungan') return (
                               <th className="p-2 text-left">Jenis</th>
                               <th className="p-2 text-left">Keterangan</th>
                               <th className="p-2 text-right">Nominal</th>
-                              <th className="p-2 text-center">Koreksi</th>
+                              <th className="p-2 text-center">Hapus</th>
                             </tr>
                           </thead>
                           <tbody>
                             {[...riwayatSantri]
-                              .sort((a,b) => new Date(b.date) - new Date(a.date))
+                              .sort((a,b) => new Date(b.date) - new Date(a.date)) // Terbaru di atas
                               .map((data, i) => (
                               <tr key={data.id || i} className="border-b hover:bg-gray-50">
                                 <td className="p-2">{data.date || '-'}</td>
@@ -1095,7 +1097,7 @@ if (activeTab === 'input_tabungan') return (
                                 <td className="p-2 text-center">
                                   <button 
                                     onClick={async () => {
-                                      if(!confirm('Yakin hapus transaksi ini? Saldo akan dikembalikan otomatis!')) return;
+                                      if(!confirm('Yakin hapus transaksi ini? Saldo akan diperbaiki otomatis!')) return;
                                       
                                       let saldoKoreksi;
                                       if (data.type === 'setor') {
@@ -1105,7 +1107,7 @@ if (activeTab === 'input_tabungan') return (
                                       }
 
                                       if (saldoKoreksi < 0) {
-                                        showToast('Tidak bisa dihapus: saldo akan menjadi kurang dari nol!', 'error');
+                                        showToast('Tidak bisa dihapus! Saldo akan kurang dari nol.', 'error');
                                         return;
                                       }
 
@@ -1114,10 +1116,9 @@ if (activeTab === 'input_tabungan') return (
                                         u.id === selectedSantri.id ? {...u, saldo_awal: saldoKoreksi} : u
                                       ));
                                       setSelectedSantri({...selectedSantri, saldo_awal: saldoKoreksi});
-                                      showToast('Transaksi sudah dikoreksi & saldo diperbarui!');
+                                      showToast('Transaksi telah dihapus & saldo diperbarui!');
                                     }}
-                                    className="text-red-500 hover:text-red-700 p-1 rounded"
-                                    title="Hapus & Koreksi Saldo"
+                                    className="text-red-500 hover:text-red-700"
                                   >
                                     <Trash2 size={16} />
                                   </button>
