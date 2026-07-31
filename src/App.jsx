@@ -905,9 +905,187 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
   );
 
   if (activeTab === 'input_tabungan_guru' && isSavingAuthorized) return (
-    <div className="animate-fade-in"><BackButton onClick={() => setActiveTab('dashboard')} /><SavingsInputView users={users} savings={savings} updateTable={updateTable} showToast={showToast} recorderId={user.id} /></div>
-  );
+  <div className="animate-fade-in space-y-6">
+    <BackButton onClick={() => setActiveTab('dashboard')} />
+    <div className="bg-white p-6 rounded-2xl shadow-sm border">
+      <h2 className="text-lg font-bold mb-6 flex items-center text-blue-800">
+        <CreditCard className="mr-2"/> Input Setoran & Riwayat Tabungan
+      </h2>
 
+      {users.length === 0 ? (
+        <div className="p-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs">
+          <h4 className="font-bold flex items-center"><Info size={16} className="mr-1.5"/> Belum Ada Data Pengguna</h4>
+          <p className="mt-1">Silakan tambahkan data santri terlebih dahulu.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* === KOLOM KIRI: DAFTAR SANTRI === */}
+          <div className="bg-gray-50 p-4 rounded-xl border">
+            <h3 className="text-sm font-bold text-gray-700 mb-3 border-b pb-2 uppercase">Daftar Santri</h3>
+            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+              {users.map(u => (
+                <button
+                  key={u.id}
+                  onClick={() => {
+                    if(u && u.id) setSelectedSantri(u);
+                    else console.warn("Data santri tidak valid:", u);
+                  }}
+                  className={`w-full p-3 rounded-xl text-left text-xs border transition-all ${
+                    selectedSantri?.id === u.id
+                      ? 'bg-blue-600 text-white font-bold border-blue-600 shadow-md'
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-blue-50 hover:border-blue-200'
+                  }`}
+                >
+                  <p className="font-semibold text-sm">{u?.name || 'Nama tidak tersedia'}</p>
+                  <p className="mt-0.5 opacity-80">Saldo: Rp {u?.saldo_awal?.toLocaleString('id-ID') || '0'}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* === KOLOM KANAN: INPUT & RIWAYAT TABUNGAN === */}
+          <div className="md:col-span-2 space-y-6">
+            {!selectedSantri ? (
+              <div className="p-10 text-center text-gray-400 text-xs italic bg-gray-50 border border-dashed rounded-xl">
+                Silakan pilih nama santri di sebelah kiri untuk mencatat setoran dan melihat riwayatnya.
+              </div>
+            ) : (
+              <>
+                {/* INFO SANTRI PILIHAN */}
+                <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                  <p className="text-[10px] text-blue-700 font-bold uppercase">Santri Terpilih</p>
+                  <h3 className="font-extrabold text-lg mt-0.5">{selectedSantri?.name || '-'}</h3>
+                  <p className="text-xs text-gray-600 mt-1">Saldo Saat Ini: <strong>Rp {selectedSantri?.saldo_awal?.toLocaleString('id-ID') || '0'}</strong></p>
+                </div>
+
+                {/* FORM INPUT SETORAN */}
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  const nominal = parseInt(e.target.nominal.value.replace(/\D/g,''));
+                  const keterangan = e.target.keterangan.value.trim();
+                  if(isNaN(nominal) || nominal <= 0) {
+                    showToast('Masukkan nominal yang valid!', 'error');
+                    return;
+                  }
+
+                  // Tambah riwayat baru
+                  const riwayatBaru = {
+                    id: Date.now(),
+                    userId: selectedSantri.id,
+                    tanggal: e.target.tanggal.value,
+                    nominal: nominal,
+                    keterangan: keterangan,
+                    dicatatOleh: user.id,
+                    createdAt: new Date().toISOString()
+                  };
+
+                  // Hitung saldo baru
+                  const saldoBaru = (selectedSantri.saldo_awal || 0) + nominal;
+                  const updateUsers = users.map(item => 
+                    item.id === selectedSantri.id ? {...item, saldo_awal: saldoBaru} : item
+                  );
+
+                  // Simpan ke database
+                  await updateTable('savings', [...savings, riwayatBaru]);
+                  await updateTable('users', updateUsers);
+                  setSelectedSantri({...selectedSantri, saldo_awal: saldoBaru});
+                  showToast('Setoran tabungan berhasil dicatat!');
+                  e.target.reset();
+                }} className="space-y-4 bg-gray-50 p-5 rounded-2xl border">
+                  <h4 className="font-bold text-sm text-gray-700 border-b pb-2">➕ Input Setoran Baru</h4>
+                  <input type="hidden" name="userId" value={selectedSantri?.id || ''} />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold mb-1 text-gray-600">Tanggal Setoran</label>
+                      <input type="date" name="tanggal" defaultValue={new Date().toISOString().substring(0,10)} required className="p-2.5 border rounded-xl w-full text-xs" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold mb-1 text-gray-600">Nominal (Rp)</label>
+                      <input type="text" name="nominal" required className="p-2.5 border rounded-xl w-full text-xs font-bold" placeholder="Contoh: 5.000" onInput={(e) => e.target.value = e.target.value.replace(/[^0-9.]/g,'')} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold mb-1 text-gray-600">Keterangan</label>
+                    <input type="text" name="keterangan" className="p-2.5 border rounded-xl w-full text-xs font-bold" placeholder="Setoran Mingguan / Bulanan" />
+                  </div>
+                  <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold w-full py-3 rounded-xl text-xs shadow">
+                    Simpan Setoran Tabungan
+                  </button>
+                </form>
+
+                {/* RIWAYAT SETORAN TABUNGAN */}
+                <div className="border-t pt-6">
+                  <h3 className="text-sm font-bold mb-4 flex items-center text-gray-800">
+                    <ListChecks className="mr-2"/> Riwayat Setoran Tabungan
+                  </h3>
+                  {(() => {
+                    const userId = selectedSantri?.id;
+                    if(!userId) return <p className="text-xs text-gray-500 italic">Pilih santri terlebih dahulu.</p>;
+
+                    const riwayatTabungan = (savings || []).filter(r => String(r?.userId) === String(userId));
+                    
+                    return riwayatTabungan.length === 0 ? (
+                      <p className="text-xs text-gray-500 italic">Belum ada riwayat setoran untuk santri ini.</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead className="bg-gray-50 font-bold text-gray-600 uppercase">
+                            <tr>
+                              <th className="p-2 text-left">Tanggal</th>
+                              <th className="p-2 text-left">Keterangan</th>
+                              <th className="p-2 text-right">Nominal</th>
+                              <th className="p-2 text-center">Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[...riwayatTabungan]
+                              .sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal))
+                              .map((rw, i) => (
+                              <tr key={rw?.id || i} className="border-b hover:bg-gray-50">
+                                <td className="p-2">{rw?.tanggal || '-'}</td>
+                                <td className="p-2 font-semibold">{rw?.keterangan || '-'}</td>
+                                <td className="p-2 text-right font-bold text-green-700">Rp {rw?.nominal?.toLocaleString('id-ID') || '0'}</td>
+                                <td className="p-2 text-center">
+                                  <button 
+                                    onClick={async () => {
+                                      if(!confirm('Yakin hapus riwayat ini? Saldo akan dikembalikan!')) return;
+                                      
+                                      // Kembalikan saldo jika dihapus
+                                      const nominalHapus = rw?.nominal || 0;
+                                      const saldoBaru = (selectedSantri.saldo_awal || 0) - nominalHapus;
+                                      const updateUsers = users.map(item => 
+                                        item.id === selectedSantri.id ? {...item, saldo_awal: saldoBaru} : item
+                                      );
+
+                                      // Hapus data riwayat
+                                      const dataRiwayatBaru = (savings || []).filter(x => x?.id !== rw?.id);
+                                      
+                                      await updateTable('savings', dataRiwayatBaru);
+                                      await updateTable('users', updateUsers);
+                                      setSelectedSantri({...selectedSantri, saldo_awal: saldoBaru});
+                                      showToast('Riwayat telah dihapus & saldo dikembalikan!');
+                                    }}
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+);
     if (activeTab === 'isi_progres') return (
   <div className="animate-fade-in space-y-6">
     <BackButton onClick={() => setActiveTab('dashboard')} />
