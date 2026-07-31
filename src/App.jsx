@@ -1083,7 +1083,7 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
     </div>
   </div>
 );
-    if (activeTab === 'isi_progres') return (
+      if (activeTab === 'isi_progres') return (
   <div className="animate-fade-in space-y-6">
     <BackButton onClick={() => setActiveTab('dashboard')} />
     <div className="bg-white p-6 rounded-2xl shadow-sm border">
