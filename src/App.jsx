@@ -904,7 +904,8 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
     </div>
   );
 
-  if (activeTab === 'input_tabungan_guru' && isSavingAuthorized) return (
+  // ✅ BARU - SUDAH ADA DAFTAR & RIWAYAT
+if (activeTab === 'input_tabungan') return (
   <div className="animate-fade-in space-y-6 p-4">
     <button 
       onClick={() => setActiveTab('dashboard')}
@@ -929,7 +930,7 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
           <div className="bg-gray-50 p-4 rounded-xl border">
             <h3 className="text-sm font-bold text-gray-700 mb-3 border-b pb-2 uppercase">Daftar Santri</h3>
             <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
-              {users.map(u => (
+              {users.filter(u=>u.role==='santri').map(u => (
                 <button
                   key={u.id}
                   onClick={() => setSelectedSantri(u)}
@@ -974,7 +975,6 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
                     return;
                   }
 
-                  // Hitung saldo baru
                   let saldoBaru;
                   if (jenis === 'Setoran') {
                     saldoBaru = (selectedSantri.saldo_awal || 0) + nominal;
@@ -986,18 +986,17 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
                     saldoBaru = (selectedSantri.saldo_awal || 0) - nominal;
                   }
 
-                  // Simpan riwayat mutasi
+                  // ✅ MENYESUAIKAN FORMAT DATA LAMA (pakai santriId, amount, date)
                   const mutasiBaru = {
-                    id: Date.now(),
-                    userId: selectedSantri.id,
-                    tanggal: tanggal,
-                    jenis: jenis,
-                    nominal: nominal,
-                    keterangan: keterangan,
-                    dicatatOleh: user.id
+                    id: Date.now().toString(),
+                    santriId: selectedSantri.id,
+                    date: tanggal,
+                    type: jenis === 'Setoran' ? 'setor' : 'tarik',
+                    amount: nominal,
+                    description: keterangan,
+                    inputBy: user.id
                   };
 
-                  // Update data
                   const dataUserBaru = users.map(item => 
                     item.id === selectedSantri.id ? {...item, saldo_awal: saldoBaru} : item
                   );
@@ -1050,7 +1049,8 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
                       return <p className="text-sm text-gray-500 italic">Belum ada riwayat mutasi.</p>;
                     }
 
-                    const riwayatSantri = savings.filter(item => String(item.userId) === String(idSantri));
+                    // ✅ MENYESUAIKAN FORMAT DATA LAMA (santriId)
+                    const riwayatSantri = savings.filter(item => String(item.santriId) === String(idSantri));
                     
                     if (riwayatSantri.length === 0) {
                       return <p className="text-sm text-gray-500 italic">Belum ada riwayat untuk santri ini.</p>;
@@ -1070,18 +1070,18 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
                           </thead>
                           <tbody>
                             {[...riwayatSantri]
-                              .sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal))
+                              .sort((a,b) => new Date(b.date) - new Date(a.date))
                               .map((data, i) => (
                               <tr key={data.id || i} className="border-b hover:bg-gray-50">
-                                <td className="p-2">{data.tanggal || '-'}</td>
+                                <td className="p-2">{data.date || '-'}</td>
                                 <td className="p-2">
                                   <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                                    data.jenis === 'Setoran' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                                  }`}>{data.jenis}</span>
+                                    data.type === 'setor' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                  }`}>{data.type === 'setor' ? 'Setoran' : 'Penarikan'}</span>
                                 </td>
-                                <td className="p-2 font-medium">{data.keterangan || '-'}</td>
+                                <td className="p-2 font-medium">{data.description || '-'}</td>
                                 <td className="p-2 text-right font-bold">
-                                  Rp {Number(data.nominal || 0).toLocaleString('id-ID')}
+                                  Rp {Number(data.amount || 0).toLocaleString('id-ID')}
                                 </td>
                                 <td className="p-2 text-center">
                                   <button 
@@ -1089,10 +1089,10 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
                                       if(!confirm('Yakin hapus mutasi ini? Saldo akan dikembalikan/dikurangi!')) return;
                                       
                                       let saldoBaruHapus;
-                                      if (data.jenis === 'Setoran') {
-                                        saldoBaruHapus = (selectedSantri.saldo_awal || 0) - (data.nominal || 0);
+                                      if (data.type === 'setor') {
+                                        saldoBaruHapus = (selectedSantri.saldo_awal || 0) - (data.amount || 0);
                                       } else {
-                                        saldoBaruHapus = (selectedSantri.saldo_awal || 0) + (data.nominal || 0);
+                                        saldoBaruHapus = (selectedSantri.saldo_awal || 0) + (data.amount || 0);
                                       }
 
                                       await updateTable('savings', savings.filter(x => x.id !== data.id));
