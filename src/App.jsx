@@ -5,7 +5,8 @@ import {
   Trash2, Check, X, UserPlus, Info, Edit, ArrowLeft,
   Eye, EyeOff, Award, ClipboardList, Settings, DollarSign,
   CheckSquare, RefreshCw, Database, Copy, Unlock,
-  ChevronDown, ChevronUp, TrendingUp, TrendingDown, Search
+  ChevronDown, ChevronUp, TrendingUp, TrendingDown, Search,
+  ListChecks
 } from 'lucide-react';
 
 const HARDCODED_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwqbAPcV4Mz6hT-PneqAQoC-aZoRdgaGJzL23qAOwcSnClmDzRpf_fzbIsPymtyQYyn-w/exec";
