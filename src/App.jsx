@@ -904,7 +904,6 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
     </div>
   );
 
-  // ✅ BARU - SUDAH ADA DAFTAR & RIWAYAT
 if (activeTab === 'input_tabungan') return (
   <div className="animate-fade-in space-y-6 p-4">
     <button 
@@ -916,13 +915,13 @@ if (activeTab === 'input_tabungan') return (
 
     <div className="bg-white p-6 rounded-2xl shadow-sm border">
       <h2 className="text-xl font-bold mb-6 flex items-center text-amber-800">
-        <DollarSign className="mr-2"/> Input & Riwayat Tabungan Santri
+        <DollarSign className="mr-2"/> Input & Riwayat Mutasi Tabungan Santri
       </h2>
 
-      {users.length === 0 ? (
+      {users.filter(u => u.role === 'santri').length === 0 ? (
         <div className="p-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-sm">
           <h4 className="font-bold flex items-center"><Info size={16} className="mr-1.5"/> Belum Ada Data Santri</h4>
-          <p className="mt-1">Silakan tambahkan data santri terlebih dahulu.</p>
+          <p className="mt-1">Silakan tambahkan data santri terlebih dahulu di menu Data Santri.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -993,8 +992,7 @@ if (activeTab === 'input_tabungan') return (
                     type: jenis === 'Setoran' ? 'setor' : 'tarik',
                     amount: nominalBersih,
                     description: keterangan,
-                    inputBy: user.id,
-                    inputAt: new Date().toISOString()
+                    inputBy: user.id
                   };
 
                   const dataUserBaru = users.map(item => 
@@ -1044,11 +1042,11 @@ if (activeTab === 'input_tabungan') return (
                   </div>
 
                   <button type="submit" className="bg-amber-600 hover:bg-amber-700 text-white font-bold w-full py-3 rounded-xl text-sm shadow">
-                    Simpan & Perbarui Saldo
+                    Simpan Data
                   </button>
                 </form>
 
-                {/* === RIWAYAT MUTASI PER SANTRI (UNTUK KOREKSI) === */}
+                {/* === RIWAYAT MUTASI PER SANTRI === */}
                 <div className="border-t pt-6">
                   <h3 className="text-sm font-bold mb-4 flex items-center text-gray-800">
                     <ListChecks className="mr-2"/> Riwayat Lengkap Tabungan
@@ -1059,7 +1057,6 @@ if (activeTab === 'input_tabungan') return (
                       return <p className="text-sm text-gray-500 italic">Belum ada riwayat mutasi.</p>;
                     }
 
-                    // Filter khusus santri yang dipilih
                     const riwayatSantri = savings.filter(item => String(item.santriId) === idSantri);
                     
                     if (riwayatSantri.length === 0) {
@@ -1080,7 +1077,7 @@ if (activeTab === 'input_tabungan') return (
                           </thead>
                           <tbody>
                             {[...riwayatSantri]
-                              .sort((a,b) => new Date(b.date) - new Date(a.date)) // Urut terbaru di atas
+                              .sort((a,b) => new Date(b.date) - new Date(a.date))
                               .map((data, i) => (
                               <tr key={data.id || i} className="border-b hover:bg-gray-50">
                                 <td className="p-2">{data.date || '-'}</td>
@@ -1107,7 +1104,6 @@ if (activeTab === 'input_tabungan') return (
                                         saldoKoreksi = (selectedSantri.saldo_awal || 0) + (data.amount || 0);
                                       }
 
-                                      // Cegah saldo minus saat koreksi
                                       if (saldoKoreksi < 0) {
                                         showToast('Tidak bisa dihapus: saldo akan menjadi kurang dari nol!', 'error');
                                         return;
