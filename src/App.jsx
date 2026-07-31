@@ -39,7 +39,7 @@ const INITIAL_DATA = {
   settings: {
     tpqName: 'TPQ Al-Ikhlas Bakalan',
     logoUrl: '',
-    savingInputRoles: ['guru', 'bendahara']
+    savingInputRoles: ['bendahara', 'kepala_tpq']
   }
 };
 
@@ -882,7 +882,7 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
     return target.every(t => santri.completedTargets?.includes(String(t.id)));
   };
 
-  const isSavingAuthorized = settings.savingInputRoles?.includes(user.role) || user.role === 'kepala_tpq';
+  const isSavingAuthorized = settings.savingInputRoles?.includes(user.role);
   const menus = [
     { id: 'isi_progres', label: 'Input Setoran Harian', icon: ClipboardList, color: 'bg-emerald-100 text-emerald-600', desc: 'Catat setoran harian mengaji santri bimbingan Anda.' },
     { id: 'nilai_target', label: 'Penilaian Kompetensi', icon: CheckSquare, color: 'bg-indigo-100 text-indigo-600', desc: 'Centang target kurikulum kompetensi jilid aktif santri.' },
