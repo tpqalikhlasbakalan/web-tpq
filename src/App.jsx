@@ -251,119 +251,203 @@ const MenuGrid = ({ menus, onSelect }) => (
 );
 
 // ==================================================
-// FUNGSI PENAMPUNG INPUT TABUNGAN
+// FUNGSI PENAMPUNG INPUT TABUNGAN (SUDAH DIPERBAIKI)
 // ==================================================
 function SavingsInputView({ users, savings, updateTable, showToast, recorderId }) {
-  const [form, setForm] = useState({ 
-    santriId: '', 
-    date: new Date().toISOString().slice(0,10), 
-    amount: '', 
-    type: 'setor', 
-    description: '' 
-  });
+  // State baru untuk menyimpan santri yang dipilih
+  const [selectedSantri, setSelectedSantri] = useState(null);
   const santriList = users.filter(u => u.role === 'santri');
 
+  // Fungsi simpan data sudah disesuaikan agar otomatis update saldo
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.santriId || !form.amount) {
-      showToast('Lengkapi data santri dan nominal!', 'error');
+    if (!selectedSantri || !e.target.amount.value) {
+      showToast('Pilih santri dan masukkan nominal!', 'error');
       return;
     }
+
+    const jenis = e.target.type.value;
+    const nominal = parseInt(e.target.amount.value);
+    const tanggal = e.target.date.value;
+    const keterangan = e.target.description.value.trim() || `${jenis === 'setor' ? 'Setoran' : 'Penarikan'} Tabungan`;
+
+    if (nominal <= 0) {
+      showToast('Nominal harus lebih dari nol!', 'error');
+      return;
+    }
+
+    let saldoBaru;
+    if (jenis === 'setor') {
+      saldoBaru = (selectedSantri.saldo_awal || 0) + nominal;
+    } else {
+      if ((selectedSantri.saldo_awal || 0) < nominal) {
+        showToast('Saldo tidak cukup untuk penarikan!', 'error');
+        return;
+      }
+      saldoBaru = (selectedSantri.saldo_awal || 0) - nominal;
+    }
+
     const newSavings = {
       id: Date.now().toString(),
-      santriId: form.santriId,
-      date: form.date,
-      amount: parseInt(form.amount),
-      type: form.type,
-      description: form.description,
+      santriId: selectedSantri.id,
+      date: tanggal,
+      amount: nominal,
+      type: jenis,
+      description: keterangan,
       inputBy: recorderId
     };
+
+    // Simpan transaksi & perbarui saldo santri sekaligus
     await updateTable('savings', [newSavings, ...savings]);
+    await updateTable('users', users.map(u => 
+      u.id === selectedSantri.id ? {...u, saldo_awal: saldoBaru} : u
+    ));
+
+    setSelectedSantri({...selectedSantri, saldo_awal: saldoBaru});
     showToast('Data tabungan berhasil disimpan!');
-    setForm({ 
-      santriId: '', 
-      date: new Date().toISOString().slice(0,10), 
-      amount: '', 
-      type: 'setor', 
-      description: '' 
-    });
+    e.target.reset();
   };
 
   return (
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-2xl shadow-sm border">
-        <h3 className="text-lg font-bold mb-4 flex items-center text-amber-800">
-          <DollarSign className="mr-2"/> Input Mutasi Tabungan Santri
+        <h3 className="text-lg font-bold mb-6 flex items-center text-amber-800">
+          <DollarSign className="mr-2"/> Input & Riwayat Mutasi Tabungan Santri
         </h3>
-        <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
-          <div>
-            <label className="block text-xs font-bold mb-1 text-gray-700">Pilih Santri</label>
-            <select
-              value={form.santriId}
-              onChange={(e) => setForm({...form, santriId: e.target.value})}
-              className="w-full p-2.5 border rounded-xl text-xs font-semibold"
-              required
-            >
-              <option value="">-- Pilih Nama Santri --</option>
-              {santriList.map(s => (
-                <option key={s.id} value={s.id}>{s.name} ({s.jilid})</option>
-              ))}
-            </select>
+
+        {santriList.length === 0 ? (
+          <div className="p-6 bg-amber-50 border border-amber-200 rounded-xl">
+            <p className="text-amber-900 text-sm">Belum ada data santri. Silakan tambahkan dulu.</p>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold mb-1 text-gray-700">Tanggal</label>
-              <input
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm({...form, date: e.target.value})}
-                className="w-full p-2.5 border rounded-xl text-xs"
-                required
-              />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* KOLOM KIRI: DAFTAR SANTRI */}
+            <div className="bg-gray-50 p-4 rounded-xl border">
+              <h4 className="text-xs font-bold text-gray-700 mb-3 border-b pb-2 uppercase">Daftar Santri</h4>
+              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+                {santriList.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => setSelectedSantri(s)}
+                    className={`w-full p-3 rounded-xl text-left text-sm border transition-all ${
+                      selectedSantri?.id === s.id
+                        ? 'bg-amber-600 text-white font-bold border-amber-600 shadow-md'
+                        : 'bg-white text-gray-700 border-gray-200 hover:bg-amber-50 hover:border-amber-200'
+                    }`}
+                  >
+                    <p className="font-semibold">{s.name} {s.jilid ? `(${s.jilid})` : ''}</p>
+                    <p className="mt-0.5 opacity-80 text-xs">Saldo: Rp {Number(s.saldo_awal || 0).toLocaleString('id-ID')}</p>
+                  </button>
+                ))}
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-bold mb-1 text-gray-700">Jenis</label>
-              <select
-                value={form.type}
-                onChange={(e) => setForm({...form, type: e.target.value})}
-                className="w-full p-2.5 border rounded-xl text-xs font-bold"
-              >
-                <option value="setor">Setoran</option>
-                <option value="tarik">Penarikan</option>
-              </select>
+
+            {/* KOLOM KANAN: FORM + RIWAYAT */}
+            <div className="md:col-span-2 space-y-6">
+              {!selectedSantri ? (
+                <div className="p-10 text-center text-gray-400 text-sm italic bg-gray-50 border border-dashed rounded-xl">
+                  Silakan klik nama santri di sebelah kiri terlebih dahulu
+                </div>
+              ) : (
+                <>
+                  {/* Info Santri */}
+                  <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
+                    <p className="text-[11px] text-amber-700 font-bold uppercase">Santri Terpilih</p>
+                    <h4 className="font-extrabold text-lg mt-0.5">{selectedSantri.name}</h4>
+                    <p className="text-sm text-gray-600 mt-1">Saldo Saat Ini: <strong>Rp {Number(selectedSantri.saldo_awal || 0).toLocaleString('id-ID')}</strong></p>
+                  </div>
+
+                  {/* Form Input */}
+                  <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-5 rounded-2xl border">
+                    <h5 className="font-bold text-sm text-gray-700 border-b pb-2">Input Mutasi Baru</h5>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold mb-1 text-gray-700">Tanggal</label>
+                        <input type="date" name="date" defaultValue={new Date().toISOString().slice(0,10)} required className="w-full p-2.5 border rounded-xl text-xs" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold mb-1 text-gray-700">Jenis</label>
+                        <select name="type" className="w-full p-2.5 border rounded-xl text-xs font-bold">
+                          <option value="setor">Setoran</option>
+                          <option value="tarik">Penarikan</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold mb-1 text-gray-700">Nominal (Rp)</label>
+                      <input type="number" name="amount" min="1000" placeholder="Contoh: 10000" required className="w-full p-2.5 border rounded-xl text-xs" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold mb-1 text-gray-700">Keterangan</label>
+                      <input type="text" name="description" placeholder="Opsional" className="w-full p-2.5 border rounded-xl text-xs" />
+                    </div>
+                    <button type="submit" className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl text-xs shadow">
+                      Simpan Data
+                    </button>
+                  </form>
+
+                  {/* Tabel Riwayat */}
+                  <div className="border-t pt-6">
+                    <h5 className="text-sm font-bold mb-4 text-gray-800">Riwayat Transaksi Tabungan</h5>
+                    {(() => {
+                      const riwayat = savings.filter(item => String(item.santriId) === String(selectedSantri.id));
+                      if (riwayat.length === 0) return <p className="text-sm text-gray-500 italic">Belum ada riwayat.</p>;
+                      return (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead className="bg-gray-50 font-bold text-gray-600 uppercase">
+                              <tr>
+                                <th className="p-2 text-left">Tanggal</th>
+                                <th className="p-2 text-left">Jenis</th>
+                                <th className="p-2 text-left">Keterangan</th>
+                                <th className="p-2 text-right">Nominal</th>
+                                <th className="p-2 text-center">Hapus</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {[...riwayat].sort((a,b) => new Date(b.date) - new Date(a.date)).map((r,i) => (
+                                <tr key={r.id||i} className="border-b hover:bg-gray-50">
+                                  <td className="p-2">{r.date}</td>
+                                  <td className="p-2">
+                                    <span className={`px-2 py-0.5 rounded-full font-bold ${r.type==='setor'?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}`}>
+                                      {r.type==='setor'?'Setoran':'Penarikan'}
+                                    </span>
+                                  </td>
+                                  <td className="p-2">{r.description||'-'}</td>
+                                  <td className="p-2 text-right font-bold">Rp {Number(r.amount).toLocaleString('id-ID')}</td>
+                                  <td className="p-2 text-center">
+                                    <button 
+                                      onClick={async () => {
+                                        if(!confirm('Yakin hapus? Saldo akan dikembalikan!')) return;
+                                        let saldoKoreksi = r.type==='setor' 
+                                          ? (selectedSantri.saldo_awal - r.amount) 
+                                          : (selectedSantri.saldo_awal + r.amount);
+                                        if (saldoKoreksi < 0) return showToast('Tidak bisa dihapus!', 'error');
+                                        await updateTable('savings', savings.filter(x=>x.id!==r.id));
+                                        await updateTable('users', users.map(u=>u.id===selectedSantri.id?{...u,saldo_awal:saldoKoreksi}:u));
+                                        setSelectedSantri({...selectedSantri, saldo_awal:saldoKoreksi});
+                                        showToast('Data sudah dikoreksi!');
+                                      }}
+                                      className="text-red-500 hover:text-red-700"
+                                    >🗑️</button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </>
+              )}
             </div>
           </div>
-          <div>
-            <label className="block text-xs font-bold mb-1 text-gray-700">Nominal (Rp)</label>
-            <input
-              type="number"
-              value={form.amount}
-              onChange={(e) => setForm({...form, amount: e.target.value})}
-              className="w-full p-2.5 border rounded-xl text-xs"
-              min="1000"
-              placeholder="Contoh: 10000"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold mb-1 text-gray-700">Keterangan</label>
-            <input
-              type="text"
-              value={form.description}
-              onChange={(e) => setForm({...form, description: e.target.value})}
-              className="w-full p-2.5 border rounded-xl text-xs"
-              placeholder="Opsional"
-            />
-          </div>
-          <button type="submit" className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl text-xs shadow">
-            Simpan Data
-          </button>
-        </form>
+        )}
       </div>
     </div>
   );
 }
-
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [toast, setToast] = useState({ message: '', type: '' });
