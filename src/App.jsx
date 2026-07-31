@@ -907,26 +907,150 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
     <div className="animate-fade-in"><BackButton onClick={() => setActiveTab('dashboard')} /><SavingsInputView users={users} savings={savings} updateTable={updateTable} showToast={showToast} recorderId={user.id} /></div>
   );
 
-  if (activeTab === 'isi_progres') return (
+    if (activeTab === 'isi_progres') return (
     <div className="animate-fade-in space-y-6">
       <BackButton onClick={() => setActiveTab('dashboard')} />
       <div className="bg-white p-6 rounded-2xl shadow-sm border">
-        <h2 className="text-lg font-bold mb-6 flex items-center text-emerald-800"><ClipboardList className="mr-2"/> Input Setoran Progres Harian</h2>
+        <h2 className="text-lg font-bold mb-6 flex items-center text-emerald-800">
+          <ClipboardList className="mr-2"/> Input Setoran & Riwayat Progres Mengaji
+        </h2>
+
         {activeSantriList.length === 0 ? (
-          <div className="p-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs"><h4 className="font-bold flex items-center"><Info size={16} className="mr-1.5"/> Belum Ada Santri</h4><p className="mt-1">Pilih menu <strong>Klaim Kelas Santri Baru</strong> untuk menambahkan santri.</p></div>
+          <div className="p-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs">
+            <h4 className="font-bold flex items-center"><Info size={16} className="mr-1.5"/> Belum Ada Santri</h4>
+            <p className="mt-1">Pilih menu <strong>Klaim Kelas Santri Baru</strong> untuk menambahkan santri.</p>
+          </div>
         ) : (
-          <form onSubmit={handleAddProgress} className="space-y-4 max-w-xl bg-gray-50 p-5 rounded-2xl border">
-            <div><label className="block text-xs font-bold mb-1 text-gray-600">Pilih Santri</label><select name="santriId" className="p-2.5 border rounded-xl w-full text-xs font-semibold" required><option value="">-- Cari Nama Santri --</option>{activeSantriList.map(s => <option key={s.id} value={s.id}>{s.name} ({s.jilid || 'Jilid 1'})</option>)}</select></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="block text-xs font-bold mb-1 text-gray-600">Tanggal</label><input type="date" name="date" defaultValue={new Date().toISOString().substring(0,10)} required className="p-2.5 border rounded-xl w-full text-xs" /></div>
-              <div><label className="block text-xs font-bold mb-1 text-gray-600">Nilai</label><select name="nilai" className="p-2.5 border rounded-xl w-full text-xs font-bold" required><option>A (Sangat Lancar)</option><option>B (Lancar)</option><option>C (Cukup)</option><option>D (Kurang)</option></select></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* === KOLOM KIRI: DAFTAR SANTRI YANG DIAMPU === */}
+            <div className="bg-gray-50 p-4 rounded-xl border">
+              <h3 className="text-sm font-bold text-gray-700 mb-3 border-b pb-2 uppercase">Daftar Santri Bimbingan</h3>
+              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+                {activeSantriList.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => setSelectedSantri(s)}
+                    className={`w-full p-3 rounded-xl text-left text-xs border transition-all ${
+                      selectedSantri?.id === s.id
+                        ? 'bg-emerald-600 text-white font-bold border-emerald-600 shadow-md'
+                        : 'bg-white text-gray-700 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200'
+                    }`}
+                  >
+                    <p className="font-semibold text-sm">{s.name}</p>
+                    <p className="mt-0.5 opacity-80">Jilid: {s.jilid || 'Jilid 1'}</p>
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="block text-xs font-bold mb-1 text-gray-600">Surah / Halaman</label><input type="text" name="surah" required className="p-2.5 border rounded-xl w-full text-xs font-bold" placeholder="An-Naba" /></div>
-              <div><label className="block text-xs font-bold mb-1 text-gray-600">Ayat / Baris</label><input type="text" name="ayat" required className="p-2.5 border rounded-xl w-full text-xs font-bold" placeholder="1-5" /></div>
+
+            {/* === KOLOM KANAN: INPUT & RIWAYAT PROGRES SANTRI PILIHAN === */}
+            <div className="md:col-span-2 space-y-6">
+              {!selectedSantri ? (
+                <div className="p-10 text-center text-gray-400 text-xs italic bg-gray-50 border border-dashed rounded-xl">
+                  Silakan pilih nama santri di sebelah kiri untuk melihat dan mengisi progresnya.
+                </div>
+              ) : (
+                <>
+                  {/* INFORMASI SANTRI PILIHAN */}
+                  <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
+                    <p className="text-[10px] text-emerald-700 font-bold uppercase">Santri Terpilih</p>
+                    <h3 className="font-extrabold text-lg mt-0.5">{selectedSantri.name}</h3>
+                    <p className="text-xs text-gray-600 mt-1">Tingkatan: <strong>{selectedSantri.jilid || 'Jilid 1'}</strong></p>
+                  </div>
+
+                  {/* FORM INPUT SETORAN */}
+                  <form onSubmit={handleAddProgress} className="space-y-4 bg-gray-50 p-5 rounded-2xl border">
+                    <h4 className="font-bold text-sm text-gray-700 border-b pb-2">➕ Input Setoran Baru</h4>
+                    <input type="hidden" name="santriId" value={selectedSantri.id} />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold mb-1 text-gray-600">Tanggal</label>
+                        <input type="date" name="date" defaultValue={new Date().toISOString().substring(0,10)} required className="p-2.5 border rounded-xl w-full text-xs" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold mb-1 text-gray-600">Nilai</label>
+                        <select name="nilai" className="p-2.5 border rounded-xl w-full text-xs font-bold" required>
+                          <option>A (Sangat Lancar)</option>
+                          <option>B (Lancar)</option>
+                          <option>C (Cukup)</option>
+                          <option>D (Kurang)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold mb-1 text-gray-600">Surah / Halaman</label>
+                        <input type="text" name="surah" required className="p-2.5 border rounded-xl w-full text-xs font-bold" placeholder="An-Naba" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold mb-1 text-gray-600">Ayat / Baris</label>
+                        <input type="text" name="ayat" required className="p-2.5 border rounded-xl w-full text-xs font-bold" placeholder="1-5" />
+                      </div>
+                    </div>
+                    <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold w-full py-3 rounded-xl text-xs shadow">
+                      Simpan Progres Santri Ini
+                    </button>
+                  </form>
+
+                  {/* RIWAYAT PROGRES SANTRI TERSEBUT */}
+                  <div className="border-t pt-6">
+                    <h3 className="text-sm font-bold mb-4 flex items-center text-gray-800">
+                      <ListChecks className="mr-2"/> Riwayat Setoran Mengaji
+                    </h3>
+                    {(() => {
+                      const riwayatSantri = progress.filter(p => String(p.santriId) === String(selectedSantri.id));
+                      return riwayatSantri.length === 0 ? (
+                        <p className="text-xs text-gray-500 italic">Belum ada riwayat setoran untuk santri ini.</p>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead className="bg-gray-50 font-bold text-gray-600 uppercase">
+                              <tr>
+                                <th className="p-2 text-left">Tanggal</th>
+                                <th className="p-2 text-left">Surah/Hal</th>
+                                <th className="p-2 text-left">Ayat/Baris</th>
+                                <th className="p-2 text-center">Nilai</th>
+                                <th className="p-2 text-center">Aksi</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {[...riwayatSantri].sort((a,b) => new Date(b.date) - new Date(a.date)).map((pr, i) => (
+                                <tr key={pr.id || i} className="border-b hover:bg-gray-50">
+                                  <td className="p-2">{pr.date}</td>
+                                  <td className="p-2 font-semibold">{pr.surah}</td>
+                                  <td className="p-2">{pr.ayat}</td>
+                                  <td className="p-2 text-center">
+                                    <span className={`px-2 py-0.5 rounded-full font-bold ${
+                                      pr.nilai.startsWith('A') ? 'bg-emerald-100 text-emerald-700' :
+                                      pr.nilai.startsWith('B') ? 'bg-blue-100 text-blue-700' :
+                                      pr.nilai.startsWith('C') ? 'bg-amber-100 text-amber-700' :
+                                      'bg-red-100 text-red-700'
+                                    }`}>{pr.nilai.split(' ')[0]}</span>
+                                  </td>
+                                  <td className="p-2 text-center">
+                                    <button 
+                                      onClick={async () => {
+                                        if(!confirm('Yakin hapus riwayat ini?')) return;
+                                        await updateTable('progress', progress.filter(x => x.id !== pr.id));
+                                        showToast('Riwayat progres telah dihapus!');
+                                      }}
+                                      className="text-red-500 hover:text-red-700"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </>
+              )}
             </div>
-            <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold w-full py-3 rounded-xl text-xs shadow">Simpan Progres</button>
-          </form>
+          </div>
         )}
       </div>
     </div>
