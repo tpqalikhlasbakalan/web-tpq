@@ -234,16 +234,20 @@ const BackButton = ({ onClick }) => (
   </button>
 );
 
+// ==== KOMPONEN MENU GRID (SUDAH 3 KOLOM) ====
 const MenuGrid = ({ menus, onSelect }) => (
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
+  <div className="grid grid-cols-3 gap-4 animate-fade-in">
     {menus.map(menu => (
-      <button key={menu.id} onClick={() => onSelect(menu.id)} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-emerald-200 flex flex-col items-center justify-center text-center transition-all duration-300 group relative overflow-hidden w-full text-left sm:text-center">
-        <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-50 rounded-full -mr-8 -mt-8 transition-all group-hover:scale-150 opacity-40"></div>
-        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 shadow-sm ${menu.color}`}>
-          <menu.icon className="w-7 h-7" />
+      <button 
+        key={menu.id} 
+        onClick={() => onSelect(menu.id)} 
+        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-emerald-200 flex flex-col items-center justify-center text-center transition-all duration-300 group relative overflow-hidden w-full"
+      >
+        <div className="absolute top-0 right-0 w-12 h-12 bg-emerald-50 rounded-full -mr-6 -mt-6 transition-all group-hover:scale-150 opacity-40"></div>
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110 shadow-sm ${menu.color}`}>
+          <menu.icon className="w-6 h-6" />
         </div>
-        <h3 className="font-bold text-gray-800 text-base group-hover:text-emerald-700">{menu.label}</h3>
-        {menu.desc && <p className="text-xs text-gray-500 mt-2 line-clamp-2 max-w-xs">{menu.desc}</p>}
+        <h3 className="font-semibold text-gray-800 text-xs group-hover:text-emerald-700">{menu.label}</h3>
       </button>
     ))}
   </div>
