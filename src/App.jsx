@@ -1240,9 +1240,14 @@ if (activeTab === 'input_tabungan') return (
     </div>
   </div>
 );
-      if (activeTab === 'isi_progres') return (
+      // ⚠️ PASTIKAN KOMPONEN INI DI-IMPOR DI ATAS FILE ANDA
+import { BackButton, ClipboardList, Info, ListChecks, Trash2 } from 'lokasi-komponen-ikon-anda';
+// Ganti "lokasi-komponen-ikon-anda" sesuai tempat Anda menyimpan komponen ikon tersebut
+
+if (activeTab === 'isi_progres') return (
   <div className="animate-fade-in space-y-6">
     <BackButton onClick={() => setActiveTab('dashboard')} />
+    
     <div className="bg-white p-6 rounded-2xl shadow-sm border">
       <h2 className="text-lg font-bold mb-6 flex items-center text-emerald-800">
         <ClipboardList className="mr-2"/> Input Setoran & Riwayat Progres Mengaji
@@ -1250,7 +1255,9 @@ if (activeTab === 'input_tabungan') return (
 
       {activeSantriList.length === 0 ? (
         <div className="p-6 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs">
-          <h4 className="font-bold flex items-center"><Info size={16} className="mr-1.5"/> Belum Ada Santri</h4>
+          <h4 className="font-bold flex items-center">
+            <Info size={16} className="mr-1.5"/> Belum Ada Santri
+          </h4>
           <p className="mt-1">Pilih menu <strong>Klaim Kelas Santri Baru</strong> untuk menambahkan santri.</p>
         </div>
       ) : (
@@ -1259,22 +1266,21 @@ if (activeTab === 'input_tabungan') return (
           <div className="bg-gray-50 p-4 rounded-xl border">
             <h3 className="text-sm font-bold text-gray-700 mb-3 border-b pb-2 uppercase">Daftar Santri Bimbingan</h3>
             <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
-              {activeSantriList.map(s => (
+              {activeSantriList.map((santri) => (
                 <button
-                  key={s.id}
+                  key={santri?.id}
                   onClick={() => {
-                    // ✅ Peringan set data & cek keberadaan data
-                    if(s && s.id) setSelectedSantri(s);
-                    else console.warn("Data santri tidak valid:", s);
+                    if (santri?.id) setSelectedSantri(santri);
+                    else console.warn("Data santri tidak valid:", santri);
                   }}
                   className={`w-full p-3 rounded-xl text-left text-xs border transition-all ${
-                    selectedSantri?.id === s.id
+                    selectedSantri?.id === santri?.id
                       ? 'bg-emerald-600 text-white font-bold border-emerald-600 shadow-md'
                       : 'bg-white text-gray-700 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200'
                   }`}
                 >
-                  <p className="font-semibold text-sm">{s?.name || 'Nama tidak tersedia'}</p>
-                  <p className="mt-0.5 opacity-80">Jilid: {s?.jilid || 'Jilid 1'}</p>
+                  <p className="font-semibold text-sm">{santri?.name || 'Nama tidak tersedia'}</p>
+                  <p className="mt-0.5 opacity-80">Jilid: {santri?.jilid || 'Jilid 1'}</p>
                 </button>
               ))}
             </div>
@@ -1299,10 +1305,17 @@ if (activeTab === 'input_tabungan') return (
                 <form onSubmit={handleAddProgress} className="space-y-4 bg-gray-50 p-5 rounded-2xl border">
                   <h4 className="font-bold text-sm text-gray-700 border-b pb-2">➕ Input Setoran Baru</h4>
                   <input type="hidden" name="santriId" value={selectedSantri?.id || ''} />
+                  
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold mb-1 text-gray-600">Tanggal</label>
-                      <input type="date" name="date" defaultValue={new Date().toISOString().substring(0,10)} required className="p-2.5 border rounded-xl w-full text-xs" />
+                      <input 
+                        type="date" 
+                        name="date" 
+                        defaultValue={new Date().toISOString().substring(0,10)} 
+                        required 
+                        className="p-2.5 border rounded-xl w-full text-xs" 
+                      />
                     </div>
                     <div>
                       <label className="block text-xs font-bold mb-1 text-gray-600">Nilai</label>
@@ -1314,17 +1327,34 @@ if (activeTab === 'input_tabungan') return (
                       </select>
                     </div>
                   </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold mb-1 text-gray-600">Surah / Halaman</label>
-                      <input type="text" name="surah" required className="p-2.5 border rounded-xl w-full text-xs font-bold" placeholder="An-Naba" />
+                      <input 
+                        type="text" 
+                        name="surah" 
+                        required 
+                        className="p-2.5 border rounded-xl w-full text-xs font-bold" 
+                        placeholder="An-Naba" 
+                      />
                     </div>
                     <div>
                       <label className="block text-xs font-bold mb-1 text-gray-600">Ayat / Baris</label>
-                      <input type="text" name="ayat" required className="p-2.5 border rounded-xl w-full text-xs font-bold" placeholder="1-5" />
+                      <input 
+                        type="text" 
+                        name="ayat" 
+                        required 
+                        className="p-2.5 border rounded-xl w-full text-xs font-bold" 
+                        placeholder="1-5" 
+                      />
                     </div>
                   </div>
-                  <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold w-full py-3 rounded-xl text-xs shadow">
+
+                  <button 
+                    type="submit" 
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold w-full py-3 rounded-xl text-xs shadow"
+                  >
                     Simpan Progres Santri Ini
                   </button>
                 </form>
@@ -1334,16 +1364,22 @@ if (activeTab === 'input_tabungan') return (
                   <h3 className="text-sm font-bold mb-4 flex items-center text-gray-800">
                     <ListChecks className="mr-2"/> Riwayat Setoran Mengaji
                   </h3>
-                  {(() => {
-                    // ✅ Filter data lebih aman
-                    const santriId = selectedSantri?.id;
-                    if(!santriId) return <p className="text-xs text-gray-500 italic">Pilih santri terlebih dahulu.</p>;
 
-                    const riwayatSantri = (progress || []).filter(p => String(p?.santriId) === String(santriId));
-                    
-                    return riwayatSantri.length === 0 ? (
-                      <p className="text-xs text-gray-500 italic">Belum ada riwayat setoran untuk santri ini.</p>
-                    ) : (
+                  {(() => {
+                    const santriId = selectedSantri?.id;
+                    if (!santriId) return <p className="text-xs text-gray-500 italic">Pilih santri terlebih dahulu.</p>;
+
+                    // Filter & urutkan data lebih aman
+                    const semuaProgress = progress || [];
+                    const riwayatSantri = semuaProgress
+                      .filter(item => String(item?.santriId) === String(santriId))
+                      .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                    if (riwayatSantri.length === 0) {
+                      return <p className="text-xs text-gray-500 italic">Belum ada riwayat setoran untuk santri ini.</p>;
+                    }
+
+                    return (
                       <div className="overflow-x-auto">
                         <table className="w-full text-xs">
                           <thead className="bg-gray-50 font-bold text-gray-600 uppercase">
@@ -1356,29 +1392,37 @@ if (activeTab === 'input_tabungan') return (
                             </tr>
                           </thead>
                           <tbody>
-                            {[...riwayatSantri]
-                              .sort((a,b) => new Date(b.date) - new Date(a.date))
-                              .map((pr, i) => (
-                              <tr key={pr?.id || i} className="border-b hover:bg-gray-50">
+                            {riwayatSantri.map((pr, index) => (
+                              <tr key={pr?.id || index} className="border-b hover:bg-gray-50">
                                 <td className="p-2">{pr?.date || '-'}</td>
                                 <td className="p-2 font-semibold">{pr?.surah || '-'}</td>
                                 <td className="p-2">{pr?.ayat || '-'}</td>
                                 <td className="p-2 text-center">
                                   <span className={`px-2 py-0.5 rounded-full font-bold ${
-                                    String(pr?.nilai).startsWith('A') ? 'bg-emerald-100 text-emerald-700' :
-                                    String(pr?.nilai).startsWith('B') ? 'bg-blue-100 text-blue-700' :
-                                    String(pr?.nilai).startsWith('C') ? 'bg-amber-100 text-amber-700' :
+                                    pr?.nilai?.startsWith('A') ? 'bg-emerald-100 text-emerald-700' :
+                                    pr?.nilai?.startsWith('B') ? 'bg-blue-100 text-blue-700' :
+                                    pr?.nilai?.startsWith('C') ? 'bg-amber-100 text-amber-700' :
                                     'bg-red-100 text-red-700'
-                                  }`}>{pr?.nilai?.split(' ')[0] || '-'}</span>
+                                  }`}>
+                                    {pr?.nilai?.split(' ')[0] || '-'}
+                                  </span>
                                 </td>
                                 <td className="p-2 text-center">
                                   <button 
                                     onClick={async () => {
-                                      if(!confirm('Yakin hapus riwayat ini?')) return;
-                                      // ✅ Pastikan data valid sebelum dikirim
-                                      const dataBaru = (progress || []).filter(x => x?.id !== pr?.id);
+                                      if (!confirm('Yakin hapus riwayat ini?')) return;
+                                      
+                                      if (typeof updateTable !== 'function') {
+                                        console.error('Fungsi updateTable tidak ditemukan!');
+                                        return;
+                                      }
+
+                                      const dataBaru = semuaProgress.filter(item => item?.id !== pr?.id);
                                       await updateTable('progress', dataBaru);
-                                      showToast('Riwayat progres telah dihapus!');
+                                      
+                                      if (typeof showToast === 'function') {
+                                        showToast('Riwayat progres telah dihapus!');
+                                      }
                                     }}
                                     className="text-red-500 hover:text-red-700"
                                   >
