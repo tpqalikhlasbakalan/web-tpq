@@ -33,16 +33,15 @@ const INITIAL_DATA = {
     { id: '4', level: 'PSQ 1-2 (Juz 1)', description: 'Tartil membaca surah Al-Baqarah ayat 1-100 dengan tajwid benar' },
     { id: '5', level: 'PSQ 9-10 (Juz 21-30)', description: 'Hafal lancar Surah An-Naba s.d An-Naziat' }
   ],
-  savings: [
-    { id: 's1', santriId: '5', date: '2026-07-10', amount: 50000, type: 'setor', description: 'Setoran Awal Mandiri', inputBy: '1' }
-  ],
+  // 👇 BAGIAN INI YANG DIUBAH: Jadikan kosong
+  savings: [],
+  // 👆 Hapus baris data setoran 50rb tadi
   settings: {
     tpqName: 'TPQ Al-Ikhlas Bakalan',
     logoUrl: '',
     savingInputRoles: ['bendahara', 'kepala_tpq']
   }
 };
-
 const getProp = (obj, keys, defaultVal = undefined) => {
   if (!obj) return defaultVal;
   const objKeys = Object.keys(obj);
