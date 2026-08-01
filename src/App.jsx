@@ -1240,10 +1240,7 @@ if (activeTab === 'input_tabungan') return (
     </div>
   </div>
 );
-      // ⚠️ PASTIKAN KOMPONEN INI DI-IMPOR DI ATAS FILE ANDA
-import { BackButton, ClipboardList, Info, ListChecks, Trash2 } from 'lokasi-komponen-ikon-anda';
-// Ganti "lokasi-komponen-ikon-anda" sesuai tempat Anda menyimpan komponen ikon tersebut
-
+      
 if (activeTab === 'isi_progres') return (
   <div className="animate-fade-in space-y-6">
     <BackButton onClick={() => setActiveTab('dashboard')} />
