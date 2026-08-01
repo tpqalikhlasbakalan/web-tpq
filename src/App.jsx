@@ -2125,7 +2125,6 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
 
   if (activeTab === 'hak_akses' || activeTab === 'kelola_akun') return (
     <div className="animate-fade-in space-y-6">
-      <BackButton onClick={() => setActiveTab('dashboard')} />
       <div className="bg-white p-6 rounded-2xl shadow-sm border">
         <h2 className="text-lg font-bold mb-6 flex items-center text-purple-800"><Users className="mr-2"/> Kelola Akun Pengguna</h2>
         <form onSubmit={simpanAkun} className="bg-gray-50 p-4 rounded-xl border mb-8 space-y-3">
