@@ -2104,7 +2104,6 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
 
   if (activeTab === 'pengaturan' || activeTab === 'pengaturan_sistem') return (
     <div className="animate-fade-in space-y-6">
-      <BackButton onClick={() => setActiveTab('dashboard')} />
       <div className="bg-white p-6 rounded-2xl shadow-sm border">
         <h2 className="text-lg font-bold mb-6 flex items-center text-gray-800"><Settings className="mr-2"/> Pengaturan Umum & Koneksi</h2>
         <form onSubmit={simpanIdentitas} className="space-y-4 mb-8">
