@@ -588,7 +588,20 @@ export default function App() {
     } finally { setIsSyncing(false); }
   };
 
-  const handleLogin = (username, password) => {
+  const handleLogin = (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const username = formData.get('username');
+  const password = formData.get('password');
+
+  // 👇 DI BAWAH INI KAMU TIDAK USAH UBAH APA-APA, TETAP SAMA PERSIS
+  const user = users.find(u => String(u.username).toLowerCase() === String(username).toLowerCase() && String(u.password) === String(password));
+  if (user) {
+    setCurrentUser(user); setActiveTab('dashboard');
+    try { sessionStorage.setItem('tpq_user', JSON.stringify(user)); } catch(e){}
+    showToast(`Selamat datang kembali, ${user.name}!`);
+  } else showToast('Username atau password salah!', 'error');
+};
     const user = users.find(u => String(u.username).toLowerCase() === String(username).toLowerCase() && String(u.password) === String(password));
     if (user) {
       setCurrentUser(user); setActiveTab('dashboard');
@@ -653,14 +666,14 @@ export default function App() {
         </form>
       </div>
 
-      {/* Tombol Login Hijau di Bawah */}
-      <button 
-        onClick={handleLogin}
-        disabled={loading} 
-        className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-50 transition-all shadow-sm"
-      >
-        {loading ? 'Memuat...' : 'Login'}
-      </button>
+      // ✅ HASIL PERUBAHAN:
+<button 
+  type="submit"  // ← TAMBAHKAN INI
+  disabled={loading} 
+  className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-50 transition-all shadow-sm"
+>
+  {loading ? 'Memuat...' : 'Login'}
+</button>
     </div>
   </div>
 );
