@@ -620,7 +620,7 @@ export default function App() {
     setTimeout(() => setToast({ message: '', type: '' }), 3500);
   };
 
-  if (isInitializing) return (
+    if (isInitializing) return (
     <div className="min-h-screen bg-emerald-50/50 flex flex-col items-center justify-center p-4">
       <RefreshCw className="w-12 h-12 text-emerald-600 animate-spin mb-4" />
       <h2 className="text-xl font-bold text-gray-800">Menyinkronkan Data...</h2>
@@ -628,55 +628,56 @@ export default function App() {
     </div>
   );
 
- if (!loggedUser) return (
-  <div className="min-h-screen bg-white flex flex-col">
-    {/* Bagian Atas (Hijau Melengkung) */}
-    <div className="bg-green-600 rounded-b-[3rem] flex flex-col items-center justify-center pt-16 pb-20 px-6">
-      <h2 className="font-bold text-white text-xl tracking-wide mb-2">{settings.tpqName}</h2>
-      <p className="text-white text-sm">Hai, Selamat Datang!</p>
+  if (!loggedUser) return (
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Bagian Atas (Hijau Melengkung) */}
+      <div className="bg-green-600 rounded-b-[3rem] flex flex-col items-center justify-center pt-16 pb-20 px-6">
+        <h2 className="font-bold text-white text-xl tracking-wide mb-2">{settings.tpqName}</h2>
+        <p className="text-white text-sm">Hai, Selamat Datang!</p>
 
-      {/* Tempat Logo */}
-      <div className="mt-10 w-28 h-28 bg-white rounded-2xl shadow-lg flex items-center justify-center">
-        <Shield className="w-14 h-14 text-green-600" />
-      </div>
-    </div>
-
-    {/* Bagian Bawah (Kotak Input & Tombol) */}
-    <div className="flex-1 px-6 py-8 flex flex-col">
-      {/* Kotak Dialog Input */}
-      <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100 -mt-10">
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold mb-1 text-gray-700">Username</label>
-            <input 
-              name="username" 
-              className="w-full p-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" 
-              required 
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold mb-1 text-gray-700">Kata Sandi</label>
-            <input 
-              name="password" 
-              type="password" 
-              className="w-full p-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" 
-              required 
-            />
-          </div>
-        </form>
+        {/* Tempat Logo */}
+        <div className="mt-10 w-28 h-28 bg-white rounded-2xl shadow-lg flex items-center justify-center">
+          <Shield className="w-14 h-14 text-green-600" />
+        </div>
       </div>
 
-      // ✅ HASIL PERUBAHAN:
-<button 
-  type="submit"  // ← TAMBAHKAN INI
-  disabled={loading} 
-  className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-50 transition-all shadow-sm"
->
-  {loading ? 'Memuat...' : 'Login'}
-</button>
+      {/* Bagian Bawah (Kotak Input & Tombol) */}
+      <div className="flex-1 px-6 py-8 flex flex-col">
+        {/* Kotak Dialog Input */}
+        <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100 -mt-10">
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold mb-1 text-gray-700">Username</label>
+              <input 
+                name="username" 
+                className="w-full p-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+                required 
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold mb-1 text-gray-700">Kata Sandi</label>
+              <input 
+                name="password" 
+                type="password" 
+                className="w-full p-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+                required 
+              />
+            </div>
+          </form>
+        </div>
+
+        {/* Tombol Login */}
+        <button 
+          type="submit"
+          disabled={loading} 
+          className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-50 transition-all shadow-sm"
+        >
+          {loading ? 'Memuat...' : 'Login'}
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
       <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: '' })} />
@@ -730,7 +731,6 @@ export default function App() {
     </div>
   );
 }
-
 function SantriView({ activeTab, setActiveTab, user, users, progress, targets, savings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
   const semuaProgresSaya = progress.filter(p => String(p.santriId) === String(user.id));
   const progresMenungguAcc = progress.filter(p => String(p.santriId) === String(user.id) && p.status === 'belum_disetujui');
