@@ -615,38 +615,68 @@ export default function App() {
     </div>
   );
 
-  if (!currentUser) return (
-    <div className="min-h-screen bg-emerald-50/50 flex items-center justify-center p-4">
-      <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: '' })} />
-      <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border-t-8 border-emerald-600">
-        <div className="text-center mb-8">
-          {settings.logoUrl ? <img src={settings.logoUrl} alt="Logo" className="max-w-full h-24 object-contain mx-auto mb-4" /> : (
-            <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner"><BookOpen className="w-10 h-10 text-emerald-600" /></div>
-          )}
-          <h1 className="text-2xl font-bold text-gray-800">{settings.tpqName || 'Sistem Informasi TPQ'}</h1>
-          <p className="text-gray-500 text-sm mt-2">Portal masuk terintegrasi Google Sheets</p>
-        </div>
-        <form onSubmit={(e) => { e.preventDefault(); handleLogin(e.target.username.value, e.target.password.value); }} className="space-y-5">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Username</label>
-            <div className="relative">
-              <User className="w-5 h-5 text-gray-400 absolute left-3 top-3.5" />
-              <input name="username" type="text" required className="w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-gray-50 text-sm" placeholder="Username login..." />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
-            <div className="relative">
-              <Lock className="w-5 h-5 text-gray-400 absolute left-3 top-3.5" />
-              <input name="password" type="password" required className="w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-gray-50 text-sm" placeholder="Password akun..." />
-            </div>
-          </div>
-          <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-md hover:shadow-lg text-sm">Masuk Sistem</button>
-        </form>
+  import { Shield } from 'lucide-react'; // Pastikan icon sudah di-import
+
+// Contoh variabel yang dibutuhkan (sesuaikan dengan state kamu)
+const loggedUser = null;
+const loading = false;
+const settings = { tpqName: "Nama TPQ Kamu" };
+
+// Fungsi login
+const handleLogin = (e) => {
+  e?.preventDefault();
+  // Logika login kamu disini
+};
+
+if (!loggedUser) return (
+  <div className="min-h-screen bg-white flex flex-col">
+    {/* Bagian Atas (Hijau Melengkung) */}
+    <div className="bg-green-600 rounded-b-[3rem] flex flex-col items-center justify-center pt-16 pb-20 px-6">
+      <h2 className="font-bold text-white text-xl tracking-wide mb-2">{settings.tpqName}</h2>
+      <p className="text-white text-sm">Hai, Selamat Datang!</p>
+
+      {/* Tempat Logo */}
+      <div className="mt-10 w-28 h-28 bg-white rounded-2xl shadow-lg flex items-center justify-center">
+        <Shield className="w-14 h-14 text-green-600" />
       </div>
     </div>
-  );
 
+    {/* Bagian Bawah (Kotak Input & Tombol) */}
+    <div className="flex-1 px-6 py-8 flex flex-col">
+      {/* Kotak Dialog Input */}
+      <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100 -mt-10">
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold mb-1 text-gray-700">Username</label>
+            <input 
+              name="username" 
+              className="w-full p-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+              required 
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold mb-1 text-gray-700">Kata Sandi</label>
+            <input 
+              name="password" 
+              type="password" 
+              className="w-full p-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+              required 
+            />
+          </div>
+        </form>
+      </div>
+
+      {/* Tombol Login Hijau di Bawah */}
+      <button 
+        onClick={handleLogin}
+        disabled={loading} 
+        className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-50 transition-all shadow-sm"
+      >
+        {loading ? 'Memuat...' : 'Login'}
+      </button>
+    </div>
+  </div>
+);
   return (
     <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
       <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: '' })} />
