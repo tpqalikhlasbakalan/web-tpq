@@ -915,4 +915,3 @@ function AdminView({ activeTab, setActiveTab, users, setUsers, updateTable, show
 
   return null;
 }
-            
