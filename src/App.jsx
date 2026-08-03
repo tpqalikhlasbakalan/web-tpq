@@ -588,36 +588,29 @@ export default function App() {
     } finally { setIsSyncing(false); }
   };
 
-  // ✅ YANG BENAR (rapi, tidak ganda, kurung pas)
-const handleLogin = (e) => {
-  e.preventDefault();
-  const formData = new FormData(e.target);
-  const username = formData.get('username');
-  const password = formData.get('password');
+  // === FUNGSI LOGIN SUDAH RAPI, TIDAK GANDA ===
+  const handleLogin = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const username = formData.get('username');
+    const password = formData.get('password');
 
-  const user = users.find(u => 
-    String(u.username).toLowerCase() === String(username).toLowerCase() && 
-    String(u.password) === String(password)
-  );
-  
-  if (user) {
-    setCurrentUser(user); 
-    setActiveTab('dashboard');
-    try { 
-      sessionStorage.setItem('tpq_user', JSON.stringify(user)); 
-    } catch(e){}
-    showToast(`Selamat datang kembali, ${user.name}!`);
-  } else {
-    showToast('Username atau password salah!', 'error');
-  }
-};
-    const user = users.find(u => String(u.username).toLowerCase() === String(username).toLowerCase() && String(u.password) === String(password));
+    const user = users.find(u => 
+      String(u.username).toLowerCase() === String(username).toLowerCase() && 
+      String(u.password) === String(password)
+    );
+    
     if (user) {
-      setCurrentUser(user); setActiveTab('dashboard');
-      try { sessionStorage.setItem('tpq_user', JSON.stringify(user)); } catch(e){}
+      setCurrentUser(user); 
+      setActiveTab('dashboard');
+      try { 
+        sessionStorage.setItem('tpq_user', JSON.stringify(user)); 
+      } catch(e){}
       showToast(`Selamat datang kembali, ${user.name}!`);
-    } else showToast('Username atau password salah!', 'error');
-  };
+    } else {
+      showToast('Username atau password salah!', 'error');
+    }
+  }; // ✅ Kurung tutup pas di sini
 
   const handleLogout = () => {
     setCurrentUser(null); setActiveTab('dashboard');
@@ -629,7 +622,8 @@ const handleLogin = (e) => {
     setTimeout(() => setToast({ message: '', type: '' }), 3500);
   };
 
-    if (isInitializing) return (
+  // === MULAI DARI SINI SEMUA MASUK DALAM FUNGSI APP ===
+  if (isInitializing) return (
     <div className="min-h-screen bg-emerald-50/50 flex flex-col items-center justify-center p-4">
       <RefreshCw className="w-12 h-12 text-emerald-600 animate-spin mb-4" />
       <h2 className="text-xl font-bold text-gray-800">Menyinkronkan Data...</h2>
@@ -637,7 +631,7 @@ const handleLogin = (e) => {
     </div>
   );
 
-  if (!loggedUser) return (
+  if (!currentUser) return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Bagian Atas (Hijau Melengkung) */}
       <div className="bg-green-600 rounded-b-[3rem] flex flex-col items-center justify-center pt-16 pb-20 px-6">
@@ -652,7 +646,6 @@ const handleLogin = (e) => {
 
       {/* Bagian Bawah (Kotak Input & Tombol) */}
       <div className="flex-1 px-6 py-8 flex flex-col">
-        {/* Kotak Dialog Input */}
         <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100 -mt-10">
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
@@ -675,13 +668,12 @@ const handleLogin = (e) => {
           </form>
         </div>
 
-        {/* Tombol Login */}
         <button 
           type="submit"
-          disabled={loading} 
+          disabled={isSyncing} 
           className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-50 transition-all shadow-sm"
         >
-          {loading ? 'Memuat...' : 'Login'}
+          {isSyncing ? 'Memuat...' : 'Login'}
         </button>
       </div>
     </div>
@@ -739,7 +731,7 @@ const handleLogin = (e) => {
       </main>
     </div>
   );
-}
+} // ✅ Penutup fungsi App di paling akhir
 function SantriView({ activeTab, setActiveTab, user, users, progress, targets, savings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
   const semuaProgresSaya = progress.filter(p => String(p.santriId) === String(user.id));
   const progresMenungguAcc = progress.filter(p => String(p.santriId) === String(user.id) && p.status === 'belum_disetujui');
