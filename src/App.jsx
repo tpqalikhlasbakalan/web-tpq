@@ -588,19 +588,28 @@ export default function App() {
     } finally { setIsSyncing(false); }
   };
 
-  const handleLogin = (e) => {
+  // ✅ YANG BENAR (rapi, tidak ganda, kurung pas)
+const handleLogin = (e) => {
   e.preventDefault();
   const formData = new FormData(e.target);
   const username = formData.get('username');
   const password = formData.get('password');
 
-  // 👇 DI BAWAH INI KAMU TIDAK USAH UBAH APA-APA, TETAP SAMA PERSIS
-  const user = users.find(u => String(u.username).toLowerCase() === String(username).toLowerCase() && String(u.password) === String(password));
+  const user = users.find(u => 
+    String(u.username).toLowerCase() === String(username).toLowerCase() && 
+    String(u.password) === String(password)
+  );
+  
   if (user) {
-    setCurrentUser(user); setActiveTab('dashboard');
-    try { sessionStorage.setItem('tpq_user', JSON.stringify(user)); } catch(e){}
+    setCurrentUser(user); 
+    setActiveTab('dashboard');
+    try { 
+      sessionStorage.setItem('tpq_user', JSON.stringify(user)); 
+    } catch(e){}
     showToast(`Selamat datang kembali, ${user.name}!`);
-  } else showToast('Username atau password salah!', 'error');
+  } else {
+    showToast('Username atau password salah!', 'error');
+  }
 };
     const user = users.find(u => String(u.username).toLowerCase() === String(username).toLowerCase() && String(u.password) === String(password));
     if (user) {
