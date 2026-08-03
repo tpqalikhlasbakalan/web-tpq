@@ -590,38 +590,32 @@ export default function App() {
 
   // === FUNGSI LOGIN SUDAH RAPI, TIDAK GANDA ===
   const handleLogin = (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const username = formData.get('username');
-    const password = formData.get('password');
+  e.preventDefault(); // Cegah halaman reload
 
-    const user = users.find(u => 
-      String(u.username).toLowerCase() === String(username).toLowerCase() && 
-      String(u.password) === String(password)
-    );
-    
-    if (user) {
-      setCurrentUser(user); 
-      setActiveTab('dashboard');
-      try { 
-        sessionStorage.setItem('tpq_user', JSON.stringify(user)); 
-      } catch(e){}
-      showToast(`Selamat datang kembali, ${user.name}!`);
-    } else {
-      showToast('Username atau password salah!', 'error');
-    }
-  }; // ✅ Kurung tutup pas di sini
+  // Ambil nilai dari input form
+  const formData = new FormData(e.target);
+  const inputUsername = String(formData.get('username') || '').trim();
+  const inputPassword = String(formData.get('password') || '').trim();
 
-  const handleLogout = () => {
-    setCurrentUser(null); setActiveTab('dashboard');
-    try { sessionStorage.removeItem('tpq_user'); } catch(e){}
-  };
+  // Cari pengguna yang cocok persis seperti logika asli kamu
+  const user = users.find(u => 
+    String(u.username || '').toLowerCase() === inputUsername.toLowerCase() && 
+    String(u.password || '') === inputPassword
+  );
 
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast({ message: '', type: '' }), 3500);
-  };
-
+  if (user) {
+    // Berhasil login
+    setCurrentUser(user);
+    setActiveTab('dashboard');
+    try {
+      sessionStorage.setItem('tpq_user', JSON.stringify(user));
+    } catch (err) {}
+    showToast(`Selamat datang kembali, ${user.name}!`);
+  } else {
+    // Gagal login
+    showToast('Username atau password salah!', 'error');
+  }
+};
   // === MULAI DARI SINI SEMUA MASUK DALAM FUNGSI APP ===
   if (isInitializing) return (
     <div className="min-h-screen bg-emerald-50/50 flex flex-col items-center justify-center p-4">
