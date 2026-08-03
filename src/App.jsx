@@ -6,9 +6,9 @@ import {
   Eye, EyeOff, Award, ClipboardList, Settings, DollarSign,
   CheckSquare, RefreshCw, Database, Copy, Unlock,
   ChevronDown, ChevronUp, TrendingUp, TrendingDown, Search,
-  ListChecks // ✅ Pastikan baris ini ada, nama persis seperti ini
+  ListChecks, Shield // ✅ Pastikan baris ini ada, nama persis seperti ini
 } from 'lucide-react';
-
+ 
 const HARDCODED_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwqbAPcV4Mz6hT-PneqAQoC-aZoRdgaGJzL23qAOwcSnClmDzRpf_fzbIsPymtyQYyn-w/exec";
 const JILID_LEVELS = [
   'Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6',
@@ -615,20 +615,7 @@ export default function App() {
     </div>
   );
 
-  import { Shield } from 'lucide-react'; // Pastikan icon sudah di-import
-
-// Contoh variabel yang dibutuhkan (sesuaikan dengan state kamu)
-const loggedUser = null;
-const loading = false;
-const settings = { tpqName: "Nama TPQ Kamu" };
-
-// Fungsi login
-const handleLogin = (e) => {
-  e?.preventDefault();
-  // Logika login kamu disini
-};
-
-if (!loggedUser) return (
+ if (!loggedUser) return (
   <div className="min-h-screen bg-white flex flex-col">
     {/* Bagian Atas (Hijau Melengkung) */}
     <div className="bg-green-600 rounded-b-[3rem] flex flex-col items-center justify-center pt-16 pb-20 px-6">
