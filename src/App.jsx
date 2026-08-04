@@ -626,52 +626,62 @@ export default function App() {
   );
 
   if (!currentUser) return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Bagian Atas (Hijau Melengkung) */}
-      <div className="bg-green-600 rounded-b-[3rem] flex flex-col items-center justify-center pt-16 pb-20 px-6">
-        <h2 className="font-bold text-white text-xl tracking-wide mb-2">{settings.tpqName}</h2>
-        <p className="text-white text-sm">Hai, Selamat Datang!</p>
+  <div className="min-h-screen bg-white flex flex-col">
+    {/* Bagian Atas (Hijau Melengkung) */}
+    <div className="bg-green-600 rounded-b-[3rem] flex flex-col items-center justify-center pt-16 pb-20 px-6">
+      <h2 className="font-bold text-white text-xl tracking-wide mb-2">{settings.tpqName}</h2>
+      <p className="text-white text-sm">Hai, Selamat Datang!</p>
 
-        {/* Tempat Logo */}
-        <div className="mt-10 w-28 h-28 bg-white rounded-2xl shadow-lg flex items-center justify-center">
+      {/* Tempat Logo Sesuai Google Sheet */}
+      <div className="mt-10 w-28 h-28 bg-white rounded-2xl shadow-lg flex items-center justify-center overflow-hidden">
+        {settings?.logoUrl ? (
+          <img 
+            src={settings.logoUrl} 
+            alt="Logo TPQ" 
+            className="w-full h-full object-contain p-2"
+          />
+        ) : (
           <Shield className="w-14 h-14 text-green-600" />
-        </div>
-      </div>
-
-      {/* Bagian Bawah (Kotak Input & Tombol) */}
-      <div className="flex-1 px-6 py-8 flex flex-col">
-        <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100 -mt-10">
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold mb-1 text-gray-700">Username</label>
-              <input 
-                name="username" 
-                className="w-full p-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" 
-                required 
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold mb-1 text-gray-700">Kata Sandi</label>
-              <input 
-                name="password" 
-                type="password" 
-                className="w-full p-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" 
-                required 
-              />
-            </div>
-          </form>
-        </div>
-
-        <button 
-          type="submit"
-          disabled={isSyncing} 
-          className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-50 transition-all shadow-sm"
-        >
-          {isSyncing ? 'Memuat...' : 'Login'}
-        </button>
+        )}
       </div>
     </div>
-  );
+
+    {/* Bagian Bawah: Form & Tombol (SEKARANG SUDAH BENAR) */}
+    <div className="flex-1 px-6 py-8 flex flex-col">
+      <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100 -mt-10">
+        {/* SEMUA ISI DAN TOMBOL HARUS DI DALAM <form> */}
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold mb-1 text-gray-700">Username</label>
+            <input 
+              name="username" 
+              className="w-full p-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+              required 
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold mb-1 text-gray-700">Kata Sandi</label>
+            <input 
+              name="password" 
+              type="password" 
+              className="w-full p-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+              required 
+            />
+          </div>
+
+          {/* TOMBOL SEKARANG SUDAH MASUK KE DALAM FORM */}
+          <button 
+            type="submit"
+            disabled={isSyncing} 
+            className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-50 transition-all shadow-sm"
+          >
+            {isSyncing ? 'Memuat...' : 'Login'}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+);
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
