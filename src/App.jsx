@@ -2163,8 +2163,19 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
   const editAkun = (akun) => { setFormAkun({ ...akun }); setModeEdit(true); window.scrollTo({top:0, behavior:'smooth'}); };
   const hapusAkun = async (id) => { if (!confirm('Yakin akan menghapus akun ini?')) return; await updateTable('users', daftarPengguna.filter(a => String(a.id) !== String(id))); showToast('Akun telah dihapus!'); };
   const simpanUrl = async () => { setAppsScriptUrl(urlSementara); localStorage.setItem('tpq_apps_script_url', urlSementara); await loadDatabase(urlSementara); showToast('URL Google Apps Script telah diperbarui!'); };
-  const simpanIdentitas = async (e) => { e.preventDefault(); const data = { ...settings, tpqName: e.target.tpqName.value, logoUrl: e.target.logoUrl.value }; await updateTable('settings', data); showToast('Identitas TPQ disimpan!'); };
+  const simpanIdentitas = async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const namaBaru = formData.get('tpqName');
+  const logoBaru = formData.get('logoUrl');
 
+  const dataBaru = { ...settings, tpqName: namaBaru, logoUrl: logoBaru };
+  setSettings(dataBaru);
+  
+  // Simpan ke Google Sheet
+  await updateTable('settings', dataBaru);
+  showToast('Identitas TPQ berhasil disimpan!');
+};
   const menus = [
     { id: 'kelola_akun', label: 'Manajemen Akun', icon: Users, color: 'bg-purple-100 text-purple-700', desc: 'Tambah, ubah, hapus akun pengguna sistem.' },
     { id: 'pengaturan_sistem', label: 'Pengaturan Sistem', icon: Settings, color: 'bg-gray-100 text-gray-700', desc: 'Identitas TPQ & koneksi Google Sheets.' }
@@ -2173,25 +2184,64 @@ function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, set
   if (activeTab === 'dashboard') return <div className="animate-fade-in"><h2 className="text-xl font-black text-gray-800 mb-6">Panel Administrator Sistem</h2><MenuGrid menus={menus} onSelect={setActiveTab} /></div>;
 
   if (activeTab === 'pengaturan' || activeTab === 'pengaturan_sistem') return (
-    <div className="animate-fade-in space-y-6">
-      <div className="bg-white p-6 rounded-2xl shadow-sm border">
-        <h2 className="text-lg font-bold mb-6 flex items-center text-gray-800"><Settings className="mr-2"/> Pengaturan Umum & Koneksi</h2>
-        <form onSubmit={simpanIdentitas} className="space-y-4 mb-8">
-          <div><label className="block text-xs font-bold mb-1 text-gray-700">Nama TPQ</label><input type="text" name="tpqName" defaultValue={settings.tpqName} className="w-full p-2.5 border rounded-xl text-xs" required /></div>
-          <div><label className="block text-xs font-bold mb-1 text-gray-700">Link Logo (Opsional)</label><input type="text" name="logoUrl" defaultValue={settings.logoUrl} className="w-full p-2.5 border rounded-xl text-xs" placeholder="https://..." /></div>
-          <button type="submit" className="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2.5 rounded-xl text-xs">Simpan Identitas TPQ</button>
-        </form>
-        <div className="border-t pt-6">
-          <h3 className="font-bold text-sm mb-3">Koneksi Google Apps Script</h3>
-          <div className="flex gap-2">
-            <input type="text" value={urlSementara} onChange={(e) => setUrlSementara(e.target.value)} className="flex-1 p-2.5 border rounded-xl text-xs font-mono" />
-            <button onClick={simpanUrl} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 rounded-xl text-xs">Simpan & Hubungkan</button>
-          </div>
+  <div className="animate-fade-in space-y-6">
+    <div className="bg-white p-6 rounded-2xl shadow-sm border">
+      <h2 className="text-lg font-bold mb-6 flex items-center text-gray-800">
+        <Settings className="mr-2"/> Pengaturan Umum & Koneksi
+      </h2>
+
+      {/* Form Identitas TPQ (sesuai sheet "settings") */}
+      <form onSubmit={simpanIdentitas} className="space-y-4 mb-8">
+        <div>
+          <label className="block text-xs font-bold mb-1 text-gray-700">Nama TPQ</label>
+          <input 
+            type="text" 
+            name="tpqName" 
+            defaultValue={settings?.tpqName || ''} 
+            className="w-full p-2.5 border rounded-xl text-xs" 
+            required 
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold mb-1 text-gray-700">Link Logo (Opsional)</label>
+          <input 
+            type="text" 
+            name="logoUrl" 
+            defaultValue={settings?.logoUrl || ''} 
+            className="w-full p-2.5 border rounded-xl text-xs" 
+            placeholder="https://..." 
+          />
+        </div>
+        <button 
+          type="submit" 
+          className="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2.5 rounded-xl text-xs"
+        >
+          Simpan Identitas TPQ
+        </button>
+      </form>
+
+      {/* Bagian Koneksi Apps Script */}
+      <div className="border-t pt-6">
+        <h3 className="font-bold text-sm mb-3">Koneksi Google Apps Script</h3>
+        <div className="flex gap-2">
+          <input 
+            type="text" 
+            value={appsScriptUrl} 
+            onChange={(e) => setAppsScriptUrl(e.target.value)} 
+            className="flex-1 p-2.5 border rounded-xl text-xs font-mono" 
+            placeholder="Masukkan URL Apps Script kamu"
+          />
+          <button 
+            onClick={simpanUrl} 
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 rounded-xl text-xs"
+          >
+            Simpan & Hubungkan
+          </button>
         </div>
       </div>
     </div>
-  );
-
+  </div>
+);
   if (activeTab === 'hak_akses' || activeTab === 'kelola_akun') return (
     <div className="animate-fade-in space-y-6">
       <div className="bg-white p-6 rounded-2xl shadow-sm border">
