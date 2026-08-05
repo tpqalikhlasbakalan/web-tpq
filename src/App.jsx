@@ -939,3 +939,523 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
 function KepalaView(){ /* ...sesuaikan gaya seperti contoh di atas... */ }
 function BendaharaView(){ /* ...sesuaikan gaya seperti contoh di atas... */ }
 function AdminView(){ /* ...sesuaikan gaya seperti contoh di atas... */ }
+// ==============================================
+// COMPONENT: GURU VIEW (LENGKAP SEMUA MENU)
+// ==============================================
+function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
+  const [selectedSantri, setSelectedSantri] = useState(null);
+  const activeSantriList = users.filter(u => u.role === 'santri' && String(u.guruId) === String(user.id));
+  const isSavingAuthorized = settings.savingInputRoles?.includes(user.role);
+
+  const menus = [
+    { id: 'isi_progres', label: 'Input Setoran', icon: ClipboardList, color: 'bg-emerald-50 text-emerald-600' },
+    { id: 'nilai_target', label: 'Penilaian Target', icon: CheckSquare, color: 'bg-indigo-50 text-indigo-600' },
+    { id: 'pengajuan_kenaikan', label: 'Ajukan Naik Jilid', icon: Award, color: 'bg-orange-50 text-orange-600' },
+    { id: 'klaim_santri', label: 'Klaim Santri', icon: UserPlus, color: 'bg-purple-50 text-purple-600' }
+  ];
+  if (isSavingAuthorized) menus.push({ id: 'input_tabungan', label: 'Input Tabungan', icon: DollarSign, color: 'bg-amber-50 text-amber-600' });
+
+  if (activeTab === 'dashboard') return (
+    <div className="space-y-6">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h2 className="text-xl font-semibold text-slate-800">Panel Pengajar: {user.name}</h2>
+        <p className="text-sm text-slate-500 mt-1">Mengelola {activeSantriList.length} santri bimbingan</p>
+      </div>
+      <MenuGrid menus={menus} onSelect={setActiveTab} />
+    </div>
+  );
+
+  if (activeTab === 'input_tabungan') return (
+    <div className="space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <SavingsInputView users={users} savings={savings} updateTable={updateTable} showToast={showToast} recorderId={user.id} />
+    </div>
+  );
+
+  if (activeTab === 'isi_progres') return (
+    <div className="space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h2 className="text-lg font-semibold mb-6 flex items-center text-emerald-700">
+          <ClipboardList className="mr-2"/> Input Setoran Harian
+        </h2>
+        {activeSantriList.length === 0 ? (
+          <div className="p-6 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
+            Belum ada santri yang dibimbing. Silakan klaim santri terlebih dahulu.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+              <h3 className="text-xs font-semibold text-slate-700 mb-3 border-b pb-2 uppercase">Daftar Santri</h3>
+              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+                {activeSantriList.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => setSelectedSantri(s)}
+                    className={`w-full p-3 rounded-xl text-left text-sm border transition-all ${
+                      selectedSantri?.id === s.id
+                        ? 'bg-emerald-500 text-white font-medium border-emerald-500'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-emerald-50'
+                    }`}
+                  >
+                    <p className="font-medium">{s.name}</p>
+                    <p className="mt-0.5 opacity-80 text-xs">Jilid: {s.jilid}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="md:col-span-2 space-y-6">
+              {!selectedSantri ? (
+                <div className="p-10 text-center text-slate-400 text-sm italic bg-slate-50 border border-dashed rounded-xl">
+                  Pilih santri terlebih dahulu
+                </div>
+              ) : (
+                <>
+                  <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
+                    <p className="text-[11px] text-emerald-600 font-medium uppercase">Santri Terpilih</p>
+                    <h3 className="font-semibold text-lg mt-0.5">{selectedSantri.name}</h3>
+                    <p className="text-sm text-slate-600 mt-1">Jilid: {selectedSantri.jilid}</p>
+                  </div>
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    const baru = {
+                      id: Date.now().toString(),
+                      santriId: selectedSantri.id,
+                      date: e.target.date.value,
+                      surah: e.target.surah.value,
+                      ayat: e.target.ayat.value,
+                      nilai: e.target.nilai.value,
+                      status: 'acc_guru',
+                      type: 'harian'
+                    };
+                    await updateTable('progress', [baru, ...progress]);
+                    showToast('Setoran berhasil disimpan!');
+                    e.target.reset();
+                  }} className="space-y-4 bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                    <h4 className="font-medium text-sm text-slate-700 border-b pb-2">Input Setoran Baru</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium mb-1 text-slate-600">Tanggal</label>
+                        <input type="date" name="date" defaultValue={new Date().toISOString().slice(0,10)} required className="w-full p-2.5 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-emerald-400" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium mb-1 text-slate-600">Nilai</label>
+                        <select name="nilai" className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-medium focus:ring-1 focus:ring-emerald-400">
+                          <option>A (Sangat Lancar)</option>
+                          <option>B (Lancar)</option>
+                          <option>C (Cukup)</option>
+                          <option>D (Kurang)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium mb-1 text-slate-600">Surah</label>
+                        <input type="text" name="surah" required className="w-full p-2.5 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-emerald-400" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium mb-1 text-slate-600">Ayat / Halaman</label>
+                        <input type="text" name="ayat" required className="w-full p-2.5 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-emerald-400" />
+                      </div>
+                    </div>
+                    <button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 rounded-xl text-xs transition-all">
+                      Simpan Setoran
+                    </button>
+                  </form>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  if (activeTab === 'nilai_target') return (
+    <div className="space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h2 className="text-lg font-semibold mb-6 flex items-center text-indigo-700">
+          <CheckSquare className="mr-2"/> Penilaian Target Kompetensi
+        </h2>
+        {activeSantriList.length === 0 ? (
+          <div className="p-6 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">Belum ada santri bimbingan.</div>
+        ) : (
+          <div className="space-y-4">
+            {activeSantriList.map(s => {
+              const targetJilid = targets.filter(t => t.level === s.jilid);
+              return (
+                <div key={s.id} className="border border-slate-200 rounded-xl p-4 bg-slate-50">
+                  <div className="flex justify-between items-center mb-3">
+                    <div>
+                      <p className="font-medium text-slate-800">{s.name}</p>
+                      <p className="text-xs text-slate-500">Jilid: {s.jilid}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {targetJilid.map(t => {
+                      const selesai = s.completedTargets?.includes(String(t.id));
+                      return (
+                        <label key={t.id} className="flex items-center space-x-3 p-2 bg-white rounded-lg border border-slate-100 cursor-pointer hover:bg-emerald-50 transition-all">
+                          <input
+                            type="checkbox"
+                            checked={selesai || false}
+                            onChange={async (e) => {
+                              const updateUser = users.map(u => {
+                                if (u.id === s.id) {
+                                  const baru = e.target.checked
+                                    ? [...(u.completedTargets||[]), String(t.id)]
+                                    : (u.completedTargets||[]).filter(x => x !== String(t.id));
+                                  return {...u, completedTargets: baru};
+                                }
+                                return u;
+                              });
+                              await updateTable('users', updateUser);
+                              showToast('Target diperbarui!');
+                            }}
+                            className="w-4 h-4 text-emerald-600 rounded"
+                          />
+                          <span className={`text-xs ${selesai ? 'text-emerald-700 line-through' : 'text-slate-700'}`}>{t.description}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  if (activeTab === 'pengajuan_kenaikan') return (
+    <div className="space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h2 className="text-lg font-semibold mb-6 flex items-center text-orange-700">
+          <Award className="mr-2"/> Pengajuan Kenaikan Jilid
+        </h2>
+        {activeSantriList.length === 0 ? (
+          <div className="p-6 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">Belum ada santri bimbingan.</div>
+        ) : (
+          <div className="space-y-3">
+            {activeSantriList.map(s => {
+              const idxSekarang = JILID_LEVELS.indexOf(s.jilid);
+              const jilidSelanjutnya = idxSekarang < JILID_LEVELS.length - 1 ? JILID_LEVELS[idxSekarang + 1] : null;
+              return (
+                <div key={s.id} className="p-4 bg-white border border-slate-200 rounded-xl flex justify-between items-center">
+                  <div>
+                    <p className="font-medium">{s.name}</p>
+                    <p className="text-xs text-slate-500">Saat ini: {s.jilid}</p>
+                  </div>
+                  {jilidSelanjutnya ? (
+                    <button
+                      onClick={async () => {
+                        if(confirm(`Yakin ajukan ${s.name} naik ke ${jilidSelanjutnya}?`)){
+                          const ubah = users.map(u => u.id === s.id ? {...u, jilid: jilidSelanjutnya} : u);
+                          await updateTable('users', ubah);
+                          showToast(`Berhasil diajukan naik ke ${jilidSelanjutnya}!`);
+                        }
+                      }}
+                      className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-3 py-1.5 rounded-lg transition-all"
+                    >
+                      Ajukan ke {jilidSelanjutnya}
+                    </button>
+                  ) : <span className="text-xs text-emerald-600 font-medium">Sudah Tamat</span>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  if (activeTab === 'klaim_santri') return (
+    <div className="space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h2 className="text-lg font-semibold mb-6 flex items-center text-purple-700">
+          <UserPlus className="mr-2"/> Klaim Santri Bimbingan
+        </h2>
+        <div className="space-y-3">
+          {users.filter(u => u.role === 'santri' && !u.guruId).map(s => (
+            <div key={s.id} className="p-4 bg-white border border-slate-200 rounded-xl flex justify-between items-center">
+              <div>
+                <p className="font-medium">{s.name}</p>
+                <p className="text-xs text-slate-500">Jilid: {s.jilid}</p>
+              </div>
+              <button
+                onClick={async () => {
+                  const ubah = users.map(u => u.id === s.id ? {...u, guruId: user.id} : u);
+                  await updateTable('users', ubah);
+                  showToast('Santri berhasil diklaim!');
+                }}
+                className="bg-purple-500 hover:bg-purple-600 text-white text-xs px-3 py-1.5 rounded-lg transition-all"
+              >
+                Klaim
+              </button>
+            </div>
+          ))}
+          {users.filter(u => u.role === 'santri' && !u.guruId).length === 0 && (
+            <p className="text-center text-slate-400 text-sm py-6">Semua santri sudah memiliki pembimbing.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  return null;
+}
+
+// ==============================================
+// COMPONENT: KEPALA TPQ VIEW (LENGKAP)
+// ==============================================
+function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, targets, savings, settings, updateTable, showToast, appsScriptUrl, setAppsScriptUrl, loadDatabase, isSyncing }) {
+  const menus = [
+    { id: 'daftar_santri', label: 'Daftar Santri', icon: Users, color: 'bg-blue-50 text-blue-600' },
+    { id: 'daftar_guru', label: 'Daftar Pengajar', icon: User, color: 'bg-emerald-50 text-emerald-600' },
+    { id: 'laporan_progres', label: 'Laporan Mengaji', icon: TrendingUp, color: 'bg-indigo-50 text-indigo-600' },
+    { id: 'pengaturan', label: 'Pengaturan', icon: Settings, color: 'bg-slate-50 text-slate-600' }
+  ];
+
+  if (activeTab === 'dashboard') return (
+    <div className="space-y-6">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h2 className="text-xl font-semibold text-slate-800">Panel Kepala TPQ</h2>
+        <p className="text-sm text-slate-500 mt-1">{settings.tpqName}</p>
+      </div>
+      <MenuGrid menus={menus} onSelect={setActiveTab} />
+    </div>
+  );
+
+  if (activeTab === 'daftar_santri') return (
+    <div className="space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h2 className="text-lg font-semibold mb-4">Daftar Seluruh Santri</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead className="bg-slate-50 text-slate-600 uppercase">
+              <tr>
+                <th className="p-3 text-left">Nama</th>
+                <th className="p-3 text-left">Jilid</th>
+                <th className="p-3 text-left">Guru</th>
+                <th className="p-3 text-left">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.filter(u => u.role === 'santri').map(s => (
+                <tr key={s.id} className="border-b border-slate-100">
+                  <td className="p-3 font-medium">{s.name}</td>
+                  <td className="p-3">{s.jilid}</td>
+                  <td className="p-3">{users.find(g => g.id === s.guruId)?.name || '-'}</td>
+                  <td className="p-3">{s.hasAlarm ? <span className="text-rose-600">Tagihan</span> : <span className="text-emerald-600">Aktif</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (activeTab === 'daftar_guru') return (
+    <div className="space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h2 className="text-lg font-semibold mb-4">Daftar Pengajar</h2>
+        <div className="space-y-2">
+          {users.filter(u => u.role === 'guru' || u.role === 'kepala_tpq').map(g => (
+            <div key={g.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
+              <span className="font-medium">{g.name}</span>
+              <span className="text-xs text-slate-500">{getRoleName(g.role)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (activeTab === 'laporan_progres') return (
+    <div className="space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h2 className="text-lg font-semibold mb-4">Laporan Keseluruhan</h2>
+        <p className="text-sm text-slate-500">Total setoran: {progress.length}</p>
+        <p className="text-sm text-slate-500">Total santri: {users.filter(u => u.role === 'santri').length}</p>
+      </div>
+    </div>
+  );
+
+  if (activeTab === 'pengaturan') return (
+    <div className="space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h2 className="text-lg font-semibold mb-4">Pengaturan Sistem</h2>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium mb-1">URL Apps Script</label>
+            <input
+              type="text"
+              value={appsScriptUrl}
+              onChange={(e) => setAppsScriptUrl(e.target.value)}
+              className="w-full p-2.5 border border-slate-200 rounded-xl text-xs"
+            />
+            <button onClick={() => {localStorage.setItem('tpq_apps_script_url', appsScriptUrl); showToast('URL tersimpan!');}} className="mt-2 bg-slate-600 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs">Simpan URL</button>
+          </div>
+          <button onClick={() => loadDatabase()} disabled={isSyncing} className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2.5 rounded-xl text-xs font-medium flex items-center justify-center">
+            <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+            {isSyncing ? 'Menyinkronkan...' : 'Sinkronkan Data'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return null;
+}
+
+// ==============================================
+// COMPONENT: BENDAHARA VIEW (LENGKAP)
+// ==============================================
+function BendaharaView({ activeTab, setActiveTab, users, savings, settings, updateTable, showToast, currentUser }) {
+  const menus = [
+    { id: 'input_tabungan', label: 'Kelola Tabungan', icon: DollarSign, color: 'bg-amber-50 text-amber-600' },
+    { id: 'laporan_keuangan', label: 'Laporan Keuangan', icon: TrendingUp, color: 'bg-emerald-50 text-emerald-600' },
+    { id: 'pembayaran_syahriah', label: 'Pembayaran Syahriah', icon: CreditCard, color: 'bg-indigo-50 text-indigo-600' }
+  ];
+
+  if (activeTab === 'dashboard') return (
+    <div className="space-y-6">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h2 className="text-xl font-semibold text-slate-800">Panel Bendahara</h2>
+      </div>
+      <MenuGrid menus={menus} onSelect={setActiveTab} />
+    </div>
+  );
+
+  if (activeTab === 'input_tabungan') return (
+    <div className="space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <SavingsInputView users={users} savings={savings} updateTable={updateTable} showToast={showToast} recorderId={currentUser.id} />
+    </div>
+  );
+
+  if (activeTab === 'laporan_keuangan') return (
+    <div className="space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h2 className="text-lg font-semibold mb-4">Laporan Keseluruhan Tabungan</h2>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-emerald-50 p-4 rounded-xl text-center">
+            <p className="text-xs text-emerald-600">Total Setoran</p>
+            <p className="font-semibold text-emerald-700 mt-1">Rp {savings.filter(s=>s.type==='setor').reduce((a,b)=>a+b.amount,0).toLocaleString('id-ID')}</p>
+          </div>
+          <div className="bg-rose-50 p-4 rounded-xl text-center">
+            <p className="text-xs text-rose-600">Total Penarikan</p>
+            <p className="font-semibold text-rose-700 mt-1">Rp {savings.filter(s=>s.type==='tarik').reduce((a,b)=>a+b.amount,0).toLocaleString('id-ID')}</p>
+          </div>
+          <div className="bg-blue-50 p-4 rounded-xl text-center">
+            <p className="text-xs text-blue-600">Total Saldo</p>
+            <p className="font-semibold text-blue-700 mt-1">Rp {savings.reduce((a,b)=>b.type==='setor'?a+b.amount:a-b.amount,0).toLocaleString('id-ID')}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (activeTab === 'pembayaran_syahriah') return (
+    <div className="space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h2 className="text-lg font-semibold mb-4">Pembayaran Syahriah</h2>
+        <div className="space-y-2">
+          {users.filter(u => u.role === 'santri').map(s => (
+            <div key={s.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
+              <div>
+                <p className="font-medium">{s.name}</p>
+                <p className="text-xs text-slate-500">Terakhir: {s.historyBayar[s.historyBayar.length-1] || 'Belum Pernah'}</p>
+              </div>
+              <button
+                onClick={async () => {
+                  const ubah = users.map(u => u.id === s.id ? {...u, historyBayar: [...(u.historyBayar||[]), new Date().toISOString().slice(0,10)], hasAlarm: false} : u);
+                  await updateTable('users', ubah);
+                  showToast('Pembayaran dicatat!');
+                }}
+                className="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-lg"
+              >
+                Catat Bayar
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  return null;
+}
+
+// ==============================================
+// COMPONENT: ADMIN VIEW (LENGKAP)
+// ==============================================
+function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, settings, appsScriptUrl, setAppsScriptUrl, loadDatabase }) {
+  const menus = [
+    { id: 'kelola_pengguna', label: 'Kelola Pengguna', icon: Users, color: 'bg-slate-50 text-slate-700' },
+    { id: 'pengaturan_sistem', label: 'Pengaturan', icon: Settings, color: 'bg-slate-50 text-slate-700' }
+  ];
+
+  if (activeTab === 'dashboard') return (
+    <div className="space-y-6">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h2 className="text-xl font-semibold text-slate-800">Panel Administrator</h2>
+      </div>
+      <MenuGrid menus={menus} onSelect={setActiveTab} />
+    </div>
+  );
+
+  if (activeTab === 'kelola_pengguna') return (
+    <div className="space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h2 className="text-lg font-semibold mb-4">Daftar Seluruh Pengguna</h2>
+        <div className="space-y-2">
+          {users.map(u => (
+            <div key={u.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
+              <div>
+                <p className="font-medium">{u.name}</p>
+                <p className="text-xs text-slate-500">@{u.username} · {getRoleName(u.role)}</p>
+              </div>
+              <button onClick={() => {if(confirm('Hapus pengguna ini?')){updateTable('users', users.filter(x=>x.id!==u.id)); showToast('Terhapus!');}}} className="text-rose-500 hover:text-rose-700"><Trash2 size={16}/></button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (activeTab === 'pengaturan_sistem') return (
+    <div className="space-y-6">
+      <BackButton onClick={() => setActiveTab('dashboard')} />
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h2 className="text-lg font-semibold mb-4">Pengaturan Sistem</h2>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium mb-1">Nama TPQ</label>
+            <input type="text" value={settings.tpqName} onChange={(e)=>setSettings({...settings, tpqName:e.target.value})} className="w-full p-2.5 border border-slate-200 rounded-xl text-xs" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1">URL Apps Script</label>
+            <input type="text" value={appsScriptUrl} onChange={(e)=>setAppsScriptUrl(e.target.value)} className="w-full p-2.5 border border-slate-200 rounded-xl text-xs" />
+          </div>
+          <button onClick={() => {localStorage.setItem('tpq_apps_script_url', appsScriptUrl); updateTable('settings', settings); showToast('Pengaturan tersimpan!');}} className="w-full bg-slate-700 hover:bg-slate-800 text-white py-2.5 rounded-xl text-xs font-medium">Simpan Pengaturan</button>
+          <button onClick={() => loadDatabase()} className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2.5 rounded-xl text-xs font-medium">Sinkronkan Ulang</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return null;
+}
