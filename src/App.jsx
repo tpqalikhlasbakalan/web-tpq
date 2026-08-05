@@ -6,7 +6,7 @@ import {
   Eye, EyeOff, Award, ClipboardList, Settings, DollarSign,
   CheckSquare, RefreshCw, Database, Copy, Unlock,
   ChevronDown, ChevronUp, TrendingUp, TrendingDown, Search,
-  ListChecks
+  ListChecks, FileText, Calendar, ShieldHalf, GraduationCap
 } from 'lucide-react';
 
 const HARDCODED_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwqbAPcV4Mz6hT-PneqAQoC-aZoRdgaGJzL23qAOwcSnClmDzRpf_fzbIsPymtyQYyn-w/exec";
@@ -706,12 +706,11 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
         ? `🔴 Persetujuan Wali (${progresMenungguAcc.length})` 
         : '✍️ Persetujuan Wali Santri', 
       icon: CheckSquare, 
-      color: progresMenungguAcc.length > 0 ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-blue-50 text-blue-600', 
-      desc: 'Setujui setoran guru agar proses mengaji bisa dilanjutkan.' 
+      color: progresMenungguAcc.length > 0 ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-blue-50 text-blue-600'
     },
-    { id: 'progres_mengaji', label: 'Progres Mengaji Saya', icon: BookOpen, color: 'bg-emerald-100 text-emerald-600', desc: 'Riwayat semua catatan setoran Anda (belum & sudah disetujui).' },
-    { id: 'riwayat_pembayaran', label: 'Riwayat Pembayaran', icon: CreditCard, color: 'bg-indigo-100 text-indigo-600', desc: 'Lihat status tagihan dan riwayat pembayaran iuran bulanan Anda.' },
-    { id: 'riwayat_tabungan', label: 'Riwayat Tabungan', icon: DollarSign, color: 'bg-amber-100 text-amber-600', desc: 'Lihat riwayat setoran, penarikan, dan saldo tabungan Anda.' }
+    { id: 'progres_mengaji', label: 'Progres Mengaji Saya', icon: BookOpen, color: 'bg-emerald-100 text-emerald-600' },
+    { id: 'riwayat_pembayaran', label: 'Riwayat Pembayaran', icon: CreditCard, color: 'bg-indigo-100 text-indigo-600' },
+    { id: 'riwayat_tabungan', label: 'Riwayat Tabungan', icon: DollarSign, color: 'bg-amber-100 text-amber-600' }
   ];
 
   if (activeTab === 'dashboard') return (
@@ -730,13 +729,13 @@ function SantriView({ activeTab, setActiveTab, user, users, progress, targets, s
         <div className="bg-red-50 border border-red-200 p-5 rounded-2xl flex items-start space-x-3.5 shadow-sm animate-pulse">
           <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-                        <h3 className="font-extrabold text-red-800">⚠️ Peringatan Tagihan Belum Lunas</h3>
+            <h3 className="font-extrabold text-red-800">⚠️ Peringatan Tagihan Belum Lunas</h3>
             <p className="text-sm text-red-700 mt-1">Mohon segera selesaikan pembayaran iuran agar tetap bisa mengikuti kegiatan belajar mengaji.</p>
           </div>
         </div>
       )}
 
-      {activeWeekendNotification && (
+           {activeWeekendNotification && (
         <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl flex items-start space-x-3.5 shadow-sm">
           <Bell className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
