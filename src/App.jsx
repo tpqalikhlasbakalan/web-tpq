@@ -250,237 +250,6 @@ const MenuGrid = ({ menus, onSelect }) => (
   </div>
 );
 
-// --- UTAMA ---
-export default function App() {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [toast, setToast] = useState({ message: '', type: '' });
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [isInitializing, setIsInitializing] = useState(true);
-  const [users, setUsers] = useState([]);
-  const [progress, setProgress] = useState([]);
-  const [targets, setTargets] = useState([]);
-  const [savings, setSavings] = useState([]);
-  const [settings, setSettings] = useState(INITIAL_DATA.settings);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [simulatedWeekend, setSimulatedWeekend] = useState(false);
-  const [appsScriptUrl, setAppsScriptUrl] = useState(() => localStorage.getItem('tpq_apps_script_url') || HARDCODED_APPS_SCRIPT_URL);
-
-  const loadDatabase = async (targetUrl = appsScriptUrl) => {
-    setIsSyncing(true);
-    try {
-      const localUsers = safeGetLocalStorage('tpq_users', INITIAL_DATA.users);
-      const localProgress = safeGetLocalStorage('tpq_progress', INITIAL_DATA.progress);
-      const localTargets = safeGetLocalStorage('tpq_targets', INITIAL_DATA.targets);
-      const localSavings = safeGetLocalStorage('tpq_savings', INITIAL_DATA.savings);
-      const localSettings = safeGetLocalStorage('tpq_settings', INITIAL_DATA.settings);
-      setSettings(localSettings);
-      if (targetUrl && targetUrl.trim() !== '' && targetUrl !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
-        const response = await fetch(`${targetUrl}?action=getAll`);
-        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("text/html")) throw new Error('Akses Ditolak! Pastikan setting "Who has access" di Google Apps Script dideploy sebagai "Anyone".');
-        const payload = await response.json();
-        if (payload.status === 'success' && payload.data) {
-          const { users: sUsers, progress: sProgress, targets: sTargets, savings: sSavings, settings: sSettings } = payload.data;
-          let finalUsers = normalizeUsers((sUsers && sUsers.length > 0) ? sUsers : localUsers);
-          let finalProgress = normalizeProgress((sProgress && sProgress.length > 0) ? sProgress : localProgress);
-          let finalTargets = normalizeTargets((sTargets && sTargets.length > 0) ? sTargets : localTargets);
-          let finalSavings = normalizeSavings((sSavings && sSavings.length > 0) ? sSavings : localSavings);
-          let finalSettings = (sSettings && Object.keys(sSettings).length > 0) ? sSettings : localSettings;
-          if (finalUsers.filter(u => u.role === 'santri').length === 0) finalUsers = normalizeUsers(localUsers.length > 0 ? localUsers : INITIAL_DATA.users);
-          if (finalTargets.length === 0) finalTargets = normalizeTargets(localTargets.length > 0 ? localTargets : INITIAL_DATA.targets);
-          setUsers(finalUsers); setProgress(finalProgress); setTargets(finalTargets); setSavings(finalSavings);
-          if (finalSettings) setSettings(finalSettings);
-          try {
-            localStorage.setItem('tpq_users', JSON.stringify(finalUsers));
-            localStorage.setItem('tpq_progress', JSON.stringify(finalProgress));
-            localStorage.setItem('tpq_targets', JSON.stringify(finalTargets));
-            localStorage.setItem('tpq_savings', JSON.stringify(finalSavings));
-            localStorage.setItem('tpq_settings', JSON.stringify(finalSettings));
-          } catch (e) {}
-          if (!isInitializing) showToast('Data disinkronkan!');
-        } else throw new Error(payload.message || 'Format data tidak sesuai.');
-      } else {
-        let fUsers = normalizeUsers(safeGetLocalStorage('tpq_users', INITIAL_DATA.users));
-        if (fUsers.filter(u => u.role === 'santri').length === 0) fUsers = normalizeUsers(INITIAL_DATA.users);
-        setUsers(fUsers); setProgress(normalizeProgress(safeGetLocalStorage('tpq_progress', INITIAL_DATA.progress)));
-        setTargets(normalizeTargets(safeGetLocalStorage('tpq_targets', INITIAL_DATA.targets)));
-        setSavings(normalizeSavings(safeGetLocalStorage('tpq_savings', INITIAL_DATA.savings)));
-      }
-    } catch (error) {
-      let fUsers = normalizeUsers(safeGetLocalStorage('tpq_users', INITIAL_DATA.users));
-      if (fUsers.filter(u => u.role === 'santri').length === 0) fUsers = normalizeUsers(INITIAL_DATA.users);
-      setUsers(fUsers); setProgress(normalizeProgress(safeGetLocalStorage('tpq_progress', INITIAL_DATA.progress)));
-      setTargets(normalizeTargets(safeGetLocalStorage('tpq_targets', INITIAL_DATA.targets)));
-      setSavings(normalizeSavings(safeGetLocalStorage('tpq_savings', INITIAL_DATA.savings)));
-    } finally { setIsSyncing(false); setIsInitializing(false); }
-  };
-
-  useEffect(() => {
-    loadDatabase();
-    try { const savedUser = sessionStorage.getItem('tpq_user'); if (savedUser) { const parsed = JSON.parse(savedUser); parsed.id = String(parsed.id); setCurrentUser(parsed); } }
-    catch (e) {}
-  }, []);
-
-  useEffect(() => {
-    if (currentUser && users.length > 0) {
-      const fresh = users.find(u => String(u.id) === String(currentUser.id));
-      if (fresh && JSON.stringify(fresh) !== JSON.stringify(currentUser)) {
-        setCurrentUser(fresh);
-        try { sessionStorage.setItem('tpq_user', JSON.stringify(fresh)); } catch(e){}
-      }
-    }
-  }, [users, currentUser]);
-
-  const updateTable = async (table, updatedData, customUrl = appsScriptUrl) => {
-    setIsSyncing(true);
-    let normalizedData = updatedData;
-    try {
-      if (table === 'users') normalizedData = normalizeUsers(updatedData), setUsers(normalizedData);
-      else if (table === 'progress') normalizedData = normalizeProgress(updatedData), setProgress(normalizedData);
-      else if (table === 'targets') normalizedData = normalizeTargets(updatedData), setTargets(normalizedData);
-      else if (table === 'savings') normalizedData = normalizeSavings(updatedData), setSavings(normalizedData);
-      else if (table === 'settings') setSettings(normalizedData);
-      try { localStorage.setItem(`tpq_${table}`, JSON.stringify(normalizedData)); } catch (e) {}
-    } catch (localErr) {
-      showToast(`Gagal: ${localErr.message}`, 'error');
-      setIsSyncing(false); return false;
-    }
-    const activeUrl = customUrl || appsScriptUrl;
-    try {
-      if (activeUrl && activeUrl.trim() !== '' && activeUrl !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
-        const response = await fetch(activeUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateTable', table, data: normalizedData }) });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const resultJson = JSON.parse(await response.text());
-        if (resultJson.status !== 'success') throw new Error(resultJson.message || 'Gagal simpan.');
-        showToast('Tersimpan!'); return true;
-      } else { showToast('Tersimpan secara lokal.'); return true; }
-    } catch (error) {
-      try {
-        if (activeUrl && activeUrl.trim() !== '' && activeUrl !== "ISI_URL_APPS_SCRIPT_ANDA_DISINI") {
-          await fetch(activeUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'updateTable', table, data: normalizedData }) });
-          showToast('Terkirim!'); return true;
-        }
-      } catch (fbErr) {}
-      showToast('Tersimpan secara lokal.'); return true;
-    } finally { setIsSyncing(false); }
-  };
-
-  const handleLogin = (username, password) => {
-    const user = users.find(u => String(u.username).toLowerCase() === String(username).toLowerCase() && String(u.password) === String(password));
-    if (user) {
-      setCurrentUser(user); setActiveTab('dashboard');
-      try { sessionStorage.setItem('tpq_user', JSON.stringify(user)); } catch(e){}
-      showToast(`Selamat datang, ${user.name}!`);
-    } else showToast('Username atau password salah!', 'error');
-  };
-
-  const handleLogout = () => {
-    setCurrentUser(null); setActiveTab('dashboard');
-    try { sessionStorage.removeItem('tpq_user'); } catch(e){}
-  };
-
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast({ message: '', type: '' }), 3000);
-  };
-
-  if (isInitializing) return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-      <RefreshCw className="w-12 h-12 text-emerald-500 animate-spin mb-4" />
-      <h2 className="text-xl font-semibold text-slate-800">Memuat Data...</h2>
-      <p className="text-slate-500 text-sm mt-2">Menghubungkan ke database</p>
-    </div>
-  );
-
-  if (!currentUser) return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center p-4">
-      <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: '' })} />
-      <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border border-slate-100">
-        <div className="text-center mb-8">
-          {settings.logoUrl ? <img src={settings.logoUrl} alt="Logo" className="max-w-[140px] mx-auto mb-4" /> : (
-            <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4"><BookOpen className="w-10 h-10 text-emerald-600" /></div>
-          )}
-          <h1 className="text-2xl font-bold text-slate-800">{settings.tpqName || 'Sistem TPQ'}</h1>
-          <p className="text-slate-500 text-sm mt-1">Masuk ke sistem manajemen</p>
-        </div>
-        <form onSubmit={(e) => { e.preventDefault(); handleLogin(e.target.username.value, e.target.password.value); }} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
-            <div className="relative">
-              <User className="w-5 h-5 text-slate-400 absolute left-3 top-3.5" />
-              <input name="username" type="text" required className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-slate-50 text-sm transition-all" placeholder="Masukkan username" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-            <div className="relative">
-              <Lock className="w-5 h-5 text-slate-400 absolute left-3 top-3.5" />
-              <input name="password" type="password" required className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-slate-50 text-sm transition-all" placeholder="Masukkan kata sandi" />
-            </div>
-          </div>
-          <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 rounded-xl transition-all shadow-sm hover:shadow">Masuk</button>
-        </form>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="min-h-screen bg-slate-50 font-sans">
-      <Toast message={toast.message} type={toast.type} onClose={() => setToast({ message: '', type: '' })} />
-      <header className="bg-white shadow-sm sticky top-0 z-10 border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-            {settings.logoUrl ? <img src={settings.logoUrl} alt="Logo" className="h-10 object-contain" /> : <BookOpen className="w-8 h-8 text-emerald-600" />}
-            <div>
-              <h1 className="font-semibold text-slate-800">{settings.tpqName || 'SIM TPQ'}</h1>
-              <p className="text-xs text-slate-500">Sistem Informasi</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium text-slate-800">{currentUser.name}</p>
-              <p className="text-xs text-slate-500">{getRoleName(currentUser.role)}</p>
-            </div>
-            <button onClick={() => loadDatabase()} disabled={isSyncing} className="p-2 rounded-xl hover:bg-slate-100 transition-colors" title="Sinkronisasi">
-              <RefreshCw className={`w-5 h-5 text-slate-600 ${isSyncing ? 'animate-spin' : ''}`} />
-            </button>
-            <button onClick={handleLogout} className="p-2 rounded-xl hover:bg-rose-50 text-rose-600 transition-colors" title="Keluar">
-              <LogOut className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </header>
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        {currentUser.role === 'santri' && (
-          <SantriView activeTab={activeTab} setActiveTab={setActiveTab} user={currentUser} users={users} progress={progress} targets={targets} savings={savings} updateTable={updateTable} showToast={showToast} simulatedWeekend={simulatedWeekend} setSimulatedWeekend={setSimulatedWeekend} />
-        )}
-        {currentUser.role === 'guru' && (
-          <GuruView activeTab={activeTab} setActiveTab={setActiveTab} user={currentUser} users={users} setUsers={setUsers} progress={progress} targets={targets} savings={savings} settings={settings} updateTable={updateTable} showToast={showToast} simulatedWeekend={simulatedWeekend} setSimulatedWeekend={setSimulatedWeekend} />
-        )}
-        {currentUser.role === 'kepala_tpq' && (
-          <KepalaView activeTab={activeTab} setActiveTab={setActiveTab} user={currentUser} users={users} setUsers={setUsers} progress={progress} targets={targets} savings={savings} settings={settings} updateTable={updateTable} showToast={showToast} simulatedWeekend={simulatedWeekend} setSimulatedWeekend={setSimulatedWeekend} appsScriptUrl={appsScriptUrl} setAppsScriptUrl={setAppsScriptUrl} isSyncing={isSyncing} loadDatabase={loadDatabase} />
-        )}
-        {currentUser.role === 'bendahara' && (
-          <BendaharaView activeTab={activeTab} setActiveTab={setActiveTab} users={users || []} savings={savings || []} settings={settings || INITIAL_DATA.settings} updateTable={updateTable} showToast={showToast} currentUser={currentUser} />
-        )}
-        {currentUser.role === 'admin' && (
-          <AdminView activeTab={activeTab} setActiveTab={setActiveTab} users={users} updateTable={updateTable} showToast={showToast} settings={settings} appsScriptUrl={appsScriptUrl} setAppsScriptUrl={setAppsScriptUrl} loadDatabase={loadDatabase} />
-        )}
-      </main>
-    </div>
-  );
-}
-
-// --- FUNGSI TAMBAHAN TAMPILAN (SANTRI, GURU, KEPALA, BENDAHARA, ADMIN) ---
-// *Semua fungsi tampilan yang ada di kode asli tetap digunakan, hanya disesuaikan gaya CSS-nya dengan prinsip yang sama:
-// - Ganti kelas warna lama menjadi yang lebih modern (slate, emerald, rose, amber)
-// - Perbaiki padding, border-radius, shadow
-// - Tambahkan efek hover dan transisi
-// - Sederhanakan struktur agar lebih rapi
-
-// Fungsi SantriView, GuruView, KepalaView, BendaharaView, AdminView, SavingsInputView
-// Silakan gunakan fungsi yang sudah ada di kode asli kamu, lalu ganti semua kelas gaya mengikuti contoh di atas.
 // ==============================
 // COMPONENT: SAVINGS INPUT VIEW
 // ==============================
@@ -874,7 +643,7 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
       <BackButton onClick={() => setActiveTab('dashboard')} />
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
         <h2 className="text-lg font-semibold mb-6 flex items-center text-emerald-700"><ClipboardList className="mr-2"/> Input Setoran Harian</h2>
-        {activeSantriList.length === 0 ? <div className="p-6 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">Belum ada santri yang dibimbing.</div> : (
+        {activeSantriList.length === 0 ? <div className="p-6 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">Belum ada santri yang dibimbing. Silakan klaim santri terlebih dahulu.</div> : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
               <h3 className="text-xs font-semibold text-slate-700 mb-3 border-b pb-2 uppercase">Daftar Santri</h3>
@@ -898,139 +667,6 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
                     e.preventDefault();
                     await updateTable('progress', [{ id: Date.now().toString(), santriId: selectedSantri.id, date: e.target.date.value, surah: e.target.surah.value, ayat: e.target.ayat.value, nilai: e.target.nilai.value, status: 'acc_guru', type: 'harian' }, ...progress]);
                     showToast('Tersimpan!'); e.target.reset();
-                  }} className="space-y-4 bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                    <h4 className="font-medium text-sm text-slate-700 border-b pb-2">Input Setoran Baru</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><label className="block text-xs font-medium mb-1 text-slate-600">Tanggal</label><input type="date" name="date" defaultValue={new Date().toISOString().slice(0,10)} required className="w-full p-2.5 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-emerald-400" /></div>
-                      <div><label className="block text-xs font-medium mb-1 text-slate-600">Nilai</label><select name="nilai" className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-medium focus:ring-1 focus:ring-emerald-400"><option>A (Sangat Lancar)</option><option>B (Lancar)</option><option>C (Cukup)</option><option>D (Kurang)</option></select></div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><label className="block text-xs font-medium mb-1 text-slate-600">Surah</label><input type="text" name="surah" required className="w-full p-2.5 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-emerald-400" /></div>
-                      <div><label className="block text-xs font-medium mb-1 text-slate-600">Ayat</label><input type="text" name="ayat" required className="w-full p-2.5 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-emerald-400" /></div>
-                    </div>
-                    <button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 rounded-xl text-xs transition-all">Simpan</button>
-                  </form>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  // Bagian lain (nilai_target, pengajuan_kenaikan, klaim_santri) disesuaikan dengan gaya yang sama:
-  // - Gunakan warna slate, emerald, rose, amber
-  // - Padding seragam, border-radius 12-16px
-  // - Efek hover halus
-  // - Transisi smooth
-
-  return null;
-}
-
-// ==============================
-// COMPONENT: KEPALA, BENDAHARA, ADMIN VIEW
-// ==============================
-// Semua komponen sisanya mengikuti pola gaya yang sama persis:
-// - Struktur tetap sama, hanya ganti kelas CSS agar tampilan seragam modern
-// - Warna utama tetap hijau-emerald, dengan aksen biru, oranye, merah lembut
-// - Bayangan ringan, sudut membulat, jarak yang seimbang
-
-function KepalaView(){ /* ...sesuaikan gaya seperti contoh di atas... */ }
-function BendaharaView(){ /* ...sesuaikan gaya seperti contoh di atas... */ }
-function AdminView(){ /* ...sesuaikan gaya seperti contoh di atas... */ }
-// ==============================================
-// COMPONENT: GURU VIEW (LENGKAP SEMUA MENU)
-// ==============================================
-function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, targets, savings, settings, updateTable, showToast, simulatedWeekend, setSimulatedWeekend }) {
-  const [selectedSantri, setSelectedSantri] = useState(null);
-  const activeSantriList = users.filter(u => u.role === 'santri' && String(u.guruId) === String(user.id));
-  const isSavingAuthorized = settings.savingInputRoles?.includes(user.role);
-
-  const menus = [
-    { id: 'isi_progres', label: 'Input Setoran', icon: ClipboardList, color: 'bg-emerald-50 text-emerald-600' },
-    { id: 'nilai_target', label: 'Penilaian Target', icon: CheckSquare, color: 'bg-indigo-50 text-indigo-600' },
-    { id: 'pengajuan_kenaikan', label: 'Ajukan Naik Jilid', icon: Award, color: 'bg-orange-50 text-orange-600' },
-    { id: 'klaim_santri', label: 'Klaim Santri', icon: UserPlus, color: 'bg-purple-50 text-purple-600' }
-  ];
-  if (isSavingAuthorized) menus.push({ id: 'input_tabungan', label: 'Input Tabungan', icon: DollarSign, color: 'bg-amber-50 text-amber-600' });
-
-  if (activeTab === 'dashboard') return (
-    <div className="space-y-6">
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <h2 className="text-xl font-semibold text-slate-800">Panel Pengajar: {user.name}</h2>
-        <p className="text-sm text-slate-500 mt-1">Mengelola {activeSantriList.length} santri bimbingan</p>
-      </div>
-      <MenuGrid menus={menus} onSelect={setActiveTab} />
-    </div>
-  );
-
-  if (activeTab === 'input_tabungan') return (
-    <div className="space-y-6">
-      <BackButton onClick={() => setActiveTab('dashboard')} />
-      <SavingsInputView users={users} savings={savings} updateTable={updateTable} showToast={showToast} recorderId={user.id} />
-    </div>
-  );
-
-  if (activeTab === 'isi_progres') return (
-    <div className="space-y-6">
-      <BackButton onClick={() => setActiveTab('dashboard')} />
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <h2 className="text-lg font-semibold mb-6 flex items-center text-emerald-700">
-          <ClipboardList className="mr-2"/> Input Setoran Harian
-        </h2>
-        {activeSantriList.length === 0 ? (
-          <div className="p-6 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
-            Belum ada santri yang dibimbing. Silakan klaim santri terlebih dahulu.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <h3 className="text-xs font-semibold text-slate-700 mb-3 border-b pb-2 uppercase">Daftar Santri</h3>
-              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
-                {activeSantriList.map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => setSelectedSantri(s)}
-                    className={`w-full p-3 rounded-xl text-left text-sm border transition-all ${
-                      selectedSantri?.id === s.id
-                        ? 'bg-emerald-500 text-white font-medium border-emerald-500'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-emerald-50'
-                    }`}
-                  >
-                    <p className="font-medium">{s.name}</p>
-                    <p className="mt-0.5 opacity-80 text-xs">Jilid: {s.jilid}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="md:col-span-2 space-y-6">
-              {!selectedSantri ? (
-                <div className="p-10 text-center text-slate-400 text-sm italic bg-slate-50 border border-dashed rounded-xl">
-                  Pilih santri terlebih dahulu
-                </div>
-              ) : (
-                <>
-                  <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
-                    <p className="text-[11px] text-emerald-600 font-medium uppercase">Santri Terpilih</p>
-                    <h3 className="font-semibold text-lg mt-0.5">{selectedSantri.name}</h3>
-                    <p className="text-sm text-slate-600 mt-1">Jilid: {selectedSantri.jilid}</p>
-                  </div>
-                  <form onSubmit={async (e) => {
-                    e.preventDefault();
-                    const baru = {
-                      id: Date.now().toString(),
-                      santriId: selectedSantri.id,
-                      date: e.target.date.value,
-                      surah: e.target.surah.value,
-                      ayat: e.target.ayat.value,
-                      nilai: e.target.nilai.value,
-                      status: 'acc_guru',
-                      type: 'harian'
-                    };
-                    await updateTable('progress', [baru, ...progress]);
-                    showToast('Setoran berhasil disimpan!');
-                    e.target.reset();
                   }} className="space-y-4 bg-slate-50 p-5 rounded-2xl border border-slate-100">
                     <h4 className="font-medium text-sm text-slate-700 border-b pb-2">Input Setoran Baru</h4>
                     <div className="grid grid-cols-2 gap-4">
@@ -1209,9 +845,9 @@ function GuruView({ activeTab, setActiveTab, user, users, setUsers, progress, ta
   return null;
 }
 
-// ==============================================
-// COMPONENT: KEPALA TPQ VIEW (LENGKAP)
-// ==============================================
+// ==============================
+// COMPONENT: KEPALA TPQ VIEW
+// ==============================
 function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, targets, savings, settings, updateTable, showToast, appsScriptUrl, setAppsScriptUrl, loadDatabase, isSyncing }) {
   const menus = [
     { id: 'daftar_santri', label: 'Daftar Santri', icon: Users, color: 'bg-blue-50 text-blue-600' },
@@ -1317,9 +953,9 @@ function KepalaView({ activeTab, setActiveTab, user, users, setUsers, progress, 
   return null;
 }
 
-// ==============================================
-// COMPONENT: BENDAHARA VIEW (LENGKAP)
-// ==============================================
+// ==============================
+// COMPONENT: BENDAHARA VIEW
+// ==============================
 function BendaharaView({ activeTab, setActiveTab, users, savings, settings, updateTable, showToast, currentUser }) {
   const menus = [
     { id: 'input_tabungan', label: 'Kelola Tabungan', icon: DollarSign, color: 'bg-amber-50 text-amber-600' },
@@ -1398,9 +1034,9 @@ function BendaharaView({ activeTab, setActiveTab, users, savings, settings, upda
   return null;
 }
 
-// ==============================================
-// COMPONENT: ADMIN VIEW (LENGKAP)
-// ==============================================
+// ==============================
+// COMPONENT: ADMIN VIEW
+// ==============================
 function AdminView({ activeTab, setActiveTab, users, updateTable, showToast, settings, appsScriptUrl, setAppsScriptUrl, loadDatabase }) {
   const menus = [
     { id: 'kelola_pengguna', label: 'Kelola Pengguna', icon: Users, color: 'bg-slate-50 text-slate-700' },
